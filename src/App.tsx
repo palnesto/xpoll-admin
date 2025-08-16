@@ -3,7 +3,6 @@ import { useRoutes, useLocation } from "react-router-dom";
 import routes from "~react-pages";
 import PrivateRoute from "./layouts/private-route";
 import DefaultLayout from "./layouts/default-layout";
-import { DevStrip } from "./components/commons/dev-strip";
 import { useAdminAuth } from "./hooks/useAdminAuth";
 
 export function App() {
@@ -19,7 +18,6 @@ export function App() {
 
   return (
     <div>
-      <DevStrip />
       <Suspense fallback={<p>Loading…</p>}>
         {isPublic ? (
           // Public pages render straight
