@@ -14,15 +14,15 @@ export type InfiniteSelectProps<
 > = {
   route: string;
   pageSize?: number;
-  getFilters?: (search: string) => F; // build filters from debounced search
+  getFilters?: (search: string) => F;
   mapItemToOption: (item: T) => BaseOption<T>;
   onChange?: (option: BaseOption<T> | null) => void;
   placeholder?: string;
   isClearable?: boolean;
   selectProps?: Partial<React.ComponentProps<typeof Select<BaseOption<T>>>>;
-  debounceMs?: number; // debounce for querying
-  minChars?: number; // type-to-search gate (optional)
-  fetchThresholdPx?: number; // prefetch when within X px of bottom
+  debounceMs?: number;
+  minChars?: number;
+  fetchThresholdPx?: number;
 };
 
 export default function InfiniteSelect<
@@ -41,18 +41,14 @@ export default function InfiniteSelect<
   minChars = 0,
   fetchThresholdPx = 120,
 }: InfiniteSelectProps<T, F>) {
-  // 1) Immediate input for smooth typing
   const [input, setInput] = React.useState("");
-  // 2) Debounced value that actually triggers API calls
   const [search, setSearch] = React.useState("");
 
-  // Debounce: whenever `input` changes, update `search` after N ms
   React.useEffect(() => {
     const id = window.setTimeout(() => setSearch(input), debounceMs);
     return () => window.clearTimeout(id);
   }, [input, debounceMs]);
 
-  // Build filters from debounced search
   const effectiveSearch = search.length >= minChars ? search : "";
   const filters = React.useMemo(
     () => (getFilters ? getFilters(effectiveSearch) : ({} as F)),
@@ -78,20 +74,18 @@ export default function InfiniteSelect<
     [onChange]
   );
 
-  // Controlled input: update `input` immediately (smooth typing)
   const handleInputChange = React.useCallback(
     (val: string, meta: { action: string }) => {
       if (meta.action === "input-change") setInput(val);
-      return val; // react-select requirement
+      return val;
     },
     []
   );
 
-  // Infinite scroll: custom MenuList that fetches when near bottom
   const lastFetchTsRef = React.useRef(0);
   const tryFetchNext = React.useCallback(() => {
     const now = Date.now();
-    if (now - lastFetchTsRef.current < 300) return; // throttle
+    if (now - lastFetchTsRef.current < 300) return;
     if (hasNextPage && !isFetchingNextPage) {
       lastFetchTsRef.current = now;
       fetchNextPage();
@@ -119,13 +113,11 @@ export default function InfiniteSelect<
       placeholder={placeholder}
       isClearable={isClearable}
       options={options}
-      // bind to immediate input state (NOT debounced)
       inputValue={input}
       onInputChange={handleInputChange}
       onChange={handleChange}
-      // make sure the menu actually scrolls
       maxMenuHeight={260}
-      filterOption={() => true} // server-side filtering
+      filterOption={() => true}
       isLoading={isLoading || isFetchingNextPage}
       noOptionsMessage={() =>
         isLoading
@@ -134,7 +126,6 @@ export default function InfiniteSelect<
           ? `Type at least ${minChars} characters`
           : "No options"
       }
-      // keep your existing portal config etc.
       menuPortalTarget={selectProps?.menuPortalTarget}
       menuShouldScrollIntoView={false}
       components={{ MenuList, ...(selectProps?.components || {}) }}
