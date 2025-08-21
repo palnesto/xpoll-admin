@@ -10,7 +10,7 @@ import { fmt, PaginatedTable } from "@/components/paginated-table";
 import { useTablePollsStore } from "@/stores/table_polls.store";
 import { ConfirmDeletePollsModal } from "@/components/modals/table_polls/delete";
 
-export default function Polls() {
+export default function SellOrder() {
   const navigate = useNavigate();
 
   const [page, setPage] = useState<number>(1);
@@ -75,9 +75,9 @@ export default function Polls() {
   return (
     <div>
       <PaginatedTable
-        title="Polls"
-        onCreate={() => navigate("/polls/create")}
-        createButtonText="Create Poll"
+        title="Sell Order"
+        onCreate={() => navigate("/sell-order/create")}
+        createButtonText="Create Sell Order"
         columns={columns}
         tableData={tableData}
         data={data}

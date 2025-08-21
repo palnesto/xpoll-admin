@@ -6,19 +6,19 @@ import { ThreeDotMenu } from "@/components/commons/three-dot-menu";
 import { Eye, Trash } from "lucide-react";
 import { DEFAULT_PAGE_SIZE } from "@/constants";
 import { fmt, PaginatedTable } from "@/components/paginated-table";
+import { useTableTrialsStore } from "@/stores/table_trials.store";
+import { ConfirmDeleteTrialPollsModal } from "@/components/modals/table_trials/delete";
 
-import { useTablePollsStore } from "@/stores/table_polls.store";
-import { ConfirmDeletePollsModal } from "@/components/modals/table_polls/delete";
-
-export default function Polls() {
+export default function Trials() {
   const navigate = useNavigate();
 
   const [page, setPage] = useState<number>(1);
   const [pageSize] = useState<number>(DEFAULT_PAGE_SIZE);
-  const isDeleting = useTablePollsStore((s) => s.isDeleting);
-  const setIsDeleting = useTablePollsStore((s) => s.setIsDeleting);
 
-  const url = `${endpoints.entities.polls.all}?page=${page}&pageSize=${pageSize}`;
+  const isDeleting = useTableTrialsStore((s) => s.isDeleting);
+  const setIsDeleting = useTableTrialsStore((s) => s.setIsDeleting);
+
+  const url = `${endpoints.entities.trials.all}?page=${page}&pageSize=${pageSize}`;
   const { data, isFetching } = useApiQuery(url, { keepPreviousData: true });
 
   const entries = useMemo(() => data?.data?.data?.entries ?? [], [data]);
@@ -28,7 +28,7 @@ export default function Polls() {
       {
         name: "View",
         icon: Eye,
-        onClick: () => navigate(`/polls/${id}`),
+        onClick: () => navigate(`/trials/${id}`),
       },
       {
         name: "Delete",
@@ -75,9 +75,9 @@ export default function Polls() {
   return (
     <div>
       <PaginatedTable
-        title="Polls"
-        onCreate={() => navigate("/polls/create")}
-        createButtonText="Create Poll"
+        title="Trials"
+        onCreate={() => navigate("/trials/create")}
+        createButtonText="Create Trial Poll"
         columns={columns}
         tableData={tableData}
         data={data}
@@ -87,7 +87,7 @@ export default function Polls() {
         isFetching={isFetching}
       />
 
-      {isDeleting?.length > 0 && <ConfirmDeletePollsModal url={url} />}
+      {isDeleting?.length > 0 && <ConfirmDeleteTrialPollsModal url={url} />}
     </div>
   );
 }

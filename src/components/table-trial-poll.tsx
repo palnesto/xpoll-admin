@@ -6,36 +6,30 @@ import { ThreeDotMenu } from "@/components/commons/three-dot-menu";
 import { Eye, Trash } from "lucide-react";
 import { DEFAULT_PAGE_SIZE } from "@/constants";
 import { fmt, PaginatedTable } from "@/components/paginated-table";
-
 import { useTablePollsStore } from "@/stores/table_polls.store";
 import { ConfirmDeletePollsModal } from "@/components/modals/table_polls/delete";
 
-export default function Polls() {
+export default function TrialPollTable({ trialId }: { trialId: string }) {
   const navigate = useNavigate();
-
   const [page, setPage] = useState<number>(1);
   const [pageSize] = useState<number>(DEFAULT_PAGE_SIZE);
+
   const isDeleting = useTablePollsStore((s) => s.isDeleting);
   const setIsDeleting = useTablePollsStore((s) => s.setIsDeleting);
 
-  const url = `${endpoints.entities.polls.all}?page=${page}&pageSize=${pageSize}`;
+  const base = endpoints.entities.polls.getPollsByTrialId(trialId);
+  const url = `${base}?page=${page}&pageSize=${pageSize}`;
   const { data, isFetching } = useApiQuery(url, { keepPreviousData: true });
 
   const entries = useMemo(() => data?.data?.data?.entries ?? [], [data]);
 
   const actions = useCallback(
     (id: string) => [
-      {
-        name: "View",
-        icon: Eye,
-        onClick: () => navigate(`/polls/${id}`),
-      },
+      { name: "View", icon: Eye, onClick: () => navigate(`/polls/${id}`) },
       {
         name: "Delete",
         icon: Trash,
-        onClick: () => {
-          setIsDeleting([id]);
-        },
+        onClick: () => setIsDeleting([id]),
         separatorBefore: true,
       },
     ],
@@ -57,12 +51,12 @@ export default function Polls() {
     {
       key: "createdAt",
       header: "Created At",
-      render: (val: any) => <span>{fmt(val)}</span>,
+      render: (v: any) => <span>{fmt(v)}</span>,
     },
     {
       key: "archivedAt",
       header: "Archived At",
-      render: (val: any) => <span>{fmt(val)}</span>,
+      render: (v: any) => <span>{fmt(v)}</span>,
     },
     {
       key: "tableOptions",
@@ -75,9 +69,7 @@ export default function Polls() {
   return (
     <div>
       <PaginatedTable
-        title="Polls"
-        onCreate={() => navigate("/polls/create")}
-        createButtonText="Create Poll"
+        title="Polls in this Trial"
         columns={columns}
         tableData={tableData}
         data={data}
@@ -86,7 +78,6 @@ export default function Polls() {
         pageSize={pageSize}
         isFetching={isFetching}
       />
-
       {isDeleting?.length > 0 && <ConfirmDeletePollsModal url={url} />}
     </div>
   );

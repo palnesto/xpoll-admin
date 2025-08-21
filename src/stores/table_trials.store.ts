@@ -1,9 +1,9 @@
 import { create } from "zustand";
 
-type TablePollsId = string;
-type StateType = TablePollsId | null;
+type TableTrialId = string;
+type StateType = TableTrialId | null;
 
-type TablePollsStoreType = {
+type TableTrialsStoreType = {
   isCreating: StateType;
   setIsCreating: (isCreating: StateType) => void;
   isEditing: StateType;
@@ -13,7 +13,7 @@ type TablePollsStoreType = {
   onClose: () => void;
 };
 
-export const useTablePollsStore = create<TablePollsStoreType>()((set) => ({
+export const useTableTrialsStore = create<TableTrialsStoreType>()((set) => ({
   isCreating: null,
   setIsCreating: (isCreating) => set({ isCreating }),
   isEditing: null,

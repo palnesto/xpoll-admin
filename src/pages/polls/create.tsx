@@ -38,17 +38,22 @@ const formSchema = z.object({
     .array(optionZ)
     .min(2, "Need 2–4 options")
     .max(4, "Need 2–4 options"),
-  reward: z.object({
-    assetId: z.enum(["xOcta", "xMYST", "xDrop"]),
-    amount: z.coerce.number().int().min(1, "Min 1"),
-  }),
-  // required key in payload, allowed to be empty
+  reward: z
+    .object({
+      assetId: z.enum(["xOcta", "xMYST", "xDrop"]),
+      amount: z.coerce.number().int().min(1, "Min 1"),
+      rewardAmountCap: z.coerce.number().int().min(1, "Min 1"),
+    })
+    .refine((r) => r.rewardAmountCap >= r.amount, {
+      path: ["rewardAmountCap"],
+      message: "rewardAmountCap must be >= amount",
+    }),
   resourceAssets: z.array(resourceAssetZ).default([]),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
-function extractYouTubeId(input: string) {
+export function extractYouTubeId(input: string) {
   const idLike = /^[\w-]{11}$/;
   try {
     if (idLike.test(input)) return input;
@@ -89,13 +94,13 @@ export default function PollCreatePage() {
   const optionsArray = useFieldArray({ control, name: "options" });
   const assetsArray = useFieldArray({ control, name: "resourceAssets" });
 
-  const { mutateAsync, isPending } = useApiMutation<any, any>({
+  const { mutate, isPending } = useApiMutation<any, any>({
     route: endpoints.entities.polls.create, // POST /poll
     method: "POST",
     onSuccess: () => {
       appToast.success("Poll created");
       queryClient.invalidateQueries({
-        queryKey: [endpoints.entities.polls.listBase],
+        queryKey: [endpoints.entities.polls.create],
       });
       navigate("/polls");
     },
@@ -128,7 +133,7 @@ export default function PollCreatePage() {
       ],
       expireRewardAt: null,
     };
-    await mutateAsync(payload as any);
+    mutate(payload as any);
   };
 
   const optsArrayMsg =
@@ -343,7 +348,22 @@ export default function PollCreatePage() {
                   name="reward.amount"
                   render={({ field }) => (
                     <FormItem>
-                      <label className="text-xs">Amount</label>
+                      <label className="text-xs">Amount per person</label>
+                      <FormControl>
+                        <Input type="number" min={1} step={1} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="col-span-4">
+                <FormField
+                  control={control}
+                  name="reward.rewardAmountCap"
+                  render={({ field }) => (
+                    <FormItem>
+                      <label className="text-xs">Reward Amount Cap</label>
                       <FormControl>
                         <Input type="number" min={1} step={1} {...field} />
                       </FormControl>

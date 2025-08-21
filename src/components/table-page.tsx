@@ -21,7 +21,7 @@ type TableColumn<T> = {
   canFilter?: boolean; // New property: only columns with canFilter true will show a search input
 };
 
-type TablePageProps<T> = {
+export type TablePageProps<T> = {
   title?: string;
   createButtonText?: string;
   onCreate?: () => void;
@@ -35,7 +35,6 @@ export function TablePage<T>({
   onCreate,
   columns,
   data,
-  setPage,
 }: TablePageProps<T>) {
   const headerRef = useRef<HTMLDivElement | null>(null);
   const tableRef = useRef<HTMLDivElement | null>(null);

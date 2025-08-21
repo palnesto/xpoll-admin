@@ -9,7 +9,7 @@ export const useApiMutation = <TData, TResponse>({
   onError,
 }: {
   route: string;
-  method: "POST" | "PATCH" | "DELETE"; // Restrict method to specific HTTP verbs
+  method: "POST" | "PATCH" | "DELETE" | "PUT"; // Restrict method to specific HTTP verbs
   options?: UseMutationOptions<TResponse, Error, TData>;
   onSuccess?: (data: TResponse) => void;
   onError?: (error: Error) => void;
@@ -21,6 +21,9 @@ export const useApiMutation = <TData, TResponse>({
         return response.data;
       } else if (method === "PATCH") {
         const response = await apiInstance.patch(route, newData);
+        return response.data;
+      } else if (method === "PUT") {
+        const response = await apiInstance.put(route, newData);
         return response.data;
       } else if (method === "DELETE") {
         const response = await apiInstance.delete(route, { data: newData }); // Fixed DELETE syntax for sending body

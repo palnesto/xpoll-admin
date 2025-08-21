@@ -63,24 +63,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         isActive: true,
         items: [
           {
-            title: "General Settings",
-            url: "/home-page",
+            title: "Trial Polls",
+            url: "/trials",
           },
+        ],
+      },
+      {
+        title: "Sell Order",
+        url: "#",
+        icon: ReceiptText,
+        isActive: true,
+        items: [
           {
-            title: "Events",
-            url: "/events",
-          },
-          {
-            title: "Toppers",
-            url: "/toppers",
-          },
-          {
-            title: "Notifications",
-            url: "/notification",
-          },
-          {
-            title: "Latest Updates",
-            url: "/latest_updates",
+            title: "Trial Polls",
+            url: "/sell-order",
           },
         ],
       },

@@ -8,10 +8,18 @@ export const endpoints = {
   adminMe: "/admin/auth/me",
   entities: {
     polls: {
-      all: "/polls",
-      create: "/polls",
-      update: "/polls",
-      delete: "/polls",
+      all: "/poll/list",
+      create: "/poll",
+      update: (id: string) => `/poll/${id}`,
+      delete: `/poll`,
+    },
+    trials: {
+      all: "/trial/list",
+      create: "/trial",
+      update: "/trial",
+      delete: "/trial",
+      getById: (id: string) => `/trial/${id}`,
+      cast: "/trial/cast",
     },
   },
 };
@@ -167,24 +175,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         isActive: true,
         items: [
           {
-            title: "General Settings",
-            url: "/home-page",
-          },
-          {
-            title: "Events",
-            url: "/events",
-          },
-          {
-            title: "Toppers",
-            url: "/toppers",
-          },
-          {
-            title: "Notifications",
-            url: "/notification",
-          },
-          {
-            title: "Latest Updates",
-            url: "/latest_updates",
+            title: "Trial Polls",
+            url: "/trials",
           },
         ],
       },
@@ -460,6 +452,208 @@ export const CustomLink = ({ label, to }: { label: string; to: string }) => {
 };
 
 
+src\components\commons\selects\base\infinite-select.tsx
+-------------------------------------------------------
+import { useApiInfiniteQuery } from "@/hooks/useApiInfiniteQuery";
+import React from "react";
+import Select, { components, MenuListProps, SingleValue } from "react-select";
+
+type BaseOption<T = unknown> = {
+  value: string;
+  label: string;
+  data?: T;
+};
+
+export type InfiniteSelectProps<
+  T,
+  F extends Record<string, unknown> = Record<string, unknown>
+> = {
+  route: string;
+  pageSize?: number;
+  getFilters?: (search: string) => F;
+  mapItemToOption: (item: T) => BaseOption<T>;
+  onChange?: (option: BaseOption<T> | null) => void;
+  placeholder?: string;
+  isClearable?: boolean;
+  selectProps?: Partial<React.ComponentProps<typeof Select<BaseOption<T>>>>;
+  debounceMs?: number;
+  minChars?: number;
+  fetchThresholdPx?: number;
+};
+
+export default function InfiniteSelect<
+  T,
+  F extends Record<string, unknown> = Record<string, unknown>
+>({
+  route,
+  pageSize = 50,
+  getFilters,
+  mapItemToOption,
+  onChange,
+  placeholder = "Search...",
+  isClearable = true,
+  selectProps,
+  debounceMs = 300,
+  minChars = 0,
+  fetchThresholdPx = 120,
+}: InfiniteSelectProps<T, F>) {
+  const [input, setInput] = React.useState("");
+  const [search, setSearch] = React.useState("");
+
+  React.useEffect(() => {
+    const id = window.setTimeout(() => setSearch(input), debounceMs);
+    return () => window.clearTimeout(id);
+  }, [input, debounceMs]);
+
+  const effectiveSearch = search.length >= minChars ? search : "";
+  const filters = React.useMemo(
+    () => (getFilters ? getFilters(effectiveSearch) : ({} as F)),
+    [getFilters, effectiveSearch]
+  );
+
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
+    useApiInfiniteQuery<T, unknown, F>(route, filters, pageSize);
+
+  const options = React.useMemo(() => {
+    const pages = data?.pages ?? [];
+    const flat: BaseOption<T>[] = [];
+    for (const p of pages) {
+      for (const item of p.entries as T[]) {
+        flat.push(mapItemToOption(item));
+      }
+    }
+    return flat;
+  }, [data, mapItemToOption]);
+
+  const handleChange = React.useCallback(
+    (v: SingleValue<BaseOption<T>>) => onChange?.(v ?? null),
+    [onChange]
+  );
+
+  const handleInputChange = React.useCallback(
+    (val: string, meta: { action: string }) => {
+      if (meta.action === "input-change") setInput(val);
+      return val;
+    },
+    []
+  );
+
+  const lastFetchTsRef = React.useRef(0);
+  const tryFetchNext = React.useCallback(() => {
+    const now = Date.now();
+    if (now - lastFetchTsRef.current < 300) return;
+    if (hasNextPage && !isFetchingNextPage) {
+      lastFetchTsRef.current = now;
+      fetchNextPage();
+    }
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
+  const MenuList = React.useMemo(() => {
+    const Comp = (props: MenuListProps<BaseOption<T>, false>) => {
+      const onScroll: React.UIEventHandler<HTMLDivElement> = (e) => {
+        const el = e.currentTarget;
+        const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+        if (distance < fetchThresholdPx) tryFetchNext();
+      };
+      return (
+        <components.MenuList {...props} onScroll={onScroll}>
+          {props.children}
+        </components.MenuList>
+      );
+    };
+    return Comp;
+  }, [fetchThresholdPx, tryFetchNext]);
+
+  return (
+    <Select<BaseOption<T>>
+      placeholder={placeholder}
+      isClearable={isClearable}
+      options={options}
+      inputValue={input}
+      onInputChange={handleInputChange}
+      onChange={handleChange}
+      maxMenuHeight={260}
+      filterOption={() => true}
+      isLoading={isLoading || isFetchingNextPage}
+      noOptionsMessage={() =>
+        isLoading
+          ? "Loading..."
+          : input && input.length < minChars
+          ? `Type at least ${minChars} characters`
+          : "No options"
+      }
+      menuPortalTarget={selectProps?.menuPortalTarget}
+      menuShouldScrollIntoView={false}
+      components={{ MenuList, ...(selectProps?.components || {}) }}
+      {...selectProps}
+    />
+  );
+}
+
+
+src\components\commons\selects\location-select.tsx
+--------------------------------------------------
+import InfiniteSelect from "./base/infinite-select";
+
+type CityItem = {
+  _id: string;
+  name: string;
+  state: { _id: string; name: string };
+  country: { _id: string; name: string };
+  label?: string; // backend also returns label; we compute it anyway
+};
+
+type Option = {
+  value: string;
+  label: string;
+  data?: CityItem;
+};
+
+type Props = {
+  onChange?: (option: Option | null) => void;
+  pageSize?: number;
+  placeholder?: string;
+  /** extra props for react-select if you want to customize (styles, etc.) */
+  selectProps?: Parameters<typeof InfiniteSelect<CityItem>>[0]["selectProps"];
+};
+
+export default function LocationSelect({
+  onChange,
+  pageSize = 50,
+  placeholder = "Search city...",
+  selectProps,
+}: Props) {
+  return (
+    <InfiniteSelect<CityItem>
+      route="/location/cities"
+      pageSize={pageSize}
+      // Build filters from the current typed input
+      getFilters={(search) => ({ q: search })}
+      // Map each row to a select option
+      mapItemToOption={(item) => ({
+        value: item._id,
+        label: `${item.name}, ${item.state.name}, ${item.country.name}`,
+        data: item,
+      })}
+      // Log selection + bubble up
+      onChange={(opt) => {
+        if (opt?.data) {
+          console.log("Selected location:", {
+            cityId: opt.data._id,
+            city: opt.data.name,
+            state: opt.data.state,
+            country: opt.data.country,
+          });
+        }
+        onChange?.(opt as Option | null);
+      }}
+      placeholder={placeholder}
+      selectProps={selectProps}
+    />
+  );
+}
+
+
 src\components\commons\three-dot-menu.tsx
 -----------------------------------------
 import { MoreVertical } from "lucide-react";
@@ -608,6 +802,128 @@ export const CustomModal = ({
     </AlertDialog>
   );
 };
+
+
+src\components\modals\table_polls\delete.tsx
+--------------------------------------------
+import { endpoints } from "@/api/endpoints";
+import { queryClient } from "@/api/queryClient";
+import { CustomModal } from "@/components/modals/custom-modal";
+import { Button } from "@/components/ui/button";
+import { useApiMutation } from "@/hooks/useApiMutation";
+import { useTablePollsStore } from "@/stores/table_polls.store";
+import { appToast } from "@/utils/toast";
+import { Loader2 } from "lucide-react";
+import { useCallback } from "react";
+
+export function ConfirmDeletePollsModal({ url }: { url: string }) {
+  const isDeleting = useTablePollsStore((s) => s.isDeleting);
+  const onClose = useTablePollsStore((s) => s.onClose);
+  const { mutateAsync: deletePoll, isPending: isDeletingPoll } = useApiMutation(
+    {
+      route: endpoints.entities.polls.delete,
+      method: "DELETE",
+      onSuccess: () => {
+        appToast.success("Poll deleted");
+        // Refresh current list page
+        queryClient.invalidateQueries({ queryKey: [url] });
+        onClose();
+      },
+    }
+  );
+  const doDelete = useCallback(async () => {
+    if (!isDeleting || isDeleting.length < 1) return;
+    deletePoll({
+      ids: isDeleting,
+    });
+  }, [isDeleting, deletePoll]);
+
+  if (!isDeleting || isDeleting.length < 1) return null;
+  return (
+    <CustomModal
+      isOpen={true}
+      onClose={onClose}
+      title={"Delete Polls"}
+      footer={<></>}
+      onSubmit={() => {}}
+    >
+      <p className="mb-4">{"Are you sure you want to delete these polls?"}</p>
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" onClick={onClose} disabled={isDeletingPoll}>
+          Cancel
+        </Button>
+        <Button onClick={doDelete} disabled={isDeletingPoll}>
+          {isDeletingPoll && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {"Delete"}
+        </Button>
+      </div>
+    </CustomModal>
+  );
+}
+
+
+src\components\modals\table_trials\delete.tsx
+---------------------------------------------
+import { endpoints } from "@/api/endpoints";
+import { queryClient } from "@/api/queryClient";
+import { CustomModal } from "@/components/modals/custom-modal";
+import { Button } from "@/components/ui/button";
+import { useApiMutation } from "@/hooks/useApiMutation";
+import { useTableTrialsStore } from "@/stores/table_trials.store";
+import { appToast } from "@/utils/toast";
+import { Loader2 } from "lucide-react";
+import { useCallback } from "react";
+
+export function ConfirmDeleteTrialPollsModal({ url }: { url: string }) {
+  const isDeleting = useTableTrialsStore((s) => s.isDeleting);
+  const onClose = useTableTrialsStore((s) => s.onClose);
+  const { mutateAsync: deleteTrialPoll, isPending: isDeletingTrialPoll } =
+    useApiMutation({
+      route: endpoints.entities.trials.delete,
+      method: "DELETE",
+      onSuccess: () => {
+        appToast.success("Trial Poll deleted");
+        queryClient.invalidateQueries({ queryKey: [url] });
+        onClose();
+      },
+    });
+  const doDelete = useCallback(async () => {
+    if (!isDeleting || isDeleting.length < 1) return;
+    deleteTrialPoll({
+      ids: isDeleting,
+    });
+  }, [isDeleting, deleteTrialPoll]);
+
+  if (!isDeleting || isDeleting.length < 1) return null;
+  return (
+    <CustomModal
+      isOpen={true}
+      onClose={onClose}
+      title={"Delete Trial Polls"}
+      footer={<></>}
+      onSubmit={() => {}}
+    >
+      <p className="mb-4">
+        {"Are you sure you want to delete these trial polls?"}
+      </p>
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="outline"
+          onClick={onClose}
+          disabled={isDeletingTrialPoll}
+        >
+          Cancel
+        </Button>
+        <Button onClick={doDelete} disabled={isDeletingTrialPoll}>
+          {isDeletingTrialPoll && (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          )}
+          {"Delete"}
+        </Button>
+      </div>
+    </CustomModal>
+  );
+}
 
 
 src\components\mode-toggle.tsx
@@ -867,6 +1183,153 @@ export function NavUser({
     </SidebarMenu>
   );
 }
+
+
+src\components\paginated-table.tsx
+----------------------------------
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "./ui/button";
+import { cn } from "@/lib/utils";
+import { TablePage, TablePageProps } from "./table-page";
+import { DEFAULT_PAGE_SIZE } from "@/constants";
+import { useMemo } from "react";
+
+export type PollRow = {
+  _id: string;
+  title: string;
+  createdAt?: string;
+  archivedAt?: string | null;
+};
+
+type Meta = {
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+type PaginatedTableProps<T> = Exclude<TablePageProps<T>, "data"> & {
+  tableData: T[];
+} & {
+  // Additional properties for pagination
+  data: any;
+  isFetching: boolean;
+  page: number;
+  setPage: (p: number) => void;
+  pageSize?: any;
+};
+export const fmt = (v?: string | null) =>
+  v ? new Date(v).toLocaleString() : "-";
+
+export const PaginatedTable = ({
+  title,
+  columns,
+  tableData,
+  createButtonText,
+  onCreate,
+  data,
+  isFetching,
+  page,
+  setPage,
+  pageSize,
+}: PaginatedTableProps<any>) => {
+  const btnCss = "aspect-square h-8 px-2";
+  const iconSize = 16;
+  const handlePageChange = (p: number) => {
+    const next = Math.max(1, Math.min(totalPages, p));
+    setPage(next); // triggers refetch via changed URL
+  };
+  const meta: Meta = useMemo(
+    () => ({
+      total: Number(data?.data?.data?.meta?.total ?? 0),
+      page: Number(data?.data?.data?.meta?.page ?? page),
+      pageSize: Number(data?.data?.data?.meta?.pageSize ?? pageSize),
+    }),
+    [data, page, pageSize]
+  );
+  const totalPages = Math.max(
+    1,
+    Math.ceil((meta.total || 0) / (meta.pageSize || DEFAULT_PAGE_SIZE))
+  );
+  const getPageNumbers = (): Array<number | string> => {
+    if (totalPages <= 1) return [];
+    const current = meta.page || page;
+
+    const pages: Array<number | string> = [1];
+    const start = Math.max(2, current - 1);
+    const end = Math.min(totalPages - 1, current + 1);
+
+    if (start > 2) pages.push("...");
+    for (let i = start; i <= end; i++) pages.push(i);
+    if (end < totalPages - 1) pages.push("...");
+    pages.push(totalPages);
+
+    return pages;
+  };
+
+  return (
+    <>
+      {/* Pass ONLY the current page's rows; TablePage renders them as-is */}
+      <TablePage<PollRow & { tableOptions: React.ReactNode }>
+        title={title}
+        createButtonText={createButtonText}
+        onCreate={onCreate}
+        columns={columns as any}
+        data={tableData}
+      />
+
+      {/* Server Pagination Controls */}
+      <div className="flex items-center justify-center mt-4 gap-2 jpx-4">
+        <Button
+          variant="outline"
+          className={cn(btnCss)}
+          onClick={() => handlePageChange((meta.page || page) - 1)}
+          disabled={(meta.page || page) <= 1 || isFetching}
+        >
+          <ChevronLeft size={iconSize} />
+        </Button>
+
+        {getPageNumbers().map((p, idx) =>
+          typeof p === "number" ? (
+            <Button
+              key={`page-${p}`}
+              variant={p === (meta.page || page) ? "default" : "outline"}
+              className={cn(btnCss, "w-8")}
+              onClick={() => handlePageChange(p)}
+              disabled={isFetching}
+            >
+              {p}
+            </Button>
+          ) : (
+            <Button
+              key={`ellipsis-${idx}`}
+              variant="ghost"
+              className={cn(btnCss)}
+              disabled
+            >
+              …
+            </Button>
+          )
+        )}
+
+        <Button
+          variant="outline"
+          className={cn(btnCss)}
+          onClick={() => handlePageChange((meta.page || page) + 1)}
+          disabled={(meta.page || page) >= totalPages || isFetching}
+        >
+          <ChevronRight size={iconSize} />
+        </Button>
+      </div>
+
+      {/* Loading hint */}
+      {isFetching && (
+        <div className="px-4 py-2 text-sm text-muted-foreground text-center">
+          Loading page {meta.page || page}…
+        </div>
+      )}
+    </>
+  );
+};
 
 
 src\components\table-page-2.tsx
@@ -1310,6 +1773,246 @@ const TooltipContentWithCopy = ({
 };
 
 
+src\components\table-page.tsx
+-----------------------------
+import React, { useLayoutEffect, useState, useRef, useMemo } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Input } from "./ui/input";
+import { TooltipWithCopy } from "./tooltip-content-with-copy";
+
+type TableColumn<T> = {
+  key: keyof T;
+  header: string;
+  render?: (value: any, row: T) => React.ReactNode;
+  isRightAligned?: boolean;
+  canFilter?: boolean; // New property: only columns with canFilter true will show a search input
+};
+
+export type TablePageProps<T> = {
+  title?: string;
+  createButtonText?: string;
+  onCreate?: () => void;
+  columns: TableColumn<T>[];
+  data: T[];
+};
+
+export function TablePage<T>({
+  title,
+  createButtonText,
+  onCreate,
+  columns,
+  data,
+}: TablePageProps<T>) {
+  const headerRef = useRef<HTMLDivElement | null>(null);
+  const tableRef = useRef<HTMLDivElement | null>(null);
+
+  const [screenHeight, setScreenHeight] = useState<number>(0);
+  const [tableTop, setTableTop] = useState<number>(0);
+  const [maxHeight, setMaxHeight] = useState<string>("100vh");
+
+  const [screenWidth, setScreenWidth] = useState<number>(0);
+  const [tableLeft, setTableLeft] = useState<number>(0);
+  const [maxWidth, setMaxWidth] = useState<string>("100vw");
+
+  // New state to toggle filter row visibility
+  const [filterEnabled, setFilterEnabled] = useState<boolean>(false);
+
+  // New state to hold search terms for each column
+  const [searchTerms, setSearchTerms] = useState<{ [key: string]: string }>({});
+
+  const calculateHeightsAndWidths = () => {
+    const screenHeight = window.innerHeight;
+    const screenWidth = window.innerWidth;
+
+    // Get top position of the table relative to the entire page
+    const tableTop = tableRef.current
+      ? tableRef.current.getBoundingClientRect().top + window.scrollY
+      : 0;
+
+    // Get left position of the table relative to the entire page
+    const tableLeft = tableRef.current
+      ? tableRef.current.getBoundingClientRect().left
+      : 0;
+
+    setScreenHeight(screenHeight);
+    setScreenWidth(screenWidth);
+    setTableTop(tableTop);
+    setTableLeft(tableLeft);
+
+    const availableHeight = screenHeight - tableTop - 80; // 80px is padding/margin
+    const availableWidth = screenWidth - tableLeft - 70; // Subtract some padding (optional)
+
+    setMaxHeight(`${availableHeight}px`);
+    setMaxWidth(`${availableWidth}px`);
+  };
+
+  useLayoutEffect(() => {
+    calculateHeightsAndWidths();
+    window.addEventListener("resize", calculateHeightsAndWidths);
+    return () =>
+      window.removeEventListener("resize", calculateHeightsAndWidths);
+  }, []);
+
+  // Filter the data based only on columns that have canFilter true.
+  const filteredData = useMemo(() => {
+    return data.filter((row) =>
+      columns.every((column) => {
+        if (!column.canFilter) return true;
+        const term = searchTerms[String(column.key)] || "";
+        if (!term) return true;
+        const cellValue = row[column.key];
+        if (cellValue === null || cellValue === undefined) return false;
+        return String(cellValue).toLowerCase().includes(term.toLowerCase());
+      })
+    );
+  }, [data, columns, searchTerms]);
+
+  return (
+    <div style={{ padding: "32px 16px" }}>
+      {(title || onCreate || createButtonText) && (
+        <div
+          ref={headerRef}
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "24px",
+          }}
+        >
+          {title && (
+            <h1 style={{ fontSize: "24px", fontWeight: "bold" }}>{title}</h1>
+          )}
+          <div style={{ display: "flex", gap: "8px" }}>
+            <Button
+              variant="outline"
+              onClick={() => setFilterEnabled((prev) => !prev)}
+            >
+              {filterEnabled ? "Disable Filters" : "Enable Filters"}
+            </Button>
+            {onCreate && (
+              <Button onClick={onCreate}>
+                <Plus />
+                {createButtonText ?? "Create"}
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+      <div
+        className="border-2 border-muted scrollbar-x"
+        ref={tableRef}
+        style={{
+          overflowX: "auto",
+          borderRadius: "8px",
+          maxWidth: maxWidth, // Dynamically update max width
+        }}
+      >
+        <div
+          className="scrollbar-y scrollbar-x w-full"
+          style={{
+            overflowX: "auto",
+            overflowY: "auto",
+            maxHeight: maxHeight, // Dynamically update max height
+          }}
+        >
+          <Table>
+            <TableHeader>
+              {/* Header Row */}
+              <TableRow>
+                {columns.map((column) => (
+                  <TableHead
+                    key={
+                      String(column.key) + String(Math.random() * Math.random())
+                    }
+                    className={cn(column.isRightAligned && "text-right pr-5")}
+                  >
+                    {column.header}
+                  </TableHead>
+                ))}
+              </TableRow>
+              {/* Search Input Row (only rendered if filterEnabled is true) */}
+              {filterEnabled && (
+                <TableRow>
+                  {columns.map((column) => (
+                    <TableHead
+                      key={`search-${String(column.key)}`}
+                      className={cn(column.isRightAligned && "text-right pr-5")}
+                    >
+                      {column.canFilter ? (
+                        <Input
+                          type="text"
+                          placeholder="Search..."
+                          value={searchTerms[String(column.key)] || ""}
+                          onChange={(e) =>
+                            setSearchTerms((prev) => ({
+                              ...prev,
+                              [String(column.key)]: e.target.value,
+                            }))
+                          }
+                          className="w-full p-1 border border-white my-2"
+                        />
+                      ) : null}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              )}
+            </TableHeader>
+            <TableBody>
+              {filteredData.map((row, rowIndex) => (
+                <TableRow key={rowIndex}>
+                  {columns.map((column) => (
+                    <TableCell
+                      style={{
+                        minWidth: "200px",
+                        maxWidth: "800px",
+                      }}
+                      key={String(column.key)}
+                      className={cn(column.isRightAligned && "text-right")}
+                    >
+                      {column.render ? (
+                        column.render(row[column.key], row)
+                      ) : (
+                        <>
+                          <TooltipWithCopy tooltipText={row[column.key]}>
+                            <span> {truncateText(row[column.key], 28)}</span>
+                          </TooltipWithCopy>
+                        </>
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function truncateText(
+  text: any,
+  maxLength: number,
+  ellipsis: string = "..."
+): any {
+  if (typeof text !== "string") return text; // Return non-string values as is
+  if (!text) return text; // Handle null, undefined, or empty strings
+  if (text.length <= maxLength) return text; // No truncation needed
+  const truncationLength = maxLength - ellipsis.length;
+  return text.slice(0, truncationLength) + ellipsis;
+}
+
+
 src\components\team-switcher.tsx
 --------------------------------
 import * as React from "react";
@@ -1475,6 +2178,79 @@ export const useTheme = () => {
     throw new Error("useTheme must be used within a ThemeProvider");
 
   return context;
+};
+
+
+src\components\tooltip-content-with-copy.tsx
+--------------------------------------------
+import { useState } from "react";
+import { Copy, CopyCheck } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { ReactNode } from "react";
+import { truncateText } from "@/utils/formatter";
+
+type TooltipWithCopyProps = {
+  children: ReactNode;
+  tooltipText: string;
+};
+const TooltipContentWithCopy = ({
+  children,
+  copyText,
+}: {
+  children: any;
+  copyText: string;
+}) => {
+  const [copyStatus, setCopyStatus] = useState("");
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(copyText);
+      setCopyStatus("Copied!");
+      setTimeout(() => setCopyStatus(""), 2000); // Reset status after 2 seconds
+    } catch (err) {
+      setCopyStatus("Failed to copy!");
+      setTimeout(() => setCopyStatus(""), 2000); // Reset status after 2 seconds
+    }
+  };
+  return (
+    <TooltipContent>
+      <div className="flex gap-2 items-center">
+        <p className="bg-foreground text-background p-2 rounded-lg">
+          {children}
+        </p>
+        <button
+          className="bg-foreground text-background p-2 rounded-lg hover:bg-background/20"
+          onClick={handleCopy}
+        >
+          {copyStatus ? (
+            <CopyCheck className="w-4 h-4" />
+          ) : (
+            <Copy className="w-4 h-4" />
+          )}
+        </button>
+      </div>
+    </TooltipContent>
+  );
+};
+
+export const TooltipWithCopy: React.FC<TooltipWithCopyProps> = ({
+  children,
+  tooltipText,
+}) => {
+  return (
+    <TooltipProvider delayDuration={0}>
+      <Tooltip>
+        <TooltipTrigger asChild>{children}</TooltipTrigger>
+        <TooltipContentWithCopy copyText={tooltipText}>
+          {truncateText(tooltipText, 78)}
+        </TooltipContentWithCopy>
+      </Tooltip>
+    </TooltipProvider>
+  );
 };
 
 
@@ -3635,330 +4411,9 @@ TooltipContent.displayName = TooltipPrimitive.Content.displayName;
 export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider };
 
 
-src\domains\table_polls\modals\create.tsx
------------------------------------------
-import { CustomModal } from "@/components/modals/custom-modal";
-import { useApiMutation } from "@/hooks/useApiMutation";
-import { appToast } from "@/utils/toast";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
-import { queryClient } from "@/api/queryClient";
-import { useCallback } from "react";
-import { useTablePollsStore } from "@/stores/table_polls.store";
-import { endpoints } from "@/api/endpoints";
-
-const formSchema = z.object({
-  poll_name: z.string().min(1, { message: "Poll Name is required" }),
-  designation: z.string().min(1, { message: "Designation is required" }),
-  remark: z.string().min(1, { message: "Remark is required" }),
-});
-
-export const CreateTablePollsModal = () => {
-  const onClose = useTablePollsStore((state) => state.onClose);
-  const {
-    mutate: tablePollsCreateMutate,
-    isPending: isTablePollsCreatePending,
-  } = useApiMutation({
-    route: endpoints.entities.polls.all,
-    method: "POST",
-    onSuccess: (data) => {
-      if (data?.statusCode === 201) {
-        appToast.success("Polls created successfully");
-        queryClient.invalidateQueries();
-        onClose();
-      }
-    },
-  });
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: { poll_name: "", designation: "", remark: "" },
-  });
-  const onSubmit = useCallback(
-    (values: z.infer<typeof formSchema>) => {
-      tablePollsCreateMutate(values);
-    },
-    [tablePollsCreateMutate]
-  );
-  return (
-    <CustomModal
-      isOpen={true}
-      onClose={onClose}
-      title="Create Table Polls"
-      submitButtonText="Create"
-      onSubmit={() => {}}
-      footer={<></>}
-      needX={true}
-    >
-      <div className="w-full flex flex-col gap-3">
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <FormField
-              control={form.control}
-              name="poll_name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Poll Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter Poll Name" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="designation"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Designation</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter Designation" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="remark"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Remark</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter Remark" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="flex justify-end">
-              <Button disabled={isTablePollsCreatePending} type="submit">
-                {isTablePollsCreatePending && (
-                  <Loader2 className="animate-spin" />
-                )}
-                Create
-              </Button>
-            </div>
-          </form>
-        </Form>
-      </div>
-    </CustomModal>
-  );
-};
-
-
-src\domains\table_polls\modals\delete.tsx
------------------------------------------
-import { CustomModal } from "@/components/modals/custom-modal";
-import { useApiMutation } from "@/hooks/useApiMutation";
-import { appToast } from "@/utils/toast";
-import { queryClient } from "@/api/queryClient";
-import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
-import { useCallback } from "react";
-import { endpoints } from "@/api/endpoints";
-import { useTablePollsStore } from "@/stores/table_polls.store";
-
-export const DeleteTablePollsModal = () => {
-  const onClose = useTablePollsStore((state) => state.onClose);
-  const isDeleting = useTablePollsStore((state) => state.isDeleting);
-  const {
-    mutate: tablePollsDeleteMutate,
-    isPending: isTablePollsDeletePending,
-  } = useApiMutation({
-    route: endpoints.entities.polls.delete(isDeleting ?? ""),
-    method: "DELETE",
-    onSuccess: (data) => {
-      if (data?.statusCode === 200) {
-        appToast.success("Row deleted successfully");
-        queryClient.invalidateQueries();
-        onClose();
-      }
-    },
-  });
-  const onSubmit = useCallback(() => {
-    tablePollsDeleteMutate({});
-  }, [tablePollsDeleteMutate]);
-  return (
-    <CustomModal
-      isOpen={true}
-      onClose={onClose}
-      title={`Delete Table Polls Row (${isDeleting})`}
-      submitButtonText="Delete"
-      isSubmitting={isTablePollsDeletePending}
-      onSubmit={() => {}}
-      footer={<></>}
-      needX={true}
-    >
-      <p>Are you sure you want to delete this row?</p>
-      <div className="flex justify-end">
-        <Button
-          disabled={isTablePollsDeletePending}
-          type="button"
-          onClick={onSubmit}
-        >
-          {isTablePollsDeletePending && <Loader2 className="animate-spin" />}
-          Delete
-        </Button>
-      </div>
-    </CustomModal>
-  );
-};
-
-
-src\domains\table_polls\modals\edit.tsx
----------------------------------------
-import { queryClient } from "@/api/queryClient";
-import { CustomModal } from "@/components/modals/custom-modal";
-import { useApiMutation } from "@/hooks/useApiMutation";
-import { appToast } from "@/utils/toast";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
-import { useApiQuery } from "@/hooks/useApiQuery";
-import { useCallback, useEffect } from "react";
-import { useTablePollsStore } from "@/stores/table_polls.store";
-import { endpoints } from "@/api/endpoints";
-
-const formSchema = z.object({
-  member_name: z.string().min(1, { message: "Member Name is required" }),
-  designation: z.string().min(1, { message: "Designation is required" }),
-  remark: z.string().min(1, { message: "Remark is required" }),
-});
-
-export const EditTablePollsModal = () => {
-  const onClose = useTablePollsStore((state) => state.onClose);
-  const isEditing = useTablePollsStore((state) => state.isEditing);
-  const { data, isPending: isDataFetching } = useApiQuery(
-    endpoints.entities.polls.one(isEditing ?? "")
-  );
-  const { mutate: tablePollsEditMutate, isPending: isTablePollsEditPending } =
-    useApiMutation({
-      route: endpoints.entities.polls.one(isEditing ?? ""),
-      method: "PATCH",
-      onSuccess: (data) => {
-        if (data?.statusCode === 200) {
-          appToast.success("Row updated successfully");
-          queryClient.invalidateQueries();
-          onClose();
-        }
-      },
-    });
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: { member_name: "", designation: "", remark: "" },
-  });
-  const onSubmit = useCallback(
-    (values: z.infer<typeof formSchema>) => {
-      tablePollsEditMutate(values);
-    },
-    [tablePollsEditMutate]
-  );
-  const { reset } = form;
-  useEffect(() => {
-    const body = {
-      ...(data?.data?.data?.member_name
-        ? { member_name: data?.data?.data?.member_name }
-        : {}),
-      ...(data?.data?.data?.designation
-        ? { designation: data?.data?.data?.designation }
-        : {}),
-      ...(data?.data?.data?.remark ? { remark: data?.data?.data?.remark } : {}),
-    };
-    reset(body);
-  }, [data, reset]);
-  return (
-    <CustomModal
-      isOpen={true}
-      onClose={onClose}
-      title={`Edit Table Polls Row (${isEditing})`}
-      submitButtonText="Update"
-      onSubmit={() => {}}
-      footer={<></>}
-      needX={true}
-    >
-      {isDataFetching && <Loader2 className="animate-spin" />}
-      {!isDataFetching && (
-        <div className="w-full flex flex-col gap-3">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="member_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Member Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter Member Name" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="designation"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Designation</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter Designation" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="remark"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Remark</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter Remark" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="flex justify-end">
-                <Button disabled={isTablePollsEditPending} type="submit">
-                  {isTablePollsEditPending && (
-                    <Loader2 className="animate-spin" />
-                  )}
-                  Update
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </div>
-      )}
-    </CustomModal>
-  );
-};
+src\constants.ts
+----------------
+export const DEFAULT_PAGE_SIZE = 10;
 
 
 src\env\.env.development
@@ -4057,6 +4512,63 @@ export function useAdminAuth() {
   });
 
   return { user, isLoading, isError, refetch, logout };
+}
+
+
+src\hooks\useApiInfiniteQuery.ts
+--------------------------------
+// src/hooks/useApiInfiniteQuery.ts
+import {
+  useInfiniteQuery,
+  UseInfiniteQueryOptions,
+} from "@tanstack/react-query";
+import apiInstance from "@/api/queryClient";
+
+// Standard shape for paginated responses
+export type ApiInfiniteData<T> = {
+  entries: T[];
+  meta: {
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+  };
+};
+
+export function useApiInfiniteQuery<
+  T,
+  E = unknown,
+  F extends Record<string, unknown> = Record<string, unknown>
+>(
+  route: string,
+  filters?: F,
+  pageSize = 50,
+  options?: Omit<
+    UseInfiniteQueryOptions<
+      ApiInfiniteData<T>,
+      E,
+      ApiInfiniteData<T>, // <-- result must match returned value
+      ApiInfiniteData<T>, // <-- result per page
+      [string, F?] // queryKey type
+    >,
+    "queryKey" | "queryFn" | "getNextPageParam" | "initialPageParam"
+  >
+) {
+  return useInfiniteQuery({
+    queryKey: [route, filters] as const,
+    queryFn: async ({ pageParam = 1, signal }) => {
+      const params = { page: pageParam, pageSize, ...(filters ?? {}) };
+      const res = await apiInstance.get<{ data: ApiInfiniteData<T> }>(route, {
+        params,
+        signal,
+      });
+      return res.data.data;
+    },
+    getNextPageParam: (last) =>
+      last.meta.page < last.meta.totalPages ? last.meta.page + 1 : undefined,
+    initialPageParam: 1,
+    ...options,
+  });
 }
 
 
@@ -4358,8 +4870,27 @@ app.render(
 
 src\pages\index.tsx
 -------------------
+import LocationSelect from "@/components/commons/selects/location-select";
+
 const IndexPage = () => {
-  return <div className="text-black">hello</div>;
+  return (
+    <div className="text-black">
+      <div style={{ maxWidth: 420 }}>
+        <h3>Select a city</h3>
+        <LocationSelect
+          placeholder="Type to search cities…"
+          onChange={(opt) => {
+            // You already get a console.log from the component;
+            // here’s where you can react to the selection:
+            if (opt?.data) {
+              // do something with opt.data (city/state/country)
+              // e.g. save to form state, fire API, etc.
+            }
+          }}
+        />
+      </div>
+    </div>
+  );
 };
 
 export default IndexPage;
@@ -4426,137 +4957,899 @@ export default function AdminLoginPage() {
 }
 
 
-src\pages\polls.tsx
--------------------
+src\pages\polls\create.tsx
+--------------------------
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useFieldArray, useForm } from "react-hook-form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { useApiMutation } from "@/hooks/useApiMutation";
 import { endpoints } from "@/api/endpoints";
 import { queryClient } from "@/api/queryClient";
-import { ThreeDotMenu } from "@/components/commons/three-dot-menu";
-import { TablePage } from "@/components/table-page-2";
-import { CreateTablePollsModal } from "@/domains/table_polls/modals/create";
-import { DeleteTablePollsModal } from "@/domains/table_polls/modals/delete";
-import { EditTablePollsModal } from "@/domains/table_polls/modals/edit";
-import { useApiMutation } from "@/hooks/useApiMutation";
-import { useApiQuery } from "@/hooks/useApiQuery";
-import { useTablePollsStore } from "@/stores/table_polls.store";
 import { appToast } from "@/utils/toast";
-import { Edit, Trash } from "lucide-react";
-import { useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { useMemo } from "react";
 
-const Polls = () => {
-  const isCreating = useTablePollsStore((state) => state.isCreating);
-  const setIsCreating = useTablePollsStore((state) => state.setIsCreating);
-  const isEditing = useTablePollsStore((state) => state.isEditing);
-  const setIsEditing = useTablePollsStore((state) => state.setIsEditing);
-  const isDeleting = useTablePollsStore((state) => state.isDeleting);
-  const setIsDeleting = useTablePollsStore((state) => state.setIsDeleting);
+const ASSET_OPTIONS = [
+  { label: "OCTA", value: "xOcta" },
+  { label: "MYST", value: "xMYST" },
+  { label: "DROP", value: "xDrop" },
+] as const;
 
-  // Fetch data using API query
-  const { data } = useApiQuery(endpoints.entities.polls.all);
-  const tableFilteredData = useMemo(() => data?.data?.data ?? [], [data]);
+const optionZ = z.object({ text: z.string().min(3, "Min 3 chars").trim() });
 
-  // Reorder mutation
-  const { mutate } = useApiMutation({
-    route: endpoints.entities.polls.all,
-    method: "PATCH",
+const resourceAssetZ = z.object({
+  type: z.enum(["image", "youtube"]),
+  value: z.string().min(1, "Required"),
+});
+
+const formSchema = z.object({
+  title: z.string().min(3, "Min 3 chars").trim(),
+  description: z.string().min(3, "Min 3 chars").trim(),
+  options: z
+    .array(optionZ)
+    .min(2, "Need 2–4 options")
+    .max(4, "Need 2–4 options"),
+  reward: z.object({
+    assetId: z.enum(["xOcta", "xMYST", "xDrop"]),
+    amount: z.coerce.number().int().min(1, "Min 1"),
+  }),
+  // required key in payload, allowed to be empty
+  resourceAssets: z.array(resourceAssetZ).default([]),
+});
+
+type FormValues = z.infer<typeof formSchema>;
+
+function extractYouTubeId(input: string) {
+  const idLike = /^[\w-]{11}$/;
+  try {
+    if (idLike.test(input)) return input;
+    const u = new URL(input);
+    if (u.hostname.includes("youtu.be")) {
+      const id = u.pathname.replace("/", "");
+      return idLike.test(id) ? id : input;
+    }
+    if (u.hostname.includes("youtube.com")) {
+      const id = u.searchParams.get("v") || "";
+      return idLike.test(id) ? id : input;
+    }
+  } catch {}
+  return input;
+}
+
+export default function PollCreatePage() {
+  const navigate = useNavigate();
+
+  const defaultValues: FormValues = useMemo(
+    () => ({
+      title: "",
+      description: "",
+      options: [{ text: "" }, { text: "" }],
+      reward: { assetId: ASSET_OPTIONS[0].value, amount: 1 },
+      resourceAssets: [],
+    }),
+    []
+  );
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues,
+    mode: "onChange",
+  });
+  const { control, handleSubmit, watch } = form;
+
+  const optionsArray = useFieldArray({ control, name: "options" });
+  const assetsArray = useFieldArray({ control, name: "resourceAssets" });
+
+  const { mutateAsync, isPending } = useApiMutation<any, any>({
+    route: endpoints.entities.polls.create, // POST /poll
+    method: "POST",
     onSuccess: () => {
-      queryClient.invalidateQueries();
-      appToast.success("Table reordered successfully");
+      appToast.success("Poll created");
+      queryClient.invalidateQueries({
+        queryKey: [endpoints.entities.polls.listBase],
+      });
+      navigate("/polls");
     },
   });
+
+  const onSubmit = async (v: FormValues) => {
+    const normalizedAssets = v.resourceAssets.map((a) => ({
+      type: a.type,
+      value:
+        a.type === "youtube"
+          ? extractYouTubeId(a.value.trim())
+          : a.value.trim(),
+    }));
+
+    const payload = {
+      title: v.title,
+      description: v.description,
+      resourceAssets: normalizedAssets,
+      options: v.options.map((o) => ({
+        text: o.text.trim(),
+        archivedAt: null,
+      })),
+      rewards: [
+        {
+          assetId: v.reward.assetId,
+          amount: v.reward.amount,
+          rewardAmountCap: v.reward.amount,
+          currentDistribution: 0,
+        },
+      ],
+      expireRewardAt: null,
+    };
+    await mutateAsync(payload as any);
+  };
+
+  const optsArrayMsg =
+    (form.formState.errors.options as any)?.message ??
+    (form.formState.errors.options as any)?.root?.message;
+
+  return (
+    <div className="p-4 space-y-6 max-w-3xl">
+      <h1 className="text-2xl font-bold">Create Poll</h1>
+      <Form {...form}>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+          {/* Title */}
+          <FormField
+            control={control}
+            name="title"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Title</FormLabel>
+                <FormControl>
+                  <Input placeholder="Poll title" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Description */}
+          <FormField
+            control={control}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Description</FormLabel>
+                <FormControl>
+                  <Input placeholder="Short description" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Options (array) */}
+          <div className="space-y-2">
+            <FormLabel>Options (2–4)</FormLabel>
+            {optionsArray.fields.map((f, idx) => (
+              <div key={f.id} className="flex gap-2 items-end">
+                <FormField
+                  control={control}
+                  name={`options.${idx}.text` as any}
+                  render={({ field }) => (
+                    <FormItem className="flex-1">
+                      <FormControl>
+                        <Input placeholder={`Option #${idx + 1}`} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => optionsArray.remove(idx)}
+                  disabled={optionsArray.fields.length <= 2}
+                >
+                  Remove
+                </Button>
+              </div>
+            ))}
+            <div className="flex items-center gap-3">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => optionsArray.append({ text: "" })}
+                disabled={optionsArray.fields.length >= 4}
+              >
+                Add Option
+              </Button>
+              {optsArrayMsg && (
+                <p className="text-sm text-destructive">{optsArrayMsg}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Resource Assets (array) */}
+          <div className="space-y-2">
+            <FormLabel>Media (Images / YouTube) – optional</FormLabel>
+            {assetsArray.fields.map((f, idx) => {
+              const typeName = `resourceAssets.${idx}.type` as const;
+              const valueName = `resourceAssets.${idx}.value` as const;
+              const currentType = watch(typeName);
+
+              return (
+                <div key={f.id} className="grid grid-cols-12 gap-2 items-end">
+                  <div className="col-span-4">
+                    <FormField
+                      control={control}
+                      name={typeName as any}
+                      render={({ field }) => (
+                        <FormItem>
+                          <label className="text-xs">Type</label>
+                          <FormControl>
+                            <select
+                              className="w-full h-9 border rounded-md px-2 bg-transparent"
+                              {...field}
+                            >
+                              <option value="image">IMAGE</option>
+                              <option value="youtube">YOUTUBE</option>
+                            </select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="col-span-7">
+                    <FormField
+                      control={control}
+                      name={valueName as any}
+                      render={({ field }) => (
+                        <FormItem>
+                          <label className="text-xs">
+                            {currentType === "youtube"
+                              ? "YouTube URL or ID"
+                              : "Image URL"}
+                          </label>
+                          <FormControl>
+                            <Input
+                              placeholder={
+                                currentType === "youtube"
+                                  ? "https://youtube.com/watch?v=… or 11-char ID"
+                                  : "https://example.com/pic.jpg"
+                              }
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="col-span-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => assetsArray.remove(idx)}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => assetsArray.append({ type: "image", value: "" })}
+              >
+                + Image
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() =>
+                  assetsArray.append({ type: "youtube", value: "" })
+                }
+              >
+                + YouTube
+              </Button>
+            </div>
+          </div>
+
+          {/* Reward */}
+          <div className="space-y-2">
+            <FormLabel>Reward</FormLabel>
+            <div className="grid grid-cols-12 gap-2 items-end">
+              <div className="col-span-4">
+                <FormField
+                  control={control}
+                  name="reward.assetId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <label className="text-xs">Asset</label>
+                      <FormControl>
+                        <select
+                          className="w-full h-9 border rounded-md px-2 bg-transparent"
+                          {...field}
+                        >
+                          {ASSET_OPTIONS?.map((o) => (
+                            <option
+                              key={o?.value}
+                              value={o?.value}
+                              className="bg-gray-900"
+                            >
+                              {o?.label}
+                            </option>
+                          ))}
+                        </select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="col-span-4">
+                <FormField
+                  control={control}
+                  name="reward.amount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <label className="text-xs">Amount</label>
+                      <FormControl>
+                        <Input type="number" min={1} step={1} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button type="submit" disabled={isPending}>
+              Create
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </div>
+  );
+}
+
+
+src\pages\polls\index.tsx
+-------------------------
+import { useMemo, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { endpoints } from "@/api/endpoints";
+import { useApiQuery } from "@/hooks/useApiQuery";
+import { ThreeDotMenu } from "@/components/commons/three-dot-menu";
+import { Eye, Trash } from "lucide-react";
+import { DEFAULT_PAGE_SIZE } from "@/constants";
+import { fmt, PaginatedTable } from "@/components/paginated-table";
+
+import { useTablePollsStore } from "@/stores/table_polls.store";
+import { ConfirmDeletePollsModal } from "@/components/modals/table_polls/delete";
+
+export default function Polls() {
+  const navigate = useNavigate();
+
+  const [page, setPage] = useState<number>(1);
+  const [pageSize] = useState<number>(DEFAULT_PAGE_SIZE);
+  const isDeleting = useTablePollsStore((s) => s.isDeleting);
+  const setIsDeleting = useTablePollsStore((s) => s.setIsDeleting);
+
+  const url = `${endpoints.entities.polls.all}?page=${page}&pageSize=${pageSize}`;
+  const { data, isFetching } = useApiQuery(url, { keepPreviousData: true });
+
+  const entries = useMemo(() => data?.data?.data?.entries ?? [], [data]);
 
   const actions = useCallback(
     (id: string) => [
       {
-        name: "Edit",
-        icon: Edit,
-        onClick: () => setIsEditing(id),
+        name: "View",
+        icon: Eye,
+        onClick: () => navigate(`/polls/${id}`),
       },
       {
         name: "Delete",
         icon: Trash,
-        onClick: () => setIsDeleting(id),
+        onClick: () => {
+          setIsDeleting([id]);
+        },
         separatorBefore: true,
       },
     ],
-    [setIsEditing, setIsDeleting]
+    [navigate, setIsDeleting]
   );
 
   const tableData = useMemo(
     () =>
-      tableFilteredData.map(
-        ({
-          _id,
-          member_name,
-          designation,
-          remark,
-        }: {
-          _id: string;
-          member_name: string;
-          designation: string;
-          remark: string;
-        }) => ({
-          _id,
-          member_name,
-          designation,
-          remark,
-          options: <ThreeDotMenu actions={actions(_id)} />,
-        })
-      ) || [],
-    [tableFilteredData, actions]
+      entries.map((r: any) => ({
+        ...r,
+        tableOptions: <ThreeDotMenu actions={actions(r._id)} />,
+      })),
+    [entries, actions]
   );
 
   const columns = [
-    { key: "member_name", header: "Member Name", canFilter: true },
-    { key: "designation", header: "Designation" },
-    { key: "remark", header: "Remark" },
+    { key: "_id", header: "ID", canFilter: true },
+    { key: "title", header: "Title", canFilter: true },
     {
-      key: "options",
+      key: "createdAt",
+      header: "Created At",
+      render: (val: any) => <span>{fmt(val)}</span>,
+    },
+    {
+      key: "archivedAt",
+      header: "Archived At",
+      render: (val: any) => <span>{fmt(val)}</span>,
+    },
+    {
+      key: "tableOptions",
       header: "...",
-      render: (value: any) => <span>{value}</span>,
+      render: (v: any) => <span>{v}</span>,
       isRightAligned: true,
     },
-  ];
-
-  const handleReorder = async ({
-    movedRow,
-    sourceIndex,
-    destinationIndex,
-    newOrder,
-  }: {
-    movedRow: any;
-    sourceIndex: number;
-    destinationIndex: number;
-    newOrder: any[];
-  }) => {
-    console.log("Row moved:", movedRow);
-    console.log("From index:", sourceIndex, "to index:", destinationIndex);
-    console.log("New order:", newOrder);
-    // For example, call your API with newOrder or the changed row info:
-    mutate({
-      rowId: movedRow._id,
-      newIndex: destinationIndex,
-    });
-    queryClient.invalidateQueries();
-  };
+  ] as const;
 
   return (
-    <>
-      {isCreating && <CreateTablePollsModal />}
-      {isEditing && <EditTablePollsModal />}
-      {isDeleting && <DeleteTablePollsModal />}
-      <TablePage
-        title="Table Polls"
-        createButtonText="Create"
-        onCreate={() => setIsCreating(true)}
+    <div>
+      <PaginatedTable
+        title="Polls"
+        onCreate={() => navigate("/polls/create")}
+        createButtonText="Create Poll"
         columns={columns}
-        data={tableData}
-        onReorder={handleReorder}
+        tableData={tableData}
+        data={data}
+        page={page}
+        setPage={setPage}
+        pageSize={pageSize}
+        isFetching={isFetching}
       />
-    </>
+
+      {isDeleting?.length > 0 && <ConfirmDeletePollsModal url={url} />}
+    </div>
   );
+}
+
+
+src\pages\polls\[id]\index.tsx
+------------------------------
+import { useMemo, useCallback, useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { endpoints } from "@/api/endpoints";
+import { useApiQuery } from "@/hooks/useApiQuery";
+import { useApiMutation } from "@/hooks/useApiMutation";
+import { queryClient } from "@/api/queryClient";
+import { appToast } from "@/utils/toast";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Edit, Pencil, PlusSquare, Trash2 } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { fmt } from "@/components/paginated-table";
+
+type PollOption = {
+  _id: string;
+  text: string;
+  archivedAt?: string | null;
 };
 
-export default Polls;
+type Poll = {
+  _id: string;
+  title: string;
+  description?: string;
+  createdAt?: string;
+  archivedAt?: string | null;
+  media?: string | null;
+  options?: PollOption[];
+};
+
+const MAX_OPTIONS = 4;
+
+export default function PollShowPage() {
+  const navigate = useNavigate();
+  const { id = "" } = useParams<{ id: string }>();
+
+  const route = endpoints.entities.polls.update(id);
+  const { data, isLoading, isError } = useApiQuery(route);
+
+  const poll: Poll | null = useMemo(() => {
+    return data?.data?.data ?? data?.data ?? null;
+  }, [data]);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [title, setTitle] = useState<string>("");
+  const [description, setDescription] = useState<string>("");
+  const [mediaUrl, setMediaUrl] = useState<string>("");
+
+  // hydrate form when the poll loads / changes
+  useEffect(() => {
+    if (!poll) return;
+    setTitle(poll.title ?? "");
+    setDescription(poll.description ?? "");
+    // if your API stores media differently, map it here
+    setMediaUrl((poll as any)?.media ?? "");
+  }, [poll]);
+
+  const { mutateAsync: saveEdit, isPending: isSaving } = useApiMutation<
+    any,
+    any
+  >({
+    route: endpoints.entities.polls.update(id),
+    method: "PATCH",
+    onSuccess: () => {
+      appToast.success("Poll updated");
+      setIsEditing(false);
+      queryClient.invalidateQueries({ queryKey: [route] });
+    },
+  });
+
+  const onSubmitEdit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!poll) return;
+
+      // send only changed fields (safe, minimal)
+      const payload: any = {};
+      if (title !== (poll.title ?? "")) payload.title = title;
+      if (description !== (poll.description ?? ""))
+        payload.description = description;
+      // adjust the key to your backend shape if needed
+      if (mediaUrl !== ((poll as any)?.media ?? "")) payload.media = mediaUrl;
+
+      if (Object.keys(payload).length === 0) {
+        setIsEditing(false);
+        return;
+      }
+
+      await saveEdit(payload);
+    },
+    [poll, title, description, mediaUrl, saveEdit]
+  );
+
+  const onEditOption = useCallback(
+    (optionId: string) => {
+      if (!poll?._id) return;
+      navigate(`/polls/${poll._id}/edit?optionId=${optionId}`);
+    },
+    [navigate, poll?._id]
+  );
+
+  if (!id) {
+    return (
+      <div className="p-4">
+        <p className="mb-4 text-sm text-muted-foreground">
+          Missing poll id in the route.
+        </p>
+        <Button onClick={() => navigate("/polls")}>Back to Polls</Button>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="p-4">
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      </div>
+    );
+  }
+
+  if (isError || !poll) {
+    return (
+      <div className="p-4">
+        <p className="mb-4 text-sm text-destructive">
+          Failed to load this poll.
+        </p>
+        <Button variant="outline" onClick={() => navigate("/polls")}>
+          Back to Polls
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 space-y-6 max-w-4xl">
+      {/* Details card / edit form */}
+      {isEditing ? (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Edit Poll</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form className="space-y-4" onSubmit={onSubmitEdit}>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Title</label>
+                <Input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Poll title"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">
+                  Description
+                </label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Poll description"
+                  className="flex h-28 w-full rounded-md border border-input bg-transparent text-foreground px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">
+                  Media (URL)
+                </label>
+                <Input
+                  type="url"
+                  value={mediaUrl}
+                  onChange={(e) => setMediaUrl(e.target.value)}
+                  placeholder="https://example.com/image-or-video"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsEditing(false)}
+                  disabled={isSaving}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isSaving}>
+                  {isSaving ? "Saving…" : "Save"}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Poll</CardTitle>
+            <button
+              className="rounded-md p-1 hover:bg-foreground/10"
+              onClick={() => setIsEditing(true)}
+              aria-label="Edit poll"
+              title="Edit poll"
+            >
+              <Edit className="w-4 h-4" />
+            </button>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <div className="text-xs text-muted-foreground">ID</div>
+              <div className="font-mono break-all">{poll._id}</div>
+            </div>
+
+            <div>
+              <div className="text-xs text-muted-foreground">Title</div>
+              <div className="font-medium">{poll.title}</div>
+            </div>
+
+            <div>
+              <div className="text-xs text-muted-foreground">Description</div>
+              <div>{poll.description || "-"}</div>
+            </div>
+
+            <div>
+              <div className="text-xs text-muted-foreground">Media</div>
+              <div className="break-all">{(poll as any)?.media || "-"}</div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <div className="text-xs text-muted-foreground">Created At</div>
+                <div>{fmt(poll.createdAt)}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Archived At</div>
+                <div>{fmt(poll.archivedAt)}</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Options card */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Options</CardTitle>
+          <button
+            className="rounded-md p-1 hover:bg-foreground/10"
+            onClick={() => navigate(`/polls/${poll._id}`)}
+            aria-label="Add option"
+            title="Add option"
+          >
+            <PlusSquare className="w-4 h-4" />
+          </button>
+        </CardHeader>
+        <CardContent>
+          {poll?.options?.length ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {poll.options.map((opt) => (
+                <div
+                  key={opt._id}
+                  className="relative border rounded-lg p-3 hover:bg-muted/30"
+                >
+                  {/* top-right action icons */}
+                  <div className="absolute right-2 top-2">
+                    <TooltipProvider delayDuration={0}>
+                      <Tooltip>
+                        <section className="flex items-center gap-2">
+                          <TooltipTrigger asChild>
+                            <button
+                              className="rounded-md p-1 hover:bg-foreground/10"
+                              onClick={() => onEditOption(opt._id)}
+                              aria-label={`Edit option ${opt.text}`}
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipTrigger asChild>
+                            <button
+                              className="rounded-md p-1 hover:bg-foreground/10"
+                              onClick={() =>
+                                navigate(
+                                  `/polls/${poll._id}/edit?removeOptionId=${opt._id}`
+                                )
+                              }
+                              aria-label={`Delete option ${opt.text}`}
+                            >
+                              <Trash2 className="w-4 h-4 text-red-600" />
+                            </button>
+                          </TooltipTrigger>
+                        </section>
+                        <TooltipContent>Actions</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+
+                  <div className="pr-8">
+                    <div className="text-xs text-muted-foreground mb-1">
+                      Option ID
+                    </div>
+                    <div className="font-mono text-xs break-all mb-2">
+                      {opt._id}
+                    </div>
+                    <div className="text-sm">{opt.text}</div>
+                    <div className="text-xs text-muted-foreground mt-2">
+                      Archived: {opt.archivedAt ? fmt(opt.archivedAt) : "-"}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-sm text-muted-foreground">
+              No options were found on this poll.
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+
+src\pages\trials\index.tsx
+--------------------------
+import { useMemo, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { endpoints } from "@/api/endpoints";
+import { useApiQuery } from "@/hooks/useApiQuery";
+import { ThreeDotMenu } from "@/components/commons/three-dot-menu";
+import { Eye, Trash } from "lucide-react";
+import { DEFAULT_PAGE_SIZE } from "@/constants";
+import { fmt, PaginatedTable } from "@/components/paginated-table";
+import { useTableTrialsStore } from "@/stores/table_trials.store";
+import { ConfirmDeleteTrialPollsModal } from "@/components/modals/table_trials/delete";
+
+export default function Trials() {
+  const navigate = useNavigate();
+
+  const [page, setPage] = useState<number>(1);
+  const [pageSize] = useState<number>(DEFAULT_PAGE_SIZE);
+
+  const isDeleting = useTableTrialsStore((s) => s.isDeleting);
+  const setIsDeleting = useTableTrialsStore((s) => s.setIsDeleting);
+
+  const url = `${endpoints.entities.trials.all}?page=${page}&pageSize=${pageSize}`;
+  const { data, isFetching } = useApiQuery(url, { keepPreviousData: true });
+
+  const entries = useMemo(() => data?.data?.data?.entries ?? [], [data]);
+
+  const actions = useCallback(
+    (id: string) => [
+      {
+        name: "View",
+        icon: Eye,
+        onClick: () => navigate(`/trials/${id}`),
+      },
+      {
+        name: "Delete",
+        icon: Trash,
+        onClick: () => {
+          setIsDeleting([id]);
+        },
+        separatorBefore: true,
+      },
+    ],
+    [navigate, setIsDeleting]
+  );
+
+  const tableData = useMemo(
+    () =>
+      entries.map((r: any) => ({
+        ...r,
+        tableOptions: <ThreeDotMenu actions={actions(r._id)} />,
+      })),
+    [entries, actions]
+  );
+
+  const columns = [
+    { key: "_id", header: "ID", canFilter: true },
+    { key: "title", header: "Title", canFilter: true },
+    {
+      key: "createdAt",
+      header: "Created At",
+      render: (val: any) => <span>{fmt(val)}</span>,
+    },
+    {
+      key: "archivedAt",
+      header: "Archived At",
+      render: (val: any) => <span>{fmt(val)}</span>,
+    },
+    {
+      key: "tableOptions",
+      header: "...",
+      render: (v: any) => <span>{v}</span>,
+      isRightAligned: true,
+    },
+  ] as const;
+
+  return (
+    <div>
+      <PaginatedTable
+        title="Trials"
+        onCreate={() => navigate("/trials/create")}
+        createButtonText="Create Trial Poll"
+        columns={columns}
+        tableData={tableData}
+        data={data}
+        page={page}
+        setPage={setPage}
+        pageSize={pageSize}
+        isFetching={isFetching}
+      />
+
+      {isDeleting?.length > 0 && <ConfirmDeleteTrialPollsModal url={url} />}
+    </div>
+  );
+}
 
 
 src\pages\[...any].tsx
@@ -4589,8 +5882,8 @@ type TablePollsStoreType = {
   setIsCreating: (isCreating: StateType) => void;
   isEditing: StateType;
   setIsEditing: (isEditing: StateType) => void;
-  isDeleting: StateType;
-  setIsDeleting: (isDeleting: StateType) => void;
+  isDeleting: null | Array<string>;
+  setIsDeleting: (isDeleting: null | Array<string>) => void;
   onClose: () => void;
 };
 
@@ -4600,7 +5893,35 @@ export const useTablePollsStore = create<TablePollsStoreType>()((set) => ({
   isEditing: null,
   setIsEditing: (isEditing) => set({ isEditing }),
   isDeleting: null,
-  setIsDeleting: (isDeleting) => set({ isDeleting }),
+  setIsDeleting: (isDeleting: Array<string> | null) => set({ isDeleting }),
+  onClose: () => set({ isCreating: null, isEditing: null, isDeleting: null }),
+}));
+
+
+src\stores\table_trials.store.ts
+--------------------------------
+import { create } from "zustand";
+
+type TableTrialId = string;
+type StateType = TableTrialId | null;
+
+type TableTrialsStoreType = {
+  isCreating: StateType;
+  setIsCreating: (isCreating: StateType) => void;
+  isEditing: StateType;
+  setIsEditing: (isEditing: StateType) => void;
+  isDeleting: null | Array<string>;
+  setIsDeleting: (isDeleting: null | Array<string>) => void;
+  onClose: () => void;
+};
+
+export const useTableTrialsStore = create<TableTrialsStoreType>()((set) => ({
+  isCreating: null,
+  setIsCreating: (isCreating) => set({ isCreating }),
+  isEditing: null,
+  setIsEditing: (isEditing) => set({ isEditing }),
+  isDeleting: null,
+  setIsDeleting: (isDeleting: Array<string> | null) => set({ isDeleting }),
   onClose: () => set({ isCreating: null, isEditing: null, isDeleting: null }),
 }));
 
