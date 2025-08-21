@@ -4,18 +4,19 @@ import { useApiMutation } from "@/hooks/useApiMutation";
 import { queryClient } from "@/api/queryClient";
 import { appToast } from "@/utils/toast";
 import { usePollViewStore } from "@/stores/poll_view.store";
+import { endpoints } from "@/api/endpoints";
 
-function patchShowCache(showKey: string, updater: (curr: any) => any) {
-  const prev = queryClient.getQueryData<any>([showKey]);
-  if (!prev) return;
-  const lvl1 = prev?.data ?? {};
-  const curr = lvl1?.data && typeof lvl1.data === "object" ? lvl1.data : lvl1;
-  const nextCurr = updater(curr);
-  const next = lvl1?.data
-    ? { ...prev, data: { ...lvl1, data: nextCurr } }
-    : { ...prev, data: nextCurr };
-  queryClient.setQueryData([showKey], next);
-}
+// function patchShowCache(showKey: string, updater: (curr: any) => any) {
+//   const prev = queryClient.getQueryData<any>([showKey]);
+//   if (!prev) return;
+//   const lvl1 = prev?.data ?? {};
+//   const curr = lvl1?.data && typeof lvl1.data === "object" ? lvl1.data : lvl1;
+//   const nextCurr = updater(curr);
+//   const next = lvl1?.data
+//     ? { ...prev, data: { ...lvl1, data: nextCurr } }
+//     : { ...prev, data: nextCurr };
+//   queryClient.setQueryData([showKey], next);
+// }
 
 export const ArchiveToggleOptionModal = () => {
   const isArchiveToggleOption = usePollViewStore(
@@ -24,7 +25,7 @@ export const ArchiveToggleOptionModal = () => {
   const onClose = usePollViewStore((s) => s.onClose);
 
   const { mutate: toggleArchive, isPending } = useApiMutation<any, any>({
-    route: "/poll/options/archive",
+    route: endpoints.entities.polls.edit.toggleOption,
     method: "PATCH",
     onSuccess: (resp) => {
       appToast.success("Option removed");

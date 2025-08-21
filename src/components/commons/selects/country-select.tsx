@@ -30,7 +30,7 @@ export default function CountrySelect({
 }: Props) {
   return (
     <InfiniteSelect<CountryItem>
-      route="/location/countries"
+      route="/common/location/countries"
       pageSize={pageSize}
       getFilters={(search) => ({ q: search })}
       mapItemToOption={(item) => ({

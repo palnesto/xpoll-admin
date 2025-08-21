@@ -10,8 +10,15 @@ export const endpoints = {
     polls: {
       all: "/poll/list",
       create: "/poll",
-      update: (id: string) => `/poll/${id}`,
+      updateDetails: `/poll/details`,
+      getById: (id: string) => `/poll/${id}`,
       delete: `/poll`,
+      edit: {
+        details: `/poll/details`,
+        addOption: `/poll/options`,
+        editOption: `/poll/options`,
+      },
+      getPollsByTrialId: (id: string) => `/poll/trial/${id}`,
     },
     trials: {
       all: "/trial/list",
@@ -177,6 +184,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           {
             title: "Trial Polls",
             url: "/trials",
+          },
+        ],
+      },
+      {
+        title: "Sell Order",
+        url: "#",
+        icon: ReceiptText,
+        isActive: true,
+        items: [
+          {
+            title: "Trial Polls",
+            url: "/sell-order",
           },
         ],
       },
@@ -591,8 +610,8 @@ export default function InfiniteSelect<
 }
 
 
-src\components\commons\selects\location-select.tsx
---------------------------------------------------
+src\components\commons\selects\city-select.tsx
+----------------------------------------------
 import InfiniteSelect from "./base/infinite-select";
 
 type CityItem = {
@@ -600,7 +619,7 @@ type CityItem = {
   name: string;
   state: { _id: string; name: string };
   country: { _id: string; name: string };
-  label?: string; // backend also returns label; we compute it anyway
+  label?: string;
 };
 
 type Option = {
@@ -613,11 +632,10 @@ type Props = {
   onChange?: (option: Option | null) => void;
   pageSize?: number;
   placeholder?: string;
-  /** extra props for react-select if you want to customize (styles, etc.) */
   selectProps?: Parameters<typeof InfiniteSelect<CityItem>>[0]["selectProps"];
 };
 
-export default function LocationSelect({
+export function CitySelect({
   onChange,
   pageSize = 50,
   placeholder = "Search city...",
@@ -627,21 +645,134 @@ export default function LocationSelect({
     <InfiniteSelect<CityItem>
       route="/location/cities"
       pageSize={pageSize}
-      // Build filters from the current typed input
       getFilters={(search) => ({ q: search })}
-      // Map each row to a select option
       mapItemToOption={(item) => ({
         value: item._id,
         label: `${item.name}, ${item.state.name}, ${item.country.name}`,
         data: item,
       })}
-      // Log selection + bubble up
       onChange={(opt) => {
         if (opt?.data) {
           console.log("Selected location:", {
             cityId: opt.data._id,
             city: opt.data.name,
             state: opt.data.state,
+            country: opt.data.country,
+          });
+        }
+        onChange?.(opt as Option | null);
+      }}
+      placeholder={placeholder}
+      selectProps={selectProps}
+    />
+  );
+}
+
+
+src\components\commons\selects\country-select.tsx
+-------------------------------------------------
+import InfiniteSelect from "./base/infinite-select";
+
+type CountryItem = {
+  _id: string;
+  name: string;
+  iso3?: string;
+  label?: string;
+};
+
+type Option = {
+  value: string;
+  label: string;
+  data?: CountryItem;
+};
+
+type Props = {
+  onChange?: (option: Option | null) => void;
+  pageSize?: number;
+  placeholder?: string;
+  selectProps?: Parameters<
+    typeof InfiniteSelect<CountryItem>
+  >[0]["selectProps"];
+};
+
+export default function CountrySelect({
+  onChange,
+  pageSize = 50,
+  placeholder = "Search country...",
+  selectProps,
+}: Props) {
+  return (
+    <InfiniteSelect<CountryItem>
+      route="/location/countries"
+      pageSize={pageSize}
+      getFilters={(search) => ({ q: search })}
+      mapItemToOption={(item) => ({
+        value: item._id,
+        label: item.name,
+        data: item,
+      })}
+      onChange={(opt) => {
+        if (opt?.data) {
+          console.log("Selected country:", {
+            countryId: opt.data._id,
+            name: opt.data.name,
+            iso3: opt.data.iso3,
+          });
+        }
+        onChange?.(opt as Option | null);
+      }}
+      placeholder={placeholder}
+      selectProps={selectProps}
+    />
+  );
+}
+
+
+src\components\commons\selects\state-select.tsx
+-----------------------------------------------
+import InfiniteSelect from "./base/infinite-select";
+
+type StateItem = {
+  _id: string;
+  name: string;
+  country: { _id: string; name: string };
+  label?: string;
+};
+
+type Option = {
+  value: string;
+  label: string;
+  data?: StateItem;
+};
+
+type Props = {
+  onChange?: (option: Option | null) => void;
+  pageSize?: number;
+  placeholder?: string;
+  selectProps?: Parameters<typeof InfiniteSelect<StateItem>>[0]["selectProps"];
+};
+
+export default function StateSelect({
+  onChange,
+  pageSize = 50,
+  placeholder = "Search state...",
+  selectProps,
+}: Props) {
+  return (
+    <InfiniteSelect<StateItem>
+      route="/location/states"
+      pageSize={pageSize}
+      getFilters={(search) => ({ q: search })}
+      mapItemToOption={(item) => ({
+        value: item._id,
+        label: `${item.name}, ${item.country.name}`,
+        data: item,
+      })}
+      onChange={(opt) => {
+        if (opt?.data) {
+          console.log("Selected state:", {
+            stateId: opt.data._id,
+            state: opt.data.name,
             country: opt.data.country,
           });
         }
@@ -804,6 +935,219 @@ export const CustomModal = ({
 };
 
 
+src\components\modals\table_polls\add-option.tsx
+------------------------------------------------
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { CustomModal } from "@/components/modals/custom-modal";
+import { useApiMutation } from "@/hooks/useApiMutation";
+import { queryClient } from "@/api/queryClient";
+import { appToast } from "@/utils/toast";
+import { usePollViewStore } from "@/stores/poll_view.store";
+
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { endpoints } from "@/api/endpoints";
+
+const AddSchema = z.object({ text: z.string().trim().min(3, "Required") });
+type FormVals = z.infer<typeof AddSchema>;
+
+function patchShowCache(showKey: string, updater: (curr: any) => any) {
+  const prev = queryClient.getQueryData<any>([showKey]);
+  if (!prev) return;
+  const lvl1 = prev?.data ?? {};
+  const curr = lvl1?.data && typeof lvl1.data === "object" ? lvl1.data : lvl1;
+  const nextCurr = updater(curr);
+  const next = lvl1?.data
+    ? { ...prev, data: { ...lvl1, data: nextCurr } }
+    : { ...prev, data: nextCurr };
+  queryClient.setQueryData([showKey], next);
+}
+
+export const AddOptionModal = () => {
+  const isAddOption = usePollViewStore((s) => s.isAddOption);
+  const onClose = usePollViewStore((s) => s.onClose);
+
+  const form = useForm<FormVals>({
+    resolver: zodResolver(AddSchema),
+    defaultValues: { text: "" },
+    mode: "onChange",
+  });
+
+  const { mutate: addOption, isPending } = useApiMutation<any, any>({
+    route: endpoints.entities.polls.edit.addOption,
+    method: "POST",
+    onSuccess: (resp) => {
+      appToast.success("Option added");
+
+      // const serverOptions =
+      //   resp?.data?.data?.options ?? resp?.data?.options ?? resp?.options;
+
+      // if (Array.isArray(serverOptions)) {
+      //   patchShowCache(showKey, (curr) => ({
+      //     ...curr,
+      //     options: serverOptions,
+      //   }));
+      // } else {
+      //   const text = form.getValues("text").trim();
+      //   patchShowCache(showKey, (curr) => ({
+      //     ...curr,
+      //     options: [
+      //       ...(curr?.options ?? []),
+      //       { _id: crypto.randomUUID(), text, archivedAt: null },
+      //     ],
+      //   }));
+      // }
+
+      queryClient.invalidateQueries();
+      onClose();
+    },
+  });
+
+  const handleOnSubmit = form.handleSubmit((v) => {
+    console.log("reaching submit", v, isAddOption);
+    const payload = {
+      pollId: isAddOption?.pollId,
+      text: v.text.trim(),
+    };
+    console.log("payload", payload);
+    addOption(payload);
+  });
+
+  if (!isAddOption) return null;
+
+  return (
+    <CustomModal
+      isOpen={true}
+      onClose={onClose}
+      title="Add option"
+      onSubmit={() => {}}
+      footer={<></>}
+    >
+      <form onSubmit={handleOnSubmit} className="space-y-3">
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground">Option text</label>
+          <Input
+            {...form.register("text")}
+            placeholder="Type option…"
+            autoFocus
+            disabled={isPending}
+          />
+          {form.formState.errors.text?.message && (
+            <p className="text-xs text-destructive">
+              {form.formState.errors.text.message}
+            </p>
+          )}
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={onClose} disabled={isPending}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isPending || !form.formState.isValid}>
+            Add
+          </Button>
+        </div>
+      </form>
+    </CustomModal>
+  );
+};
+
+
+src\components\modals\table_polls\archive-toggle-option.tsx
+-----------------------------------------------------------
+import { Button } from "@/components/ui/button";
+import { CustomModal } from "@/components/modals/custom-modal";
+import { useApiMutation } from "@/hooks/useApiMutation";
+import { queryClient } from "@/api/queryClient";
+import { appToast } from "@/utils/toast";
+import { usePollViewStore } from "@/stores/poll_view.store";
+
+function patchShowCache(showKey: string, updater: (curr: any) => any) {
+  const prev = queryClient.getQueryData<any>([showKey]);
+  if (!prev) return;
+  const lvl1 = prev?.data ?? {};
+  const curr = lvl1?.data && typeof lvl1.data === "object" ? lvl1.data : lvl1;
+  const nextCurr = updater(curr);
+  const next = lvl1?.data
+    ? { ...prev, data: { ...lvl1, data: nextCurr } }
+    : { ...prev, data: nextCurr };
+  queryClient.setQueryData([showKey], next);
+}
+
+export const ArchiveToggleOptionModal = () => {
+  const isArchiveToggleOption = usePollViewStore(
+    (s) => s.isArchiveToggleOption
+  );
+  const onClose = usePollViewStore((s) => s.onClose);
+
+  const { mutate: toggleArchive, isPending } = useApiMutation<any, any>({
+    route: "/poll/options/archive",
+    method: "PATCH",
+    onSuccess: (resp) => {
+      appToast.success("Option removed");
+
+      // const serverOptions =
+      //   resp?.data?.data?.options ?? resp?.data?.options ?? resp?.options;
+      // if (Array.isArray(serverOptions)) {
+      //   patchShowCache(showKey, (curr) => ({
+      //     ...curr,
+      //     options: serverOptions,
+      //   }));
+      // } else if (optionId) {
+      //   patchShowCache(showKey, (curr) => ({
+      //     ...curr,
+      //     options: (curr?.options ?? []).map((o: any) =>
+      //       o._id === optionId
+      //         ? { ...o, archivedAt: new Date().toISOString() }
+      //         : o
+      //     ),
+      //   }));
+      // }
+
+      queryClient.invalidateQueries();
+      onClose();
+    },
+  });
+
+  const handleOnSubmit = () => {
+    console.log("reaching submit", isArchiveToggleOption);
+    const payload = {
+      pollId: isArchiveToggleOption?.pollId,
+      optionId: isArchiveToggleOption?.optionId,
+      archived: isArchiveToggleOption?.shouldArchive,
+    };
+    console.log("payload", payload);
+    toggleArchive(payload);
+  };
+
+  if (!isArchiveToggleOption) return null;
+
+  return (
+    <CustomModal
+      isOpen={true}
+      onClose={onClose}
+      title={
+        isArchiveToggleOption?.shouldArchive
+          ? "Archive Option"
+          : "Unarchive Option"
+      }
+      onSubmit={() => {}}
+      footer={<></>}
+    >
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" onClick={onClose} disabled={isPending}>
+          Cancel
+        </Button>
+        <Button type="button" disabled={isPending} onClick={handleOnSubmit}>
+          {isArchiveToggleOption?.shouldArchive ? "Archive" : "Unarchive"}
+        </Button>
+      </div>
+    </CustomModal>
+  );
+};
+
+
 src\components\modals\table_polls\delete.tsx
 --------------------------------------------
 import { endpoints } from "@/api/endpoints";
@@ -860,6 +1204,124 @@ export function ConfirmDeletePollsModal({ url }: { url: string }) {
     </CustomModal>
   );
 }
+
+
+src\components\modals\table_polls\edit-option.tsx
+-------------------------------------------------
+import { Input } from "@/components/ui/input";
+import { CustomModal } from "@/components/modals/custom-modal";
+import { useApiMutation } from "@/hooks/useApiMutation";
+import { queryClient } from "@/api/queryClient";
+import { appToast } from "@/utils/toast";
+import { usePollViewStore } from "@/stores/poll_view.store";
+
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Button } from "@/components/ui/button";
+
+const EditSchema = z.object({ text: z.string().trim().min(3, "Required") });
+type FormVals = z.infer<typeof EditSchema>;
+
+// function patchShowCache(showKey: string, updater: (curr: any) => any) {
+//   const prev = queryClient.getQueryData<any>([showKey]);
+//   if (!prev) return;
+//   const lvl1 = prev?.data ?? {};
+//   const curr = lvl1?.data && typeof lvl1.data === "object" ? lvl1.data : lvl1;
+//   const nextCurr = updater(curr);
+//   const next = lvl1?.data
+//     ? { ...prev, data: { ...lvl1, data: nextCurr } }
+//     : { ...prev, data: nextCurr };
+//   queryClient.setQueryData([showKey], next);
+// }
+
+export const EditOptionModal = () => {
+  const isEditOption = usePollViewStore((s) => s.isEditOption);
+  const onClose = usePollViewStore((s) => s.onClose);
+
+  const form = useForm<FormVals>({
+    resolver: zodResolver(EditSchema),
+    defaultValues: { text: isEditOption?.oldText ?? "" },
+    mode: "onChange",
+  });
+
+  const { mutate: updateOption, isPending } = useApiMutation<any, any>({
+    route: "/poll/options",
+    method: "PUT",
+    onSuccess: (resp) => {
+      appToast.success("Option updated");
+
+      // const serverOptions =
+      //   resp?.data?.data?.options ?? resp?.data?.options ?? resp?.options;
+
+      // if (Array.isArray(serverOptions)) {
+      //   patchShowCache(showKey, (curr) => ({
+      //     ...curr,
+      //     options: serverOptions,
+      //   }));
+      // } else if (editData) {
+      //   const newText = form.getValues("text").trim();
+      //   patchShowCache(showKey, (curr) => ({
+      //     ...curr,
+      //     options: (curr?.options ?? []).map((o: any) =>
+      //       o._id === editData.optionId ? { ...o, text: newText } : o
+      //     ),
+      //   }));
+      // }
+
+      queryClient.invalidateQueries();
+      onClose();
+    },
+  });
+
+  const handleOnSubmit = form.handleSubmit((v) => {
+    console.log("reaching submit", v, isEditOption);
+    const payload = {
+      pollId: isEditOption?.pollId,
+      optionId: isEditOption?.optionId,
+      text: v.text.trim(),
+    };
+    console.log("payload", payload);
+    updateOption(payload);
+  });
+
+  if (!isEditOption) return null;
+
+  return (
+    <CustomModal
+      isOpen={true}
+      onClose={onClose}
+      title="Edit option"
+      onSubmit={() => {}}
+      footer={<></>}
+    >
+      <form onSubmit={handleOnSubmit} className="space-y-3">
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground">Option text</label>
+          <Input
+            {...form.register("text")}
+            placeholder="Edit option…"
+            autoFocus
+            disabled={isPending}
+          />
+          {form.formState.errors.text?.message && (
+            <p className="text-xs text-destructive">
+              {form.formState.errors.text.message}
+            </p>
+          )}
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={onClose} disabled={isPending}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isPending || !form.formState.isValid}>
+            Edit
+          </Button>
+        </div>
+      </form>
+    </CustomModal>
+  );
+};
 
 
 src\components\modals\table_trials\delete.tsx
@@ -2010,6 +2472,94 @@ function truncateText(
   if (text.length <= maxLength) return text; // No truncation needed
   const truncationLength = maxLength - ellipsis.length;
   return text.slice(0, truncationLength) + ellipsis;
+}
+
+
+src\components\table-trial-poll.tsx
+-----------------------------------
+import { useMemo, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { endpoints } from "@/api/endpoints";
+import { useApiQuery } from "@/hooks/useApiQuery";
+import { ThreeDotMenu } from "@/components/commons/three-dot-menu";
+import { Eye, Trash } from "lucide-react";
+import { DEFAULT_PAGE_SIZE } from "@/constants";
+import { fmt, PaginatedTable } from "@/components/paginated-table";
+import { useTablePollsStore } from "@/stores/table_polls.store";
+import { ConfirmDeletePollsModal } from "@/components/modals/table_polls/delete";
+
+export default function TrialPollTable({ trialId }: { trialId: string }) {
+  const navigate = useNavigate();
+  const [page, setPage] = useState<number>(1);
+  const [pageSize] = useState<number>(DEFAULT_PAGE_SIZE);
+
+  const isDeleting = useTablePollsStore((s) => s.isDeleting);
+  const setIsDeleting = useTablePollsStore((s) => s.setIsDeleting);
+
+  const base = endpoints.entities.polls.getPollsByTrialId(trialId);
+  const url = `${base}?page=${page}&pageSize=${pageSize}`;
+  const { data, isFetching } = useApiQuery(url, { keepPreviousData: true });
+
+  const entries = useMemo(() => data?.data?.data?.entries ?? [], [data]);
+
+  const actions = useCallback(
+    (id: string) => [
+      { name: "View", icon: Eye, onClick: () => navigate(`/polls/${id}`) },
+      {
+        name: "Delete",
+        icon: Trash,
+        onClick: () => setIsDeleting([id]),
+        separatorBefore: true,
+      },
+    ],
+    [navigate, setIsDeleting]
+  );
+
+  const tableData = useMemo(
+    () =>
+      entries.map((r: any) => ({
+        ...r,
+        tableOptions: <ThreeDotMenu actions={actions(r._id)} />,
+      })),
+    [entries, actions]
+  );
+
+  const columns = [
+    { key: "_id", header: "ID", canFilter: true },
+    { key: "title", header: "Title", canFilter: true },
+    {
+      key: "createdAt",
+      header: "Created At",
+      render: (v: any) => <span>{fmt(v)}</span>,
+    },
+    {
+      key: "archivedAt",
+      header: "Archived At",
+      render: (v: any) => <span>{fmt(v)}</span>,
+    },
+    {
+      key: "tableOptions",
+      header: "...",
+      render: (v: any) => <span>{v}</span>,
+      isRightAligned: true,
+    },
+  ] as const;
+
+  return (
+    <div>
+      <PaginatedTable
+        title="Polls in this Trial"
+        columns={columns}
+        tableData={tableData}
+        data={data}
+        page={page}
+        setPage={setPage}
+        pageSize={pageSize}
+        isFetching={isFetching}
+      />
+      {isDeleting?.length > 0 && <ConfirmDeletePollsModal url={url} />}
+    </div>
+  );
 }
 
 
@@ -4585,7 +5135,7 @@ export const useApiMutation = <TData, TResponse>({
   onError,
 }: {
   route: string;
-  method: "POST" | "PATCH" | "DELETE"; // Restrict method to specific HTTP verbs
+  method: "POST" | "PATCH" | "DELETE" | "PUT"; // Restrict method to specific HTTP verbs
   options?: UseMutationOptions<TResponse, Error, TData>;
   onSuccess?: (data: TResponse) => void;
   onError?: (error: Error) => void;
@@ -4597,6 +5147,9 @@ export const useApiMutation = <TData, TResponse>({
         return response.data;
       } else if (method === "PATCH") {
         const response = await apiInstance.patch(route, newData);
+        return response.data;
+      } else if (method === "PUT") {
+        const response = await apiInstance.put(route, newData);
         return response.data;
       } else if (method === "DELETE") {
         const response = await apiInstance.delete(route, { data: newData }); // Fixed DELETE syntax for sending body
@@ -4870,15 +5423,45 @@ app.render(
 
 src\pages\index.tsx
 -------------------
-import LocationSelect from "@/components/commons/selects/location-select";
+import { CitySelect } from "@/components/commons/selects/city-select";
+import CountrySelect from "@/components/commons/selects/country-select";
+import StateSelect from "@/components/commons/selects/state-select";
 
 const IndexPage = () => {
   return (
     <div className="text-black">
       <div style={{ maxWidth: 420 }}>
         <h3>Select a city</h3>
-        <LocationSelect
+        <CitySelect
           placeholder="Type to search cities…"
+          onChange={(opt) => {
+            // You already get a console.log from the component;
+            // here’s where you can react to the selection:
+            if (opt?.data) {
+              // do something with opt.data (city/state/country)
+              // e.g. save to form state, fire API, etc.
+            }
+          }}
+        />
+      </div>
+      <div style={{ maxWidth: 420 }}>
+        <h3>Select a city</h3>
+        <StateSelect
+          placeholder="Type to search states"
+          onChange={(opt) => {
+            // You already get a console.log from the component;
+            // here’s where you can react to the selection:
+            if (opt?.data) {
+              // do something with opt.data (city/state/country)
+              // e.g. save to form state, fire API, etc.
+            }
+          }}
+        />
+      </div>
+      <div style={{ maxWidth: 420 }}>
+        <h3>Select a city</h3>
+        <CountrySelect
+          placeholder="Type to search countries"
           onChange={(opt) => {
             // You already get a console.log from the component;
             // here’s where you can react to the selection:
@@ -4999,17 +5582,22 @@ const formSchema = z.object({
     .array(optionZ)
     .min(2, "Need 2–4 options")
     .max(4, "Need 2–4 options"),
-  reward: z.object({
-    assetId: z.enum(["xOcta", "xMYST", "xDrop"]),
-    amount: z.coerce.number().int().min(1, "Min 1"),
-  }),
-  // required key in payload, allowed to be empty
+  reward: z
+    .object({
+      assetId: z.enum(["xOcta", "xMYST", "xDrop"]),
+      amount: z.coerce.number().int().min(1, "Min 1"),
+      rewardAmountCap: z.coerce.number().int().min(1, "Min 1"),
+    })
+    .refine((r) => r.rewardAmountCap >= r.amount, {
+      path: ["rewardAmountCap"],
+      message: "rewardAmountCap must be >= amount",
+    }),
   resourceAssets: z.array(resourceAssetZ).default([]),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
-function extractYouTubeId(input: string) {
+export function extractYouTubeId(input: string) {
   const idLike = /^[\w-]{11}$/;
   try {
     if (idLike.test(input)) return input;
@@ -5050,13 +5638,13 @@ export default function PollCreatePage() {
   const optionsArray = useFieldArray({ control, name: "options" });
   const assetsArray = useFieldArray({ control, name: "resourceAssets" });
 
-  const { mutateAsync, isPending } = useApiMutation<any, any>({
+  const { mutate, isPending } = useApiMutation<any, any>({
     route: endpoints.entities.polls.create, // POST /poll
     method: "POST",
     onSuccess: () => {
       appToast.success("Poll created");
       queryClient.invalidateQueries({
-        queryKey: [endpoints.entities.polls.listBase],
+        queryKey: [endpoints.entities.polls.create],
       });
       navigate("/polls");
     },
@@ -5089,7 +5677,7 @@ export default function PollCreatePage() {
       ],
       expireRewardAt: null,
     };
-    await mutateAsync(payload as any);
+    mutate(payload as any);
   };
 
   const optsArrayMsg =
@@ -5304,7 +5892,22 @@ export default function PollCreatePage() {
                   name="reward.amount"
                   render={({ field }) => (
                     <FormItem>
-                      <label className="text-xs">Amount</label>
+                      <label className="text-xs">Amount per person</label>
+                      <FormControl>
+                        <Input type="number" min={1} step={1} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="col-span-4">
+                <FormField
+                  control={control}
+                  name="reward.rewardAmountCap"
+                  render={({ field }) => (
+                    <FormItem>
+                      <label className="text-xs">Reward Amount Cap</label>
                       <FormControl>
                         <Input type="number" min={1} step={1} {...field} />
                       </FormControl>
@@ -5437,7 +6040,7 @@ import { appToast } from "@/utils/toast";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Edit, Pencil, PlusSquare, Trash2 } from "lucide-react";
+import { Edit, Pencil, PlusSquare, Recycle, Trash2 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   Tooltip,
@@ -5447,6 +6050,13 @@ import {
 } from "@/components/ui/tooltip";
 import { fmt } from "@/components/paginated-table";
 
+import { usePollViewStore } from "@/stores/poll_view.store";
+import { AddOptionModal } from "@/components/modals/table_polls/add-option";
+import { EditOptionModal } from "@/components/modals/table_polls/edit-option";
+import { ArchiveToggleOptionModal } from "@/components/modals/table_polls/archive-toggle-option";
+import { cn } from "@/lib/utils";
+
+/* ---------- types ---------- */
 type PollOption = {
   _id: string;
   text: string;
@@ -5454,86 +6064,121 @@ type PollOption = {
 };
 
 type Poll = {
-  _id: string;
+  pollId: string;
   title: string;
   description?: string;
   createdAt?: string;
   archivedAt?: string | null;
-  media?: string | null;
+  resourceAssets?: unknown;
   options?: PollOption[];
 };
 
 const MAX_OPTIONS = 4;
 
+/* small helper for details patch */
+function patchShowCache(showKey: string, updater: (curr: any) => any) {
+  const prev = queryClient.getQueryData<any>([showKey]);
+  if (!prev) return;
+  const lvl1 = prev?.data ?? {};
+  const curr = lvl1?.data && typeof lvl1.data === "object" ? lvl1.data : lvl1;
+  const nextCurr = updater(curr);
+  const next = lvl1?.data
+    ? { ...prev, data: { ...lvl1, data: nextCurr } }
+    : { ...prev, data: nextCurr };
+  queryClient.setQueryData([showKey], next);
+}
+
 export default function PollShowPage() {
   const navigate = useNavigate();
   const { id = "" } = useParams<{ id: string }>();
 
-  const route = endpoints.entities.polls.update(id);
-  const { data, isLoading, isError } = useApiQuery(route);
+  // GET one poll
+  const showRoute = (endpoints.entities as any)?.polls?.getById
+    ? (endpoints.entities as any).polls.getById(id)
+    : `/poll/${id}`;
+  const { data, isLoading, isError } = useApiQuery(showRoute);
 
   const poll: Poll | null = useMemo(() => {
     return data?.data?.data ?? data?.data ?? null;
   }, [data]);
 
+  // ===== details editing =====
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState<string>("");
   const [description, setDescription] = useState<string>("");
   const [mediaUrl, setMediaUrl] = useState<string>("");
 
-  // hydrate form when the poll loads / changes
   useEffect(() => {
     if (!poll) return;
     setTitle(poll.title ?? "");
     setDescription(poll.description ?? "");
-    // if your API stores media differently, map it here
     setMediaUrl((poll as any)?.media ?? "");
   }, [poll]);
 
-  const { mutateAsync: saveEdit, isPending: isSaving } = useApiMutation<
-    any,
-    any
-  >({
-    route: endpoints.entities.polls.update(id),
-    method: "PATCH",
+  const updateDetailsRoute =
+    (endpoints.entities as any)?.polls?.updateDetails ?? "/poll/details";
+
+  const { mutate: saveEdit, isPending: isSaving } = useApiMutation<any, any>({
+    route: updateDetailsRoute,
+    method: "PUT",
     onSuccess: () => {
       appToast.success("Poll updated");
       setIsEditing(false);
-      queryClient.invalidateQueries({ queryKey: [route] });
+
+      patchShowCache(showRoute, (curr) => ({
+        ...curr,
+        title,
+        description,
+        media: mediaUrl,
+      }));
+
+      queryClient.invalidateQueries({ queryKey: [showRoute] });
+      queryClient.invalidateQueries({
+        predicate: (q) =>
+          typeof q.queryKey?.[0] === "string" &&
+          (q.queryKey[0] as string).startsWith(
+            (endpoints.entities as any)?.polls?.all ?? "/poll/list"
+          ),
+      });
     },
   });
 
   const onSubmitEdit = useCallback(
-    async (e: React.FormEvent) => {
+    (e: React.FormEvent) => {
       e.preventDefault();
       if (!poll) return;
 
-      // send only changed fields (safe, minimal)
-      const payload: any = {};
+      const payload: any = { pollId: id };
       if (title !== (poll.title ?? "")) payload.title = title;
       if (description !== (poll.description ?? ""))
         payload.description = description;
-      // adjust the key to your backend shape if needed
       if (mediaUrl !== ((poll as any)?.media ?? "")) payload.media = mediaUrl;
 
-      if (Object.keys(payload).length === 0) {
+      if (Object.keys(payload).length <= 1) {
         setIsEditing(false);
         return;
       }
-
-      await saveEdit(payload);
+      saveEdit(payload);
     },
-    [poll, title, description, mediaUrl, saveEdit]
+    [poll, id, title, description, mediaUrl, saveEdit]
   );
 
-  const onEditOption = useCallback(
-    (optionId: string) => {
-      if (!poll?._id) return;
-      navigate(`/polls/${poll._id}/edit?optionId=${optionId}`);
-    },
-    [navigate, poll?._id]
+  const activeCount = (poll?.options ?? []).filter((o) => !o.archivedAt).length;
+  const canAddOption = activeCount < MAX_OPTIONS;
+
+  // ===== store actions for modals =====
+  const isAddOption = usePollViewStore((s) => s.isAddOption);
+  const setIsAddOption = usePollViewStore((s) => s.setIsAddOption);
+  const isEditOption = usePollViewStore((s) => s.isEditOption);
+  const setIsEditOption = usePollViewStore((s) => s.setIsEditOption);
+  const isArchiveToggleOption = usePollViewStore(
+    (s) => s.isArchiveToggleOption
+  );
+  const setIsArchiveToggleOption = usePollViewStore(
+    (s) => s.setIsArchiveToggleOption
   );
 
+  // ===== page loading / error =====
   if (!id) {
     return (
       <div className="p-4">
@@ -5544,7 +6189,6 @@ export default function PollShowPage() {
       </div>
     );
   }
-
   if (isLoading) {
     return (
       <div className="p-4">
@@ -5552,7 +6196,6 @@ export default function PollShowPage() {
       </div>
     );
   }
-
   if (isError || !poll) {
     return (
       <div className="p-4">
@@ -5568,7 +6211,6 @@ export default function PollShowPage() {
 
   return (
     <div className="p-4 space-y-6 max-w-4xl">
-      {/* Details card / edit form */}
       {isEditing ? (
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
@@ -5642,24 +6284,20 @@ export default function PollShowPage() {
           <CardContent className="space-y-4">
             <div>
               <div className="text-xs text-muted-foreground">ID</div>
-              <div className="font-mono break-all">{poll._id}</div>
+              <div className="font-mono break-all">{poll.pollId}</div>
             </div>
-
             <div>
               <div className="text-xs text-muted-foreground">Title</div>
               <div className="font-medium">{poll.title}</div>
             </div>
-
             <div>
               <div className="text-xs text-muted-foreground">Description</div>
               <div>{poll.description || "-"}</div>
             </div>
-
             <div>
               <div className="text-xs text-muted-foreground">Media</div>
               <div className="break-all">{(poll as any)?.media || "-"}</div>
             </div>
-
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <div className="text-xs text-muted-foreground">Created At</div>
@@ -5674,74 +6312,114 @@ export default function PollShowPage() {
         </Card>
       )}
 
-      {/* Options card */}
+      {/* ===== Options card ===== */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Options</CardTitle>
-          <button
-            className="rounded-md p-1 hover:bg-foreground/10"
-            onClick={() => navigate(`/polls/${poll._id}`)}
-            aria-label="Add option"
-            title="Add option"
-          >
-            <PlusSquare className="w-4 h-4" />
-          </button>
+
+          <TooltipProvider delayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  className={`rounded-md p-1 hover:bg-foreground/10 ${
+                    !canAddOption ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+                  onClick={() => {
+                    if (!canAddOption) return;
+                    console.log("poll", poll);
+                    setIsAddOption({ pollId: poll._id });
+                  }}
+                  aria-label="Add option"
+                  title={canAddOption ? "Add option" : "Max 4 active options"}
+                  disabled={!canAddOption}
+                >
+                  <PlusSquare className="w-4 h-4" />
+                </button>
+              </TooltipTrigger>
+              {!canAddOption && (
+                <TooltipContent>Maximum of 4 active options</TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
         </CardHeader>
-        <CardContent>
+
+        <CardContent className="space-y-4">
           {poll?.options?.length ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {poll.options.map((opt) => (
-                <div
-                  key={opt._id}
-                  className="relative border rounded-lg p-3 hover:bg-muted/30"
-                >
-                  {/* top-right action icons */}
-                  <div className="absolute right-2 top-2">
-                    <TooltipProvider delayDuration={0}>
-                      <Tooltip>
-                        <section className="flex items-center gap-2">
-                          <TooltipTrigger asChild>
-                            <button
-                              className="rounded-md p-1 hover:bg-foreground/10"
-                              onClick={() => onEditOption(opt._id)}
-                              aria-label={`Edit option ${opt.text}`}
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipTrigger asChild>
-                            <button
-                              className="rounded-md p-1 hover:bg-foreground/10"
-                              onClick={() =>
-                                navigate(
-                                  `/polls/${poll._id}/edit?removeOptionId=${opt._id}`
-                                )
-                              }
-                              aria-label={`Delete option ${opt.text}`}
-                            >
-                              <Trash2 className="w-4 h-4 text-red-600" />
-                            </button>
-                          </TooltipTrigger>
-                        </section>
-                        <TooltipContent>Actions</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
+              {poll.options.map((opt) => {
+                const isArchived = !!opt.archivedAt;
+                return (
+                  <div
+                    key={opt._id}
+                    className={cn(
+                      "relative border rounded-lg p-3 hover:bg-muted/30",
+                      isArchived && "opacity-50 cursor-not-allowed"
+                    )}
+                  >
+                    <div className="absolute right-2 top-2 flex items-center gap-2">
+                      {/* edit option -> modal */}
+                      {!isArchived && (
+                        <button
+                          className="rounded-md p-1 hover:bg-foreground/10"
+                          onClick={() =>
+                            setIsEditOption({
+                              pollId: poll._id,
+                              optionId: opt._id,
+                              oldText: opt.text,
+                            })
+                          }
+                          aria-label={`Edit option ${opt.text}`}
+                          title="Edit option"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                      )}
 
-                  <div className="pr-8">
-                    <div className="text-xs text-muted-foreground mb-1">
-                      Option ID
+                      {/* delete option  */}
+                      {isArchived && activeCount + 1 > MAX_OPTIONS ? null : (
+                        <button
+                          className="rounded-md p-1 hover:bg-foreground/10"
+                          onClick={() =>
+                            setIsArchiveToggleOption({
+                              pollId: poll._id,
+                              optionId: opt._id,
+                              shouldArchive: !isArchived,
+                            })
+                          }
+                          aria-label={`Delete option ${opt.text}`}
+                          title="Delete option"
+                          disabled={!isArchived && activeCount <= 2}
+                        >
+                          {!isArchived ? (
+                            <Trash2 className={`w-4 h-4 text-red-600`} />
+                          ) : (
+                            <Recycle className={`w-4 h-4 text-white`} />
+                          )}
+                        </button>
+                      )}
                     </div>
-                    <div className="font-mono text-xs break-all mb-2">
-                      {opt._id}
-                    </div>
-                    <div className="text-sm">{opt.text}</div>
-                    <div className="text-xs text-muted-foreground mt-2">
-                      Archived: {opt.archivedAt ? fmt(opt.archivedAt) : "-"}
+
+                    <div className="pr-10">
+                      <div className="text-xs text-muted-foreground mb-1">
+                        Option ID
+                      </div>
+                      <div className="font-mono text-xs break-all mb-2">
+                        {opt._id}
+                      </div>
+                      <div
+                        className={`text-sm ${
+                          isArchived ? "line-through opacity-60" : ""
+                        }`}
+                      >
+                        {opt.text}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-2">
+                        Archived: {opt.archivedAt ? fmt(opt.archivedAt) : "-"}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="text-sm text-muted-foreground">
@@ -5750,6 +6428,768 @@ export default function PollShowPage() {
           )}
         </CardContent>
       </Card>
+
+      {isAddOption && <AddOptionModal />}
+      {isEditOption && <EditOptionModal />}
+      {isArchiveToggleOption && <ArchiveToggleOptionModal />}
+    </div>
+  );
+}
+
+
+src\pages\sell-order\index.tsx
+------------------------------
+import { useMemo, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { endpoints } from "@/api/endpoints";
+import { useApiQuery } from "@/hooks/useApiQuery";
+import { ThreeDotMenu } from "@/components/commons/three-dot-menu";
+import { Eye, Trash } from "lucide-react";
+import { DEFAULT_PAGE_SIZE } from "@/constants";
+import { fmt, PaginatedTable } from "@/components/paginated-table";
+
+import { useTablePollsStore } from "@/stores/table_polls.store";
+import { ConfirmDeletePollsModal } from "@/components/modals/table_polls/delete";
+
+export default function SellOrder() {
+  const navigate = useNavigate();
+
+  const [page, setPage] = useState<number>(1);
+  const [pageSize] = useState<number>(DEFAULT_PAGE_SIZE);
+  const isDeleting = useTablePollsStore((s) => s.isDeleting);
+  const setIsDeleting = useTablePollsStore((s) => s.setIsDeleting);
+
+  const url = `${endpoints.entities.polls.all}?page=${page}&pageSize=${pageSize}`;
+  const { data, isFetching } = useApiQuery(url, { keepPreviousData: true });
+
+  const entries = useMemo(() => data?.data?.data?.entries ?? [], [data]);
+
+  const actions = useCallback(
+    (id: string) => [
+      {
+        name: "View",
+        icon: Eye,
+        onClick: () => navigate(`/polls/${id}`),
+      },
+      {
+        name: "Delete",
+        icon: Trash,
+        onClick: () => {
+          setIsDeleting([id]);
+        },
+        separatorBefore: true,
+      },
+    ],
+    [navigate, setIsDeleting]
+  );
+
+  const tableData = useMemo(
+    () =>
+      entries.map((r: any) => ({
+        ...r,
+        tableOptions: <ThreeDotMenu actions={actions(r._id)} />,
+      })),
+    [entries, actions]
+  );
+
+  const columns = [
+    { key: "_id", header: "ID", canFilter: true },
+    { key: "title", header: "Title", canFilter: true },
+    {
+      key: "createdAt",
+      header: "Created At",
+      render: (val: any) => <span>{fmt(val)}</span>,
+    },
+    {
+      key: "archivedAt",
+      header: "Archived At",
+      render: (val: any) => <span>{fmt(val)}</span>,
+    },
+    {
+      key: "tableOptions",
+      header: "...",
+      render: (v: any) => <span>{v}</span>,
+      isRightAligned: true,
+    },
+  ] as const;
+
+  return (
+    <div>
+      <PaginatedTable
+        title="Sell Order"
+        onCreate={() => navigate("/sell-order/create")}
+        createButtonText="Create Sell Order"
+        columns={columns}
+        tableData={tableData}
+        data={data}
+        page={page}
+        setPage={setPage}
+        pageSize={pageSize}
+        isFetching={isFetching}
+      />
+
+      {isDeleting?.length > 0 && <ConfirmDeletePollsModal url={url} />}
+    </div>
+  );
+}
+
+
+src\pages\trials\create.tsx
+---------------------------
+// src/pages/trials/create.tsx
+import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { z } from "zod";
+import { useForm, useFieldArray, Control, UseFormWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+import { endpoints } from "@/api/endpoints";
+import { useApiMutation } from "@/hooks/useApiMutation";
+import { queryClient } from "@/api/queryClient";
+import { appToast } from "@/utils/toast";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { extractYouTubeId } from "../polls/create";
+
+/* -------------------- Schema -------------------- */
+
+const ASSET_OPTIONS = [
+  { label: "OCTA", value: "xOcta" },
+  { label: "MYST", value: "xMYST" },
+  { label: "DROP", value: "xDrop" },
+] as const;
+
+const resourceAssetZ = z.object({
+  type: z.enum(["image", "youtube"]),
+  value: z.string().min(1, "Required"),
+});
+
+const optionZ = z.object({
+  text: z.string().min(3, "Min 3 chars").trim(),
+});
+
+const rewardZ = z
+  .object({
+    assetId: z.enum(["xOcta", "xMYST", "xDrop"]),
+    amount: z.coerce.number().int().min(1, "Min 1"),
+    rewardAmountCap: z.coerce.number().int().min(1, "Min 1"),
+  })
+  .refine((r) => r.rewardAmountCap >= r.amount, {
+    path: ["rewardAmountCap"],
+    message: "Cap must be >= amount",
+  });
+
+const pollCreateZ = z.object({
+  title: z.string().min(3, "Min 3 chars").trim(),
+  description: z.string().min(3, "Min 3 chars").trim(),
+  resourceAssets: z.array(resourceAssetZ).default([]),
+  options: z
+    .array(optionZ)
+    .min(2, "Need 2–4 options")
+    .max(4, "Need 2–4 options"),
+});
+
+const formSchema = z.object({
+  trial: z.object({
+    title: z.string().min(3, "Min 3 chars").trim(),
+    description: z.string().min(3, "Min 3 chars").trim(),
+    resourceAssets: z.array(resourceAssetZ).default([]),
+    rewards: z.array(rewardZ).optional(),
+  }),
+  polls: z.array(pollCreateZ).min(1, "Add at least 1 poll"),
+});
+
+type FormValues = z.infer<typeof formSchema>;
+
+/* -------------------- Child component (per poll) -------------------- */
+
+function PollCard({
+  control,
+  watch,
+  index,
+  onRemove,
+  disableRemove,
+}: {
+  control: Control<FormValues>;
+  watch: UseFormWatch<FormValues>;
+  index: number;
+  onRemove: () => void;
+  disableRemove: boolean;
+}) {
+  // These hooks live inside the child => stable per mounted child
+  const pollAssetsArray = useFieldArray({
+    control,
+    name: `polls.${index}.resourceAssets` as const,
+  });
+  const pollOptionsArray = useFieldArray({
+    control,
+    name: `polls.${index}.options` as const,
+  });
+
+  const optionsLen = watch(`polls.${index}.options`)?.length ?? 0;
+
+  return (
+    <div className="border rounded-lg p-4 space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="text-sm font-medium">Poll #{index + 1}</div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onRemove}
+          disabled={disableRemove}
+        >
+          Remove Poll
+        </Button>
+      </div>
+
+      {/* Title */}
+      <FormField
+        control={control}
+        name={`polls.${index}.title` as const}
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Title</FormLabel>
+            <FormControl>
+              <Input placeholder="Poll title" {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      {/* Description */}
+      <FormField
+        control={control}
+        name={`polls.${index}.description` as const}
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Description</FormLabel>
+            <FormControl>
+              <Input placeholder="Short description" {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      {/* Assets */}
+      <div className="space-y-2">
+        <FormLabel>Media (Images / YouTube) – optional</FormLabel>
+        {pollAssetsArray.fields.map((f, aIdx) => {
+          const typeName =
+            `polls.${index}.resourceAssets.${aIdx}.type` as const;
+          const valueName =
+            `polls.${index}.resourceAssets.${aIdx}.value` as const;
+          const t = watch(typeName);
+
+          return (
+            <div key={f.id} className="grid grid-cols-12 gap-2 items-end">
+              <div className="col-span-4">
+                <FormField
+                  control={control}
+                  name={typeName}
+                  render={({ field }) => (
+                    <FormItem>
+                      <label className="text-xs">Type</label>
+                      <FormControl>
+                        <select
+                          className="w-full h-9 border rounded-md px-2 bg-transparent"
+                          {...field}
+                        >
+                          <option value="image">IMAGE</option>
+                          <option value="youtube">YOUTUBE</option>
+                        </select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="col-span-7">
+                <FormField
+                  control={control}
+                  name={valueName}
+                  render={({ field }) => (
+                    <FormItem>
+                      <label className="text-xs">
+                        {t === "youtube" ? "YouTube URL or ID" : "Image URL"}
+                      </label>
+                      <FormControl>
+                        <Input
+                          placeholder={
+                            t === "youtube"
+                              ? "https://youtube.com/watch?v=… or 11-char ID"
+                              : "https://example.com/pic.jpg"
+                          }
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="col-span-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => pollAssetsArray.remove(aIdx)}
+                >
+                  Remove
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => pollAssetsArray.append({ type: "image", value: "" })}
+          >
+            + Image
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() =>
+              pollAssetsArray.append({ type: "youtube", value: "" })
+            }
+          >
+            + YouTube
+          </Button>
+        </div>
+      </div>
+
+      {/* Options */}
+      <div className="space-y-2">
+        <FormLabel>Options (2–4)</FormLabel>
+        {pollOptionsArray.fields.map((f, oIdx) => (
+          <div key={f.id} className="flex gap-2 items-end">
+            <FormField
+              control={control}
+              name={`polls.${index}.options.${oIdx}.text` as const}
+              render={({ field }) => (
+                <FormItem className="flex-1">
+                  <FormControl>
+                    <Input placeholder={`Option #${oIdx + 1}`} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => pollOptionsArray.remove(oIdx)}
+              disabled={pollOptionsArray.fields.length <= 2}
+            >
+              Remove
+            </Button>
+          </div>
+        ))}
+
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => pollOptionsArray.append({ text: "" })}
+            disabled={optionsLen >= 4}
+          >
+            Add Option
+          </Button>
+          <span className="text-sm text-destructive">
+            {(false as any) || (formSchema?.shape?.polls && undefined)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* -------------------- Page -------------------- */
+
+export default function TrialCreatePage() {
+  const navigate = useNavigate();
+
+  const defaultValues: FormValues = useMemo(
+    () => ({
+      trial: {
+        title: "",
+        description: "",
+        resourceAssets: [],
+        rewards: [
+          { assetId: ASSET_OPTIONS[0].value, amount: 1, rewardAmountCap: 1 },
+        ],
+      },
+      polls: [
+        {
+          title: "",
+          description: "",
+          resourceAssets: [],
+          options: [{ text: "" }, { text: "" }],
+        },
+      ],
+    }),
+    []
+  );
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues,
+    mode: "onChange",
+  });
+
+  const { control, handleSubmit, watch } = form;
+
+  const trialAssetsArray = useFieldArray({
+    control,
+    name: "trial.resourceAssets",
+  });
+  const trialRewardsArray = useFieldArray({
+    control,
+    name: "trial.rewards" as const,
+  });
+  const pollsArray = useFieldArray({ control, name: "polls" });
+
+  const { mutate, isPending } = useApiMutation<any, any>({
+    route: endpoints.entities.trials.create,
+    method: "POST",
+    onSuccess: () => {
+      appToast.success("Trial created");
+      queryClient.invalidateQueries({
+        queryKey: [endpoints.entities.trials.all],
+      });
+      navigate("/trials");
+    },
+  });
+
+  const onSubmit = async (v: FormValues) => {
+    // helper: normalize images/youtube (accepts undefined)
+    const normalizeAssets = (
+      arr?: { type: "image" | "youtube"; value: string }[]
+    ) =>
+      (arr ?? []).map((a) => ({
+        type: a.type,
+        value:
+          a.type === "youtube"
+            ? extractYouTubeId(a.value.trim())
+            : a.value.trim(),
+      }));
+
+    const payload = {
+      trial: {
+        title: v.trial.title,
+        description: v.trial.description,
+        resourceAssets: normalizeAssets(v.trial.resourceAssets),
+        ...(Array.isArray(v.trial.rewards) && v.trial.rewards.length > 0
+          ? {
+              rewards: v.trial.rewards.map((r) => ({
+                assetId: r.assetId,
+                amount: r.amount,
+                rewardAmountCap: r.rewardAmountCap,
+              })),
+            }
+          : {}),
+        // no expireRewardAt per your instruction
+      },
+      polls: v.polls.map((p) => ({
+        title: p.title,
+        description: p.description,
+        resourceAssets: normalizeAssets(p.resourceAssets),
+        options: p.options.map((o) => ({ text: o.text.trim() })), // server fills archivedAt/null & ids
+      })),
+    };
+
+    await mutate(payload as any);
+  };
+
+  return (
+    <div className="p-4 space-y-6 max-w-5xl">
+      <h1 className="text-2xl font-bold">Create Trial</h1>
+
+      {/* TRIAL */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Trial</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <Form {...form}>
+            {/* Title */}
+            <FormField
+              control={control}
+              name="trial.title"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Title</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Trial title" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Description */}
+            <FormField
+              control={control}
+              name="trial.description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Short description" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Trial Assets */}
+            <div className="space-y-2">
+              <FormLabel>Media (Images / YouTube) – optional</FormLabel>
+              {trialAssetsArray.fields.map((f, idx) => {
+                const typeName = `trial.resourceAssets.${idx}.type` as const;
+                const valueName = `trial.resourceAssets.${idx}.value` as const;
+                const t = watch(typeName);
+                return (
+                  <div key={f.id} className="grid grid-cols-12 gap-2 items-end">
+                    <div className="col-span-4">
+                      <FormField
+                        control={control}
+                        name={typeName}
+                        render={({ field }) => (
+                          <FormItem>
+                            <label className="text-xs">Type</label>
+                            <FormControl>
+                              <select
+                                className="w-full h-9 border rounded-md px-2 bg-transparent"
+                                {...field}
+                              >
+                                <option value="image">IMAGE</option>
+                                <option value="youtube">YOUTUBE</option>
+                              </select>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="col-span-7">
+                      <FormField
+                        control={control}
+                        name={valueName}
+                        render={({ field }) => (
+                          <FormItem>
+                            <label className="text-xs">
+                              {t === "youtube"
+                                ? "YouTube URL or ID"
+                                : "Image URL"}
+                            </label>
+                            <FormControl>
+                              <Input
+                                placeholder={
+                                  t === "youtube"
+                                    ? "https://youtube.com/watch?v=… or 11-char ID"
+                                    : "https://example.com/pic.jpg"
+                                }
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="col-span-1">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => trialAssetsArray.remove(idx)}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() =>
+                    trialAssetsArray.append({ type: "image", value: "" })
+                  }
+                >
+                  + Image
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() =>
+                    trialAssetsArray.append({ type: "youtube", value: "" })
+                  }
+                >
+                  + YouTube
+                </Button>
+              </div>
+            </div>
+
+            {/* Rewards (optional) */}
+            <div className="space-y-2">
+              <FormLabel>Rewards (optional)</FormLabel>
+              {trialRewardsArray.fields.map((f, rIdx) => (
+                <div key={f.id} className="grid grid-cols-12 gap-2 items-end">
+                  <div className="col-span-4">
+                    <FormField
+                      control={control}
+                      name={`trial.rewards.${rIdx}.assetId` as const}
+                      render={({ field }) => (
+                        <FormItem>
+                          <label className="text-xs">Asset</label>
+                          <FormControl>
+                            <select
+                              className="w-full h-9 border rounded-md px-2 bg-transparent"
+                              {...field}
+                            >
+                              {ASSET_OPTIONS.map((o) => (
+                                <option
+                                  key={o.value}
+                                  value={o.value}
+                                  className="bg-gray-900"
+                                >
+                                  {o.label}
+                                </option>
+                              ))}
+                            </select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="col-span-3">
+                    <FormField
+                      control={control}
+                      name={`trial.rewards.${rIdx}.amount` as const}
+                      render={({ field }) => (
+                        <FormItem>
+                          <label className="text-xs">Amount</label>
+                          <FormControl>
+                            <Input type="number" min={1} step={1} {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="col-span-3">
+                    <FormField
+                      control={control}
+                      name={`trial.rewards.${rIdx}.rewardAmountCap` as const}
+                      render={({ field }) => (
+                        <FormItem>
+                          <label className="text-xs">Reward Cap</label>
+                          <FormControl>
+                            <Input type="number" min={1} step={1} {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="col-span-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => trialRewardsArray.remove(rIdx)}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                </div>
+              ))}
+
+              <div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() =>
+                    trialRewardsArray.append({
+                      assetId: ASSET_OPTIONS[0].value,
+                      amount: 1,
+                      rewardAmountCap: 1,
+                    })
+                  }
+                >
+                  + Reward
+                </Button>
+              </div>
+            </div>
+          </Form>
+        </CardContent>
+      </Card>
+
+      {/* POLLS */}
+      <Card>
+        <CardHeader className="flex items-center justify-between">
+          <CardTitle>Polls</CardTitle>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() =>
+              pollsArray.append({
+                title: "",
+                description: "",
+                resourceAssets: [],
+                options: [{ text: "" }, { text: "" }],
+              })
+            }
+          >
+            + Add Poll
+          </Button>
+        </CardHeader>
+
+        <CardContent className="space-y-8">
+          <Form {...form}>
+            {pollsArray.fields.map((pf, pIdx) => (
+              <PollCard
+                key={pf.id}
+                control={control}
+                watch={watch}
+                index={pIdx}
+                onRemove={() => pollsArray.remove(pIdx)}
+                disableRemove={pollsArray.fields.length <= 1}
+              />
+            ))}
+          </Form>
+        </CardContent>
+      </Card>
+
+      <div className="flex justify-end gap-2">
+        <Button onClick={handleSubmit(onSubmit)} disabled={isPending}>
+          Create Trial
+        </Button>
+      </div>
     </div>
   );
 }
@@ -5852,6 +7292,737 @@ export default function Trials() {
 }
 
 
+src\pages\trials\[id]\index.tsx
+-------------------------------
+import { useMemo, useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { z } from "zod";
+import { useForm, useFieldArray } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+import { endpoints } from "@/api/endpoints";
+import { useApiQuery } from "@/hooks/useApiQuery";
+import { useApiMutation } from "@/hooks/useApiMutation";
+import { queryClient } from "@/api/queryClient";
+import { appToast } from "@/utils/toast";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { fmt } from "@/components/paginated-table";
+import TrialPollTable from "@/components/table-trial-poll";
+
+import { Pencil, Trash2 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { CustomModal } from "@/components/modals/custom-modal";
+
+type ResourceAsset = { type: "image" | "youtube" | string; value: string };
+type TrialReward = {
+  assetId: string;
+  amount: number;
+  rewardAmountCap?: number;
+};
+type Trial = {
+  _id: string;
+  title: string;
+  description?: string;
+  resourceAssets?: ResourceAsset[];
+  rewards?: TrialReward[];
+  createdAt?: string;
+  archivedAt?: string | null;
+};
+
+function asYouTubeUrl(v: string) {
+  try {
+    const u = new URL(v);
+    return u.toString();
+  } catch {
+    return `https://youtu.be/${v}`;
+  }
+}
+function extractYouTubeId(input: string) {
+  const idLike = /^[\w-]{11}$/;
+  try {
+    if (idLike.test(input)) return input;
+    const u = new URL(input);
+    if (u.hostname.includes("youtu.be")) {
+      const id = u.pathname.replace("/", "");
+      return idLike.test(id) ? id : input;
+    }
+    if (u.hostname.includes("youtube.com")) {
+      const id = u.searchParams.get("v") || "";
+      return idLike.test(id) ? id : input;
+    }
+  } catch {}
+  return input;
+}
+function patchShowCache(showKey: string, updater: (curr: any) => any) {
+  const prev = queryClient.getQueryData<any>([showKey]);
+  if (!prev) return;
+  const lvl1 = prev?.data ?? {};
+  const curr = lvl1?.data && typeof lvl1.data === "object" ? lvl1.data : lvl1;
+  const nextCurr = updater(curr);
+  const next = lvl1?.data
+    ? { ...prev, data: { ...lvl1, data: nextCurr } }
+    : { ...prev, data: nextCurr };
+  queryClient.setQueryData([showKey], next);
+}
+
+/* ---------- edit form schema ---------- */
+const assetZ = z.object({
+  type: z.enum(["image", "youtube"]),
+  value: z.string().min(1, "Required"),
+});
+const rewardZ = z
+  .object({
+    assetId: z.enum(["xOcta", "xMYST", "xDrop"]),
+    amount: z.coerce.number().int().min(1, "Min 1"),
+    rewardAmountCap: z.coerce.number().int().min(1, "Min 1"),
+  })
+  .refine((r) => r.rewardAmountCap >= r.amount, {
+    path: ["rewardAmountCap"],
+    message: "Cap must be ≥ amount",
+  });
+
+const editSchema = z.object({
+  title: z.string().min(3, "Min 3 chars").trim(),
+  description: z.string().min(3, "Min 3 chars").trim(),
+  resourceAssets: z.array(assetZ).default([]),
+  rewards: z.array(rewardZ).default([]),
+});
+type EditValues = z.infer<typeof editSchema>;
+
+const ASSET_OPTIONS = [
+  { label: "OCTA", value: "xOcta" },
+  { label: "MYST", value: "xMYST" },
+  { label: "DROP", value: "xDrop" },
+] as const;
+
+/* ---------- page ---------- */
+export default function TrialShowPage() {
+  const navigate = useNavigate();
+  const { id = "" } = useParams<{ id: string }>();
+
+  const showRoute = endpoints.entities.trials.getById(id);
+  const { data, isLoading, isError } = useApiQuery(showRoute);
+
+  const trial: Trial | null = useMemo(() => {
+    return data?.data?.data ?? data?.data ?? null;
+  }, [data]);
+
+  // edit toggle
+  const [isEditing, setIsEditing] = useState(false);
+
+  // RHF lives at top-level (no conditional hooks)
+  const form = useForm<EditValues>({
+    resolver: zodResolver(editSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      resourceAssets: [],
+      rewards: [],
+    },
+    mode: "onChange",
+  });
+  const { control, handleSubmit, watch, reset } = form;
+
+  // arrays for assets/rewards
+  const assetArray = useFieldArray({ control, name: "resourceAssets" });
+  const rewardsArray = useFieldArray({ control, name: "rewards" });
+
+  // hydrate form when trial loads
+  useEffect(() => {
+    if (!trial) return;
+    reset({
+      title: trial.title ?? "",
+      description: trial.description ?? "",
+      resourceAssets: (trial.resourceAssets ?? []).map((a) => ({
+        type: (a.type as "image" | "youtube") ?? "image",
+        value: String(a.value ?? ""),
+      })),
+      rewards: (trial.rewards ?? []).map((r) => ({
+        assetId: (r.assetId as "xOcta" | "xMYST" | "xDrop") ?? "xOcta",
+        amount: Number(r.amount ?? 1),
+        rewardAmountCap: Number(r.rewardAmountCap ?? r.amount ?? 1),
+      })),
+    });
+  }, [trial, reset]);
+
+  const { mutate: saveEdit, isPending: isSaving } = useApiMutation<any, any>({
+    route: endpoints.entities.trials.update, // PUT /trial
+    method: "PUT",
+    onSuccess: (_resp, vars) => {
+      appToast.success("Trial updated");
+      setIsEditing(false);
+
+      // optimistic patch with submitted values
+      const v = vars as any;
+      patchShowCache(showRoute, (curr) => ({
+        ...curr,
+        title: v.title ?? curr.title,
+        description: v.description ?? curr.description,
+        resourceAssets: v.resourceAssets ?? curr.resourceAssets,
+        rewards: v.rewards ?? curr.rewards,
+      }));
+
+      queryClient.invalidateQueries({ queryKey: [showRoute] });
+      queryClient.invalidateQueries({
+        queryKey: [endpoints.entities.trials.all],
+      });
+    },
+  });
+
+  const onSubmitEdit = handleSubmit((v) => {
+    if (!trial) return;
+
+    // normalize youtube ids
+    const normAssets = (v.resourceAssets ?? []).map((a) => ({
+      type: a.type,
+      value:
+        a.type === "youtube"
+          ? extractYouTubeId(a.value.trim())
+          : a.value.trim(),
+    }));
+
+    const payload: any = {
+      trialId: id,
+      title: v.title,
+      description: v.description,
+      resourceAssets: normAssets,
+    };
+    if (Array.isArray(v.rewards)) {
+      payload.rewards = v.rewards.map((r) => ({
+        assetId: r.assetId,
+        amount: r.amount,
+        rewardAmountCap: r.rewardAmountCap,
+      }));
+    }
+
+    saveEdit(payload);
+  });
+
+  // delete
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const { mutate: doDelete, isPending: isDeleting } = useApiMutation<any, any>({
+    route: endpoints.entities.trials.delete, // DELETE /trial
+    method: "DELETE",
+    onSuccess: () => {
+      appToast.success("Trial deleted");
+      queryClient.invalidateQueries({
+        queryKey: [endpoints.entities.trials.all],
+      });
+      navigate("/trials");
+    },
+  });
+
+  if (!id) {
+    return (
+      <div className="p-4">
+        <p className="mb-4 text-sm text-muted-foreground">
+          Missing trial id in the route.
+        </p>
+        <Button onClick={() => navigate("/trials")}>Back to Trials</Button>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="p-4">
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      </div>
+    );
+  }
+
+  if (isError || !trial) {
+    return (
+      <div className="p-4">
+        <p className="mb-4 text-sm text-destructive">
+          Failed to load this trial.
+        </p>
+        <Button variant="outline" onClick={() => navigate("/trials")}>
+          Back to Trials
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 space-y-6 max-w-5xl">
+      <div className="pt-2">
+        <Button variant="outline" onClick={() => navigate("/trials")}>
+          Back to Trials
+        </Button>
+      </div>
+
+      {/* ===== TRIAL CARD ===== */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Trial</CardTitle>
+
+          {!isEditing && (
+            <TooltipProvider delayDuration={0}>
+              <div className="flex items-center gap-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      className="rounded-md p-1 hover:bg-foreground/10"
+                      onClick={() => setIsEditing(true)}
+                      aria-label="Edit trial"
+                      title="Edit"
+                    >
+                      <Pencil className="w-5 h-5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Edit</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      className="rounded-md p-1 hover:bg-foreground/10"
+                      onClick={() => setIsDeleteOpen(true)}
+                      aria-label="Delete trial"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-5 h-5 text-red-600" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Delete</TooltipContent>
+                </Tooltip>
+              </div>
+            </TooltipProvider>
+          )}
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          {isEditing ? (
+            <Form {...form}>
+              <form className="space-y-6" onSubmit={onSubmitEdit}>
+                {/* Title */}
+                <FormField
+                  control={control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Title</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Trial title" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Description */}
+                <FormField
+                  control={control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Short description" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Resource Assets */}
+                <div className="space-y-2">
+                  <FormLabel>Media (Images / YouTube) – optional</FormLabel>
+                  {assetArray.fields.map((f, idx) => {
+                    const typeName = `resourceAssets.${idx}.type` as const;
+                    const valueName = `resourceAssets.${idx}.value` as const;
+                    const t = watch(typeName);
+                    return (
+                      <div
+                        key={f.id}
+                        className="grid grid-cols-12 gap-2 items-end"
+                      >
+                        <div className="col-span-4">
+                          <FormField
+                            control={control}
+                            name={typeName}
+                            render={({ field }) => (
+                              <FormItem>
+                                <label className="text-xs">Type</label>
+                                <FormControl>
+                                  <select
+                                    className="w-full h-9 border rounded-md px-2 bg-transparent"
+                                    {...field}
+                                  >
+                                    <option value="image">IMAGE</option>
+                                    <option value="youtube">YOUTUBE</option>
+                                  </select>
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        <div className="col-span-7">
+                          <FormField
+                            control={control}
+                            name={valueName}
+                            render={({ field }) => (
+                              <FormItem>
+                                <label className="text-xs">
+                                  {t === "youtube"
+                                    ? "YouTube URL or ID"
+                                    : "Image URL"}
+                                </label>
+                                <FormControl>
+                                  <Input
+                                    placeholder={
+                                      t === "youtube"
+                                        ? "https://youtube.com/watch?v=… or 11-char ID"
+                                        : "https://example.com/pic.jpg"
+                                    }
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        <div className="col-span-1">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => assetArray.remove(idx)}
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() =>
+                        assetArray.append({ type: "image", value: "" })
+                      }
+                    >
+                      + Image
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() =>
+                        assetArray.append({ type: "youtube", value: "" })
+                      }
+                    >
+                      + YouTube
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Rewards */}
+                <div className="space-y-2">
+                  <FormLabel>Rewards (optional)</FormLabel>
+                  {rewardsArray.fields.map((f, rIdx) => (
+                    <div
+                      key={f.id}
+                      className="grid grid-cols-12 gap-2 items-end"
+                    >
+                      <div className="col-span-4">
+                        <FormField
+                          control={control}
+                          name={`rewards.${rIdx}.assetId`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <label className="text-xs">Asset</label>
+                              <FormControl>
+                                <select
+                                  className="w-full h-9 border rounded-md px-2 bg-transparent"
+                                  {...field}
+                                >
+                                  {ASSET_OPTIONS.map((o) => (
+                                    <option
+                                      key={o.value}
+                                      value={o.value}
+                                      className="bg-gray-900"
+                                    >
+                                      {o.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <div className="col-span-3">
+                        <FormField
+                          control={control}
+                          name={`rewards.${rIdx}.amount`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <label className="text-xs">Amount</label>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  step={1}
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <div className="col-span-3">
+                        <FormField
+                          control={control}
+                          name={`rewards.${rIdx}.rewardAmountCap`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <label className="text-xs">Reward Cap</label>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  step={1}
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => rewardsArray.remove(rIdx)}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  <div>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() =>
+                        rewardsArray.append({
+                          assetId: ASSET_OPTIONS[0].value,
+                          amount: 1,
+                          rewardAmountCap: 1,
+                        })
+                      }
+                    >
+                      + Reward
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      // reset to current server values and exit edit
+                      reset({
+                        title: trial.title ?? "",
+                        description: trial.description ?? "",
+                        resourceAssets:
+                          (trial.resourceAssets ?? []).map((a) => ({
+                            type: (a.type as "image" | "youtube") ?? "image",
+                            value: String(a.value ?? ""),
+                          })) ?? [],
+                        rewards:
+                          (trial.rewards ?? []).map((r) => ({
+                            assetId:
+                              (r.assetId as "xOcta" | "xMYST" | "xDrop") ??
+                              "xOcta",
+                            amount: Number(r.amount ?? 1),
+                            rewardAmountCap: Number(
+                              r.rewardAmountCap ?? r.amount ?? 1
+                            ),
+                          })) ?? [],
+                      });
+                      setIsEditing(false);
+                    }}
+                    disabled={isSaving}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={isSaving}>
+                    {isSaving ? "Saving…" : "Save"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          ) : (
+            <>
+              {/* read view */}
+              <div>
+                <div className="text-xs text-muted-foreground">ID</div>
+                <div className="font-mono break-all">{trial._id}</div>
+              </div>
+
+              <div>
+                <div className="text-xs text-muted-foreground">Title</div>
+                <div className="font-medium">{trial.title}</div>
+              </div>
+
+              <div>
+                <div className="text-xs text-muted-foreground">Description</div>
+                <div>{trial.description || "-"}</div>
+              </div>
+
+              <div>
+                <div className="text-xs text-muted-foreground">
+                  Resource Assets
+                </div>
+                {Array.isArray(trial.resourceAssets) &&
+                trial.resourceAssets.length > 0 ? (
+                  <ul className="list-disc pl-5 space-y-1">
+                    {trial.resourceAssets.map((ra, i) => (
+                      <li key={`${ra.type}-${i}`} className="break-all">
+                        <span className="text-xs mr-2 px-1.5 py-0.5 rounded bg-muted">
+                          {String(ra.type).toUpperCase()}
+                        </span>
+                        {ra.type === "youtube" ? (
+                          <a
+                            className="underline hover:no-underline"
+                            href={asYouTubeUrl(ra.value)}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {asYouTubeUrl(ra.value)}
+                          </a>
+                        ) : (
+                          <a
+                            className="underline hover:no-underline"
+                            href={ra.value}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {ra.value}
+                          </a>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div>-</div>
+                )}
+              </div>
+
+              <div>
+                <div className="text-xs text-muted-foreground">Rewards</div>
+                {Array.isArray(trial.rewards) && trial.rewards.length > 0 ? (
+                  <div className="overflow-x-auto rounded border">
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-muted/50">
+                        <tr>
+                          <th className="text-left px-3 py-2 font-medium">
+                            Asset
+                          </th>
+                          <th className="text-left px-3 py-2 font-medium">
+                            Amount
+                          </th>
+                          <th className="text-left px-3 py-2 font-medium">
+                            Reward Cap
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {trial.rewards.map((r, idx) => (
+                          <tr key={`${r.assetId}-${idx}`} className="border-t">
+                            <td className="px-3 py-2">{r.assetId}</td>
+                            <td className="px-3 py-2">{r.amount}</td>
+                            <td className="px-3 py-2">
+                              {r.rewardAmountCap ?? "-"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div>-</div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-xs text-muted-foreground">
+                    Created At
+                  </div>
+                  <div>{fmt(trial.createdAt)}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">
+                    Archived At
+                  </div>
+                  <div>{fmt(trial.archivedAt)}</div>
+                </div>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Polls in this trial */}
+      <TrialPollTable trialId={id} />
+
+      {/* Delete modal */}
+      {isDeleteOpen && (
+        <CustomModal
+          isOpen
+          onClose={() => setIsDeleteOpen(false)}
+          title="Delete Trial"
+          onSubmit={() => {}}
+          footer={<></>}
+        >
+          <p className="mb-4">Are you sure you want to delete this trial?</p>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteOpen(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => doDelete({ ids: [id] })}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting…" : "Delete"}
+            </Button>
+          </div>
+        </CustomModal>
+      )}
+    </div>
+  );
+}
+
+
 src\pages\[...any].tsx
 ----------------------
 import { Axe } from "lucide-react";
@@ -5868,6 +8039,57 @@ export function NotFound() {
 export default function NOTFOUNDROUTE() {
   return <NotFound />;
 }
+
+
+src\stores\poll_view.store.ts
+-----------------------------
+import { create } from "zustand";
+
+type AddOptionValue = {
+  pollId: string;
+} | null;
+
+type EditOptionValue = {
+  pollId: string;
+  optionId: string;
+  oldText: string;
+} | null;
+
+type ArchiveToggleOptionValue = {
+  pollId: string;
+  optionId: string;
+  shouldArchive: boolean;
+} | null;
+
+type PollViewStore = {
+  isAddOption: AddOptionValue;
+  setIsAddOption: (isAddOption: AddOptionValue) => void;
+
+  isEditOption: EditOptionValue;
+  setIsEditOption: (isEditOption: EditOptionValue) => void;
+
+  isArchiveToggleOption: ArchiveToggleOptionValue;
+  setIsArchiveToggleOption: (
+    isArchiveToggleOption: ArchiveToggleOptionValue
+  ) => void;
+
+  onClose: () => void;
+};
+
+export const usePollViewStore = create<PollViewStore>((set) => ({
+  isAddOption: null,
+  setIsAddOption: (isAddOption: AddOptionValue) => set({ isAddOption }),
+
+  isEditOption: null,
+  setIsEditOption: (isEditOption: EditOptionValue) => set({ isEditOption }),
+
+  isArchiveToggleOption: null,
+  setIsArchiveToggleOption: (isArchiveToggleOption: ArchiveToggleOptionValue) =>
+    set({ isArchiveToggleOption }),
+
+  onClose: () =>
+    set({ isAddOption: null, isEditOption: null, isArchiveToggleOption: null }),
+}));
 
 
 src\stores\table_polls.store.ts

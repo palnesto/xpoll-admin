@@ -29,7 +29,7 @@ export function CitySelect({
 }: Props) {
   return (
     <InfiniteSelect<CityItem>
-      route="/location/cities"
+      route="/common/location/cities"
       pageSize={pageSize}
       getFilters={(search) => ({ q: search })}
       mapItemToOption={(item) => ({

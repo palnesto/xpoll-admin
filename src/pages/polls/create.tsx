@@ -17,6 +17,10 @@ import { queryClient } from "@/api/queryClient";
 import { appToast } from "@/utils/toast";
 import { useNavigate } from "react-router-dom";
 import { useMemo } from "react";
+import { CitySelect } from "@/components/commons/selects/city-select";
+import { X } from "lucide-react";
+import StateSelect from "@/components/commons/selects/state-select";
+import CountrySelect from "@/components/commons/selects/country-select";
 
 const ASSET_OPTIONS = [
   { label: "OCTA", value: "xOcta" },
@@ -48,6 +52,11 @@ const formSchema = z.object({
       path: ["rewardAmountCap"],
       message: "rewardAmountCap must be >= amount",
     }),
+  targetGeo: z.object({
+    countries: z.array(z.string()).default([]),
+    states: z.array(z.string()).default([]),
+    cities: z.array(z.string()).default([]),
+  }),
   resourceAssets: z.array(resourceAssetZ).default([]),
 });
 
@@ -79,6 +88,11 @@ export default function PollCreatePage() {
       description: "",
       options: [{ text: "" }, { text: "" }],
       reward: { assetId: ASSET_OPTIONS[0].value, amount: 1 },
+      targetGeo: {
+        countries: [],
+        states: [],
+        cities: [],
+      },
       resourceAssets: [],
     }),
     []
@@ -131,6 +145,11 @@ export default function PollCreatePage() {
           currentDistribution: 0,
         },
       ],
+      targetGeo: {
+        countries: v.targetGeo.countries,
+        states: v.targetGeo.states,
+        cities: v.targetGeo.cities,
+      },
       expireRewardAt: null,
     };
     mutate(payload as any);
@@ -375,6 +394,107 @@ export default function PollCreatePage() {
             </div>
           </div>
 
+          <div className="space-y-2">
+            <FormLabel>Target Geo</FormLabel>
+
+            {/* Countries */}
+            <CountrySelect
+              placeholder="Select country"
+              onChange={(opt) => {
+                if (opt?.value) {
+                  form.setValue("targetGeo.countries", [
+                    ...form.getValues("targetGeo.countries"),
+                    opt.value,
+                  ]);
+                }
+              }}
+            />
+            <div className="flex flex-wrap gap-2 mt-2">
+              {watch("targetGeo.countries").map((c, i) => (
+                <span
+                  key={`country-${i}`}
+                  className="flex items-center gap-1 px-2 py-1 border rounded text-sm"
+                >
+                  {c}
+                  <X
+                    className="w-4 h-4 cursor-pointer"
+                    onClick={() =>
+                      form.setValue(
+                        "targetGeo.countries",
+                        watch("targetGeo.countries").filter(
+                          (_, idx) => idx !== i
+                        )
+                      )
+                    }
+                  />
+                </span>
+              ))}
+            </div>
+
+            {/* States */}
+            <StateSelect
+              placeholder="Select state"
+              onChange={(opt) => {
+                if (opt?.value) {
+                  form.setValue("targetGeo.states", [
+                    ...form.getValues("targetGeo.states"),
+                    opt.value,
+                  ]);
+                }
+              }}
+            />
+            <div className="flex flex-wrap gap-2 mt-2">
+              {watch("targetGeo.states").map((s, i) => (
+                <span
+                  key={`state-${i}`}
+                  className="flex items-center gap-1 px-2 py-1 border rounded text-sm"
+                >
+                  {s}
+                  <X
+                    className="w-4 h-4 cursor-pointer"
+                    onClick={() =>
+                      form.setValue(
+                        "targetGeo.states",
+                        watch("targetGeo.states").filter((_, idx) => idx !== i)
+                      )
+                    }
+                  />
+                </span>
+              ))}
+            </div>
+
+            {/* Cities */}
+            <CitySelect
+              placeholder="Select city"
+              onChange={(opt) => {
+                if (opt?.value) {
+                  form.setValue("targetGeo.cities", [
+                    ...form.getValues("targetGeo.cities"),
+                    opt.value,
+                  ]);
+                }
+              }}
+            />
+            <div className="flex flex-wrap gap-2 mt-2">
+              {watch("targetGeo.cities").map((city, i) => (
+                <span
+                  key={`city-${i}`}
+                  className="flex items-center gap-1 px-2 py-1 border rounded text-sm"
+                >
+                  {city}
+                  <X
+                    className="w-4 h-4 cursor-pointer"
+                    onClick={() =>
+                      form.setValue(
+                        "targetGeo.cities",
+                        watch("targetGeo.cities").filter((_, idx) => idx !== i)
+                      )
+                    }
+                  />
+                </span>
+              ))}
+            </div>
+          </div>
           <div className="flex justify-end gap-2">
             <Button type="submit" disabled={isPending}>
               Create

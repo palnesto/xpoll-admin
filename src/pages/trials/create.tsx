@@ -1,8 +1,6 @@
-// src/pages/trials/create.tsx
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { z } from "zod";
-import { useForm, useFieldArray, Control, UseFormWatch } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { endpoints } from "@/api/endpoints";
@@ -23,266 +21,17 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { extractYouTubeId } from "../polls/create";
 
-/* -------------------- Schema -------------------- */
-
-const ASSET_OPTIONS = [
-  { label: "OCTA", value: "xOcta" },
-  { label: "MYST", value: "xMYST" },
-  { label: "DROP", value: "xDrop" },
-] as const;
-
-const resourceAssetZ = z.object({
-  type: z.enum(["image", "youtube"]),
-  value: z.string().min(1, "Required"),
-});
-
-const optionZ = z.object({
-  text: z.string().min(3, "Min 3 chars").trim(),
-});
-
-const rewardZ = z
-  .object({
-    assetId: z.enum(["xOcta", "xMYST", "xDrop"]),
-    amount: z.coerce.number().int().min(1, "Min 1"),
-    rewardAmountCap: z.coerce.number().int().min(1, "Min 1"),
-  })
-  .refine((r) => r.rewardAmountCap >= r.amount, {
-    path: ["rewardAmountCap"],
-    message: "Cap must be >= amount",
-  });
-
-const pollCreateZ = z.object({
-  title: z.string().min(3, "Min 3 chars").trim(),
-  description: z.string().min(3, "Min 3 chars").trim(),
-  resourceAssets: z.array(resourceAssetZ).default([]),
-  options: z
-    .array(optionZ)
-    .min(2, "Need 2–4 options")
-    .max(4, "Need 2–4 options"),
-});
-
-const formSchema = z.object({
-  trial: z.object({
-    title: z.string().min(3, "Min 3 chars").trim(),
-    description: z.string().min(3, "Min 3 chars").trim(),
-    resourceAssets: z.array(resourceAssetZ).default([]),
-    rewards: z.array(rewardZ).optional(),
-  }),
-  polls: z.array(pollCreateZ).min(1, "Add at least 1 poll"),
-});
-
-type FormValues = z.infer<typeof formSchema>;
-
-/* -------------------- Child component (per poll) -------------------- */
-
-function PollCard({
-  control,
-  watch,
-  index,
-  onRemove,
-  disableRemove,
-}: {
-  control: Control<FormValues>;
-  watch: UseFormWatch<FormValues>;
-  index: number;
-  onRemove: () => void;
-  disableRemove: boolean;
-}) {
-  // These hooks live inside the child => stable per mounted child
-  const pollAssetsArray = useFieldArray({
-    control,
-    name: `polls.${index}.resourceAssets` as const,
-  });
-  const pollOptionsArray = useFieldArray({
-    control,
-    name: `polls.${index}.options` as const,
-  });
-
-  const optionsLen = watch(`polls.${index}.options`)?.length ?? 0;
-
-  return (
-    <div className="border rounded-lg p-4 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="text-sm font-medium">Poll #{index + 1}</div>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onRemove}
-          disabled={disableRemove}
-        >
-          Remove Poll
-        </Button>
-      </div>
-
-      {/* Title */}
-      <FormField
-        control={control}
-        name={`polls.${index}.title` as const}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Title</FormLabel>
-            <FormControl>
-              <Input placeholder="Poll title" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      {/* Description */}
-      <FormField
-        control={control}
-        name={`polls.${index}.description` as const}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Description</FormLabel>
-            <FormControl>
-              <Input placeholder="Short description" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      {/* Assets */}
-      <div className="space-y-2">
-        <FormLabel>Media (Images / YouTube) – optional</FormLabel>
-        {pollAssetsArray.fields.map((f, aIdx) => {
-          const typeName =
-            `polls.${index}.resourceAssets.${aIdx}.type` as const;
-          const valueName =
-            `polls.${index}.resourceAssets.${aIdx}.value` as const;
-          const t = watch(typeName);
-
-          return (
-            <div key={f.id} className="grid grid-cols-12 gap-2 items-end">
-              <div className="col-span-4">
-                <FormField
-                  control={control}
-                  name={typeName}
-                  render={({ field }) => (
-                    <FormItem>
-                      <label className="text-xs">Type</label>
-                      <FormControl>
-                        <select
-                          className="w-full h-9 border rounded-md px-2 bg-transparent"
-                          {...field}
-                        >
-                          <option value="image">IMAGE</option>
-                          <option value="youtube">YOUTUBE</option>
-                        </select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="col-span-7">
-                <FormField
-                  control={control}
-                  name={valueName}
-                  render={({ field }) => (
-                    <FormItem>
-                      <label className="text-xs">
-                        {t === "youtube" ? "YouTube URL or ID" : "Image URL"}
-                      </label>
-                      <FormControl>
-                        <Input
-                          placeholder={
-                            t === "youtube"
-                              ? "https://youtube.com/watch?v=… or 11-char ID"
-                              : "https://example.com/pic.jpg"
-                          }
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="col-span-1">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => pollAssetsArray.remove(aIdx)}
-                >
-                  Remove
-                </Button>
-              </div>
-            </div>
-          );
-        })}
-
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => pollAssetsArray.append({ type: "image", value: "" })}
-          >
-            + Image
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() =>
-              pollAssetsArray.append({ type: "youtube", value: "" })
-            }
-          >
-            + YouTube
-          </Button>
-        </div>
-      </div>
-
-      {/* Options */}
-      <div className="space-y-2">
-        <FormLabel>Options (2–4)</FormLabel>
-        {pollOptionsArray.fields.map((f, oIdx) => (
-          <div key={f.id} className="flex gap-2 items-end">
-            <FormField
-              control={control}
-              name={`polls.${index}.options.${oIdx}.text` as const}
-              render={({ field }) => (
-                <FormItem className="flex-1">
-                  <FormControl>
-                    <Input placeholder={`Option #${oIdx + 1}`} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => pollOptionsArray.remove(oIdx)}
-              disabled={pollOptionsArray.fields.length <= 2}
-            >
-              Remove
-            </Button>
-          </div>
-        ))}
-
-        <div className="flex items-center gap-3">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => pollOptionsArray.append({ text: "" })}
-            disabled={optionsLen >= 4}
-          >
-            Add Option
-          </Button>
-          <span className="text-sm text-destructive">
-            {(false as any) || (formSchema?.shape?.polls && undefined)}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* -------------------- Page -------------------- */
+// NEW: geo selects + chip icon
+import CountrySelect from "@/components/commons/selects/country-select";
+import StateSelect from "@/components/commons/selects/state-select";
+import { CitySelect } from "@/components/commons/selects/city-select";
+import { X } from "lucide-react";
+import {
+  ASSET_OPTIONS,
+  formSchema,
+  FormValues,
+  PollCard,
+} from "@/components/poll-card";
 
 export default function TrialCreatePage() {
   const navigate = useNavigate();
@@ -296,6 +45,12 @@ export default function TrialCreatePage() {
         rewards: [
           { assetId: ASSET_OPTIONS[0].value, amount: 1, rewardAmountCap: 1 },
         ],
+        // NEW: default geo
+        targetGeo: {
+          countries: [],
+          states: [],
+          cities: [],
+        },
       },
       polls: [
         {
@@ -315,7 +70,7 @@ export default function TrialCreatePage() {
     mode: "onChange",
   });
 
-  const { control, handleSubmit, watch } = form;
+  const { control, handleSubmit, watch, setValue, getValues } = form;
 
   const trialAssetsArray = useFieldArray({
     control,
@@ -366,7 +121,12 @@ export default function TrialCreatePage() {
               })),
             }
           : {}),
-        // no expireRewardAt per your instruction
+        // NEW: include targetGeo
+        targetGeo: {
+          countries: v.trial.targetGeo.countries,
+          states: v.trial.targetGeo.states,
+          cities: v.trial.targetGeo.cities,
+        },
       },
       polls: v.polls.map((p) => ({
         title: p.title,
@@ -377,6 +137,20 @@ export default function TrialCreatePage() {
     };
 
     await mutate(payload as any);
+  };
+
+  // small helper: push unique values (no duplicates)
+  const pushUnique = (
+    path:
+      | "trial.targetGeo.countries"
+      | "trial.targetGeo.states"
+      | "trial.targetGeo.cities",
+    val?: string
+  ) => {
+    if (!val) return;
+    const curr = getValues(path) as string[];
+    if (curr.includes(val)) return;
+    setValue(path, [...curr, val], { shouldValidate: true, shouldDirty: true });
   };
 
   return (
@@ -605,6 +379,127 @@ export default function TrialCreatePage() {
                 >
                   + Reward
                 </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <FormLabel>Target Geo</FormLabel>
+
+              {/* Countries */}
+              <CountrySelect
+                placeholder="Select country"
+                onChange={(opt: any) => {
+                  if (opt?.value) {
+                    const current = watch("trial.targetGeo.countries");
+                    if (!current.includes(opt.value)) {
+                      setValue(
+                        "trial.targetGeo.countries",
+                        [...current, opt.value],
+                        { shouldValidate: true, shouldDirty: true }
+                      );
+                    }
+                  }
+                }}
+              />
+              <div className="flex flex-wrap gap-2 mt-2">
+                {watch("trial.targetGeo.countries").map((c, i) => (
+                  <span
+                    key={`country-${i}`}
+                    className="flex items-center gap-1 px-2 py-1 border rounded text-sm"
+                  >
+                    {c}
+                    <X
+                      className="w-4 h-4 cursor-pointer"
+                      onClick={() =>
+                        setValue(
+                          "trial.targetGeo.countries",
+                          watch("trial.targetGeo.countries").filter(
+                            (_, idx) => idx !== i
+                          ),
+                          { shouldValidate: true, shouldDirty: true }
+                        )
+                      }
+                    />
+                  </span>
+                ))}
+              </div>
+
+              {/* States */}
+              <StateSelect
+                placeholder="Select state"
+                onChange={(opt: any) => {
+                  if (opt?.value) {
+                    const current = watch("trial.targetGeo.states");
+                    if (!current.includes(opt.value)) {
+                      setValue(
+                        "trial.targetGeo.states",
+                        [...current, opt.value],
+                        { shouldValidate: true, shouldDirty: true }
+                      );
+                    }
+                  }
+                }}
+              />
+              <div className="flex flex-wrap gap-2 mt-2">
+                {watch("trial.targetGeo.states").map((s, i) => (
+                  <span
+                    key={`state-${i}`}
+                    className="flex items-center gap-1 px-2 py-1 border rounded text-sm"
+                  >
+                    {s}
+                    <X
+                      className="w-4 h-4 cursor-pointer"
+                      onClick={() =>
+                        setValue(
+                          "trial.targetGeo.states",
+                          watch("trial.targetGeo.states").filter(
+                            (_, idx) => idx !== i
+                          ),
+                          { shouldValidate: true, shouldDirty: true }
+                        )
+                      }
+                    />
+                  </span>
+                ))}
+              </div>
+
+              {/* Cities */}
+              <CitySelect
+                placeholder="Select city"
+                onChange={(opt: any) => {
+                  if (opt?.value) {
+                    const current = watch("trial.targetGeo.cities");
+                    if (!current.includes(opt.value)) {
+                      setValue(
+                        "trial.targetGeo.cities",
+                        [...current, opt.value],
+                        { shouldValidate: true, shouldDirty: true }
+                      );
+                    }
+                  }
+                }}
+              />
+              <div className="flex flex-wrap gap-2 mt-2">
+                {watch("trial.targetGeo.cities").map((city, i) => (
+                  <span
+                    key={`city-${i}`}
+                    className="flex items-center gap-1 px-2 py-1 border rounded text-sm"
+                  >
+                    {city}
+                    <X
+                      className="w-4 h-4 cursor-pointer"
+                      onClick={() =>
+                        setValue(
+                          "trial.targetGeo.cities",
+                          watch("trial.targetGeo.cities").filter(
+                            (_, idx) => idx !== i
+                          ),
+                          { shouldValidate: true, shouldDirty: true }
+                        )
+                      }
+                    />
+                  </span>
+                ))}
               </div>
             </div>
           </Form>

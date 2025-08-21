@@ -28,7 +28,7 @@ export default function StateSelect({
 }: Props) {
   return (
     <InfiniteSelect<StateItem>
-      route="/location/states"
+      route="/common/location/states"
       pageSize={pageSize}
       getFilters={(search) => ({ q: search })}
       mapItemToOption={(item) => ({

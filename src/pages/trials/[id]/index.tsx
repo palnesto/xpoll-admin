@@ -3,13 +3,11 @@ import { useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-
 import { endpoints } from "@/api/endpoints";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { queryClient } from "@/api/queryClient";
 import { appToast } from "@/utils/toast";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -23,8 +21,7 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { fmt } from "@/components/paginated-table";
 import TrialPollTable from "@/components/table-trial-poll";
-
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, X } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -32,6 +29,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { CustomModal } from "@/components/modals/custom-modal";
+import CountrySelect from "@/components/commons/selects/country-select";
+import StateSelect from "@/components/commons/selects/state-select";
+import { CitySelect } from "@/components/commons/selects/city-select";
+import { ASSET_OPTIONS } from "@/components/poll-card";
 
 type ResourceAsset = { type: "image" | "youtube" | string; value: string };
 type TrialReward = {
@@ -47,6 +48,11 @@ type Trial = {
   rewards?: TrialReward[];
   createdAt?: string;
   archivedAt?: string | null;
+  targetGeo?: {
+    countries?: string[];
+    states?: string[];
+    cities?: string[];
+  };
 };
 
 function asYouTubeUrl(v: string) {
@@ -85,7 +91,15 @@ function patchShowCache(showKey: string, updater: (curr: any) => any) {
   queryClient.setQueryData([showKey], next);
 }
 
-/* ---------- edit form schema ---------- */
+type LV = { label: string; value: string };
+const arrEqUnordered = (a: string[], b: string[]) => {
+  if (!Array.isArray(a) || !Array.isArray(b)) return false;
+  if (a.length !== b.length) return false;
+  const A = [...a].sort();
+  const B = [...b].sort();
+  return A.every((v, i) => v === B[i]);
+};
+
 const assetZ = z.object({
   type: z.enum(["image", "youtube"]),
   value: z.string().min(1, "Required"),
@@ -106,16 +120,16 @@ const editSchema = z.object({
   description: z.string().min(3, "Min 3 chars").trim(),
   resourceAssets: z.array(assetZ).default([]),
   rewards: z.array(rewardZ).default([]),
+  targetGeo: z
+    .object({
+      countries: z.array(z.string()).default([]),
+      states: z.array(z.string()).default([]),
+      cities: z.array(z.string()).default([]),
+    })
+    .default({ countries: [], states: [], cities: [] }),
 });
 type EditValues = z.infer<typeof editSchema>;
 
-const ASSET_OPTIONS = [
-  { label: "OCTA", value: "xOcta" },
-  { label: "MYST", value: "xMYST" },
-  { label: "DROP", value: "xDrop" },
-] as const;
-
-/* ---------- page ---------- */
 export default function TrialShowPage() {
   const navigate = useNavigate();
   const { id = "" } = useParams<{ id: string }>();
@@ -127,10 +141,8 @@ export default function TrialShowPage() {
     return data?.data?.data ?? data?.data ?? null;
   }, [data]);
 
-  // edit toggle
   const [isEditing, setIsEditing] = useState(false);
 
-  // RHF lives at top-level (no conditional hooks)
   const form = useForm<EditValues>({
     resolver: zodResolver(editSchema),
     defaultValues: {
@@ -138,16 +150,19 @@ export default function TrialShowPage() {
       description: "",
       resourceAssets: [],
       rewards: [],
+      targetGeo: { countries: [], states: [], cities: [] },
     },
     mode: "onChange",
   });
   const { control, handleSubmit, watch, reset } = form;
 
-  // arrays for assets/rewards
   const assetArray = useFieldArray({ control, name: "resourceAssets" });
   const rewardsArray = useFieldArray({ control, name: "rewards" });
 
-  // hydrate form when trial loads
+  const [geoCountries, setGeoCountries] = useState<LV[]>([]);
+  const [geoStates, setGeoStates] = useState<LV[]>([]);
+  const [geoCities, setGeoCities] = useState<LV[]>([]);
+
   useEffect(() => {
     if (!trial) return;
     reset({
@@ -162,24 +177,57 @@ export default function TrialShowPage() {
         amount: Number(r.amount ?? 1),
         rewardAmountCap: Number(r.rewardAmountCap ?? r.amount ?? 1),
       })),
+      targetGeo: {
+        countries: Array.isArray(trial.targetGeo?.countries)
+          ? trial.targetGeo!.countries
+          : [],
+        states: Array.isArray(trial.targetGeo?.states)
+          ? trial.targetGeo!.states
+          : [],
+        cities: Array.isArray(trial.targetGeo?.cities)
+          ? trial.targetGeo!.cities
+          : [],
+      },
     });
+
+    setGeoCountries(
+      Array.isArray(trial.targetGeo?.countries)
+        ? trial.targetGeo!.countries.map((c) => ({ label: c, value: c }))
+        : []
+    );
+    setGeoStates(
+      Array.isArray(trial.targetGeo?.states)
+        ? trial.targetGeo!.states.map((s) => ({ label: s, value: s }))
+        : []
+    );
+    setGeoCities(
+      Array.isArray(trial.targetGeo?.cities)
+        ? trial.targetGeo!.cities.map((c) => ({ label: c, value: c }))
+        : []
+    );
   }, [trial, reset]);
 
   const { mutate: saveEdit, isPending: isSaving } = useApiMutation<any, any>({
-    route: endpoints.entities.trials.update, // PUT /trial
+    route: endpoints.entities.trials.update,
     method: "PUT",
     onSuccess: (_resp, vars) => {
       appToast.success("Trial updated");
       setIsEditing(false);
 
-      // optimistic patch with submitted values
       const v = vars as any;
+      const tgFromState = {
+        countries: geoCountries.map((c) => c.value),
+        states: geoStates.map((s) => s.value),
+        cities: geoCities.map((c) => c.value),
+      };
+
       patchShowCache(showRoute, (curr) => ({
         ...curr,
         title: v.title ?? curr.title,
         description: v.description ?? curr.description,
         resourceAssets: v.resourceAssets ?? curr.resourceAssets,
         rewards: v.rewards ?? curr.rewards,
+        targetGeo: v.targetGeo ?? tgFromState ?? curr.targetGeo,
       }));
 
       queryClient.invalidateQueries({ queryKey: [showRoute] });
@@ -192,7 +240,6 @@ export default function TrialShowPage() {
   const onSubmitEdit = handleSubmit((v) => {
     if (!trial) return;
 
-    // normalize youtube ids
     const normAssets = (v.resourceAssets ?? []).map((a) => ({
       type: a.type,
       value:
@@ -215,13 +262,29 @@ export default function TrialShowPage() {
       }));
     }
 
+    const nextTG = {
+      countries: geoCountries.map((c) => c.value),
+      states: geoStates.map((s) => s.value),
+      cities: geoCities.map((c) => c.value),
+    };
+    const prevTG = {
+      countries: trial.targetGeo?.countries ?? [],
+      states: trial.targetGeo?.states ?? [],
+      cities: trial.targetGeo?.cities ?? [],
+    };
+    const geoChanged =
+      !arrEqUnordered(nextTG.countries, prevTG.countries) ||
+      !arrEqUnordered(nextTG.states, prevTG.states) ||
+      !arrEqUnordered(nextTG.cities, prevTG.cities);
+
+    if (geoChanged) payload.targetGeo = nextTG;
+
     saveEdit(payload);
   });
 
-  // delete
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const { mutate: doDelete, isPending: isDeleting } = useApiMutation<any, any>({
-    route: endpoints.entities.trials.delete, // DELETE /trial
+    route: endpoints.entities.trials.delete,
     method: "DELETE",
     onSuccess: () => {
       appToast.success("Trial deleted");
@@ -272,7 +335,6 @@ export default function TrialShowPage() {
         </Button>
       </div>
 
-      {/* ===== TRIAL CARD ===== */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Trial</CardTitle>
@@ -316,7 +378,6 @@ export default function TrialShowPage() {
           {isEditing ? (
             <Form {...form}>
               <form className="space-y-6" onSubmit={onSubmitEdit}>
-                {/* Title */}
                 <FormField
                   control={control}
                   name="title"
@@ -331,7 +392,6 @@ export default function TrialShowPage() {
                   )}
                 />
 
-                {/* Description */}
                 <FormField
                   control={control}
                   name="description"
@@ -346,7 +406,6 @@ export default function TrialShowPage() {
                   )}
                 />
 
-                {/* Resource Assets */}
                 <div className="space-y-2">
                   <FormLabel>Media (Images / YouTube) – optional</FormLabel>
                   {assetArray.fields.map((f, idx) => {
@@ -436,6 +495,138 @@ export default function TrialShowPage() {
                     >
                       + YouTube
                     </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <FormLabel>Target Geo</FormLabel>
+
+                  <CountrySelect
+                    value={geoCountries}
+                    onChange={(val: any) => {
+                      const newVal = Array.isArray(val)
+                        ? val
+                        : val
+                        ? [val]
+                        : [];
+                      setGeoCountries((prev) => {
+                        const merged = [...prev];
+                        for (const v of newVal) {
+                          if (!merged.some((m) => m.value === v.value)) {
+                            merged.push(v);
+                          }
+                        }
+                        return merged;
+                      });
+                    }}
+                    isMulti
+                    isOptionDisabled={(option: LV) =>
+                      geoCountries.some((c) => c.value === option.value)
+                    }
+                  />
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {geoCountries.map((c) => (
+                      <span
+                        key={c.value}
+                        className="px-2 py-1 rounded bg-muted text-sm flex items-center gap-1 text-white"
+                      >
+                        {c.label}
+                        <X
+                          className="w-3 h-3 cursor-pointer"
+                          onClick={() =>
+                            setGeoCountries((prev) =>
+                              prev.filter((x) => x.value !== c.value)
+                            )
+                          }
+                        />
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* States */}
+                  <StateSelect
+                    value={geoStates}
+                    onChange={(val: any) => {
+                      const newVal = Array.isArray(val)
+                        ? val
+                        : val
+                        ? [val]
+                        : [];
+                      setGeoStates((prev) => {
+                        const merged = [...prev];
+                        for (const v of newVal) {
+                          if (!merged.some((m) => m.value === v.value)) {
+                            merged.push(v);
+                          }
+                        }
+                        return merged;
+                      });
+                    }}
+                    isMulti
+                    isOptionDisabled={(option: LV) =>
+                      geoStates.some((s) => s.value === option.value)
+                    }
+                  />
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {geoStates.map((s) => (
+                      <span
+                        key={s.value}
+                        className="px-2 py-1 rounded bg-muted text-sm flex items-center gap-1 text-white"
+                      >
+                        {s.label}
+                        <X
+                          className="w-3 h-3 cursor-pointer"
+                          onClick={() =>
+                            setGeoStates((prev) =>
+                              prev.filter((x) => x.value !== s.value)
+                            )
+                          }
+                        />
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Cities */}
+                  <CitySelect
+                    value={geoCities}
+                    onChange={(val: any) => {
+                      const newVal = Array.isArray(val)
+                        ? val
+                        : val
+                        ? [val]
+                        : [];
+                      setGeoCities((prev) => {
+                        const merged = [...prev];
+                        for (const v of newVal) {
+                          if (!merged.some((m) => m.value === v.value)) {
+                            merged.push(v);
+                          }
+                        }
+                        return merged;
+                      });
+                    }}
+                    isMulti
+                    isOptionDisabled={(option: LV) =>
+                      geoCities.some((c) => c.value === option.value)
+                    }
+                  />
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {geoCities.map((city) => (
+                      <span
+                        key={city.value}
+                        className="px-2 py-1 rounded bg-muted text-sm flex items-center gap-1 text-white"
+                      >
+                        {city.label}
+                        <X
+                          className="w-3 h-3 cursor-pointer"
+                          onClick={() =>
+                            setGeoCities((prev) =>
+                              prev.filter((x) => x.value !== city.value)
+                            )
+                          }
+                        />
+                      </span>
+                    ))}
                   </div>
                 </div>
 
@@ -548,7 +739,6 @@ export default function TrialShowPage() {
                     type="button"
                     variant="outline"
                     onClick={() => {
-                      // reset to current server values and exit edit
                       reset({
                         title: trial.title ?? "",
                         description: trial.description ?? "",
@@ -567,7 +757,36 @@ export default function TrialShowPage() {
                               r.rewardAmountCap ?? r.amount ?? 1
                             ),
                           })) ?? [],
+                        targetGeo: {
+                          countries: trial.targetGeo?.countries ?? [],
+                          states: trial.targetGeo?.states ?? [],
+                          cities: trial.targetGeo?.cities ?? [],
+                        },
                       });
+                      setGeoCountries(
+                        Array.isArray(trial.targetGeo?.countries)
+                          ? trial.targetGeo!.countries.map((c) => ({
+                              label: c,
+                              value: c,
+                            }))
+                          : []
+                      );
+                      setGeoStates(
+                        Array.isArray(trial.targetGeo?.states)
+                          ? trial.targetGeo!.states.map((s) => ({
+                              label: s,
+                              value: s,
+                            }))
+                          : []
+                      );
+                      setGeoCities(
+                        Array.isArray(trial.targetGeo?.cities)
+                          ? trial.targetGeo!.cities.map((c) => ({
+                              label: c,
+                              value: c,
+                            }))
+                          : []
+                      );
                       setIsEditing(false);
                     }}
                     disabled={isSaving}
@@ -582,7 +801,6 @@ export default function TrialShowPage() {
             </Form>
           ) : (
             <>
-              {/* read view */}
               <div>
                 <div className="text-xs text-muted-foreground">ID</div>
                 <div className="font-mono break-all">{trial._id}</div>
@@ -638,39 +856,28 @@ export default function TrialShowPage() {
               </div>
 
               <div>
-                <div className="text-xs text-muted-foreground">Rewards</div>
-                {Array.isArray(trial.rewards) && trial.rewards.length > 0 ? (
-                  <div className="overflow-x-auto rounded border">
-                    <table className="min-w-full text-sm">
-                      <thead className="bg-muted/50">
-                        <tr>
-                          <th className="text-left px-3 py-2 font-medium">
-                            Asset
-                          </th>
-                          <th className="text-left px-3 py-2 font-medium">
-                            Amount
-                          </th>
-                          <th className="text-left px-3 py-2 font-medium">
-                            Reward Cap
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {trial.rewards.map((r, idx) => (
-                          <tr key={`${r.assetId}-${idx}`} className="border-t">
-                            <td className="px-3 py-2">{r.assetId}</td>
-                            <td className="px-3 py-2">{r.amount}</td>
-                            <td className="px-3 py-2">
-                              {r.rewardAmountCap ?? "-"}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div>-</div>
-                )}
+                <div className="text-xs text-muted-foreground">Target Geo</div>
+                <h2 className="break-all">
+                  Countries{" – "}
+                  {Array.isArray(trial.targetGeo?.countries) &&
+                  trial.targetGeo!.countries.length
+                    ? trial.targetGeo!.countries.join(", ")
+                    : "-"}
+                </h2>
+                <h2 className="break-all">
+                  States{" – "}
+                  {Array.isArray(trial.targetGeo?.states) &&
+                  trial.targetGeo!.states.length
+                    ? trial.targetGeo!.states.join(", ")
+                    : "-"}
+                </h2>
+                <h2 className="break-all">
+                  Cities{" – "}
+                  {Array.isArray(trial.targetGeo?.cities) &&
+                  trial.targetGeo!.cities.length
+                    ? trial.targetGeo!.cities.join(", ")
+                    : "-"}
+                </h2>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

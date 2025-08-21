@@ -1,5 +1,9 @@
-import { useMemo, useCallback, useEffect, useState } from "react";
+import { useMemo, useEffect, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
 import { endpoints } from "@/api/endpoints";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { useApiMutation } from "@/hooks/useApiMutation";
@@ -8,7 +12,7 @@ import { appToast } from "@/utils/toast";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Edit, Pencil, PlusSquare, Recycle, Trash2 } from "lucide-react";
+import { Edit, Pencil, PlusSquare, Recycle, Trash2, X } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   Tooltip,
@@ -18,11 +22,24 @@ import {
 } from "@/components/ui/tooltip";
 import { fmt } from "@/components/paginated-table";
 
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+
 import { usePollViewStore } from "@/stores/poll_view.store";
 import { AddOptionModal } from "@/components/modals/table_polls/add-option";
 import { EditOptionModal } from "@/components/modals/table_polls/edit-option";
 import { ArchiveToggleOptionModal } from "@/components/modals/table_polls/archive-toggle-option";
 import { cn } from "@/lib/utils";
+
+import CountrySelect from "@/components/commons/selects/country-select";
+import StateSelect from "@/components/commons/selects/state-select";
+import { CitySelect } from "@/components/commons/selects/city-select";
 
 /* ---------- types ---------- */
 type PollOption = {
@@ -32,6 +49,7 @@ type PollOption = {
 };
 
 type Poll = {
+  _id?: string; // used in some mutations/patch
   pollId: string;
   title: string;
   description?: string;
@@ -39,11 +57,16 @@ type Poll = {
   archivedAt?: string | null;
   resourceAssets?: unknown;
   options?: PollOption[];
+  targetGeo?: {
+    countries?: string[];
+    states?: string[];
+    cities?: string[];
+  };
 };
 
 const MAX_OPTIONS = 4;
 
-/* small helper for details patch */
+/* ---------- helpers ---------- */
 function patchShowCache(showKey: string, updater: (curr: any) => any) {
   const prev = queryClient.getQueryData<any>([showKey]);
   if (!prev) return;
@@ -55,6 +78,46 @@ function patchShowCache(showKey: string, updater: (curr: any) => any) {
     : { ...prev, data: nextCurr };
   queryClient.setQueryData([showKey], next);
 }
+
+type LV = { label: string; value: string };
+// const dedupeByValue = (arr: LV[]): LV[] => {
+//   const m = new Map<string, LV>();
+//   for (const it of Array.isArray(arr) ? arr : []) {
+//     if (!it?.value) continue;
+//     m.set(it.value, it);
+//   }
+//   return Array.from(m.values());
+// };
+
+const arrEqUnordered = (a: string[], b: string[]) => {
+  if (!Array.isArray(a) || !Array.isArray(b)) return false;
+  if (a.length !== b.length) return false;
+  const A = [...a].sort();
+  const B = [...b].sort();
+  return A.every((v, i) => v === B[i]);
+};
+
+const editSchema = z.object({
+  title: z.string().min(3, "Min 3 chars").trim(),
+  description: z.string().min(3, "Min 3 chars").trim(),
+  media: z
+    .string()
+    .trim()
+    .optional()
+    .or(z.literal(""))
+    .refine(
+      (v) => !v || /^https?:\/\/.+/i.test(v),
+      "Must be a valid URL (http/https) or leave empty"
+    ),
+  targetGeo: z
+    .object({
+      countries: z.array(z.string()).default([]),
+      states: z.array(z.string()).default([]),
+      cities: z.array(z.string()).default([]),
+    })
+    .default({ countries: [], states: [], cities: [] }),
+});
+type EditValues = z.infer<typeof editSchema>;
 
 export default function PollShowPage() {
   const navigate = useNavigate();
@@ -70,34 +133,88 @@ export default function PollShowPage() {
     return data?.data?.data ?? data?.data ?? null;
   }, [data]);
 
-  // ===== details editing =====
+  // ===== edit mode toggle =====
   const [isEditing, setIsEditing] = useState(false);
-  const [title, setTitle] = useState<string>("");
-  const [description, setDescription] = useState<string>("");
-  const [mediaUrl, setMediaUrl] = useState<string>("");
 
+  // ===== RHF with zod (keep logic; just validation & messages) =====
+  const form = useForm<EditValues>({
+    resolver: zodResolver(editSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      media: "",
+      targetGeo: { countries: [], states: [], cities: [] },
+    },
+    mode: "onChange",
+  });
+  const { control, handleSubmit, reset, getValues } = form;
+
+  // ===== Target Geo local state (multi-select LV[]) =====
+  const [geoCountries, setGeoCountries] = useState<LV[]>([]);
+  const [geoStates, setGeoStates] = useState<LV[]>([]);
+  const [geoCities, setGeoCities] = useState<LV[]>([]);
+
+  // hydrate form + geos when poll loads
   useEffect(() => {
     if (!poll) return;
-    setTitle(poll.title ?? "");
-    setDescription(poll.description ?? "");
-    setMediaUrl((poll as any)?.media ?? "");
-  }, [poll]);
 
-  const updateDetailsRoute =
-    (endpoints.entities as any)?.polls?.updateDetails ?? "/poll/details";
+    reset({
+      title: poll.title ?? "",
+      description: poll.description ?? "",
+      media: (poll as any)?.media ?? "",
+      targetGeo: {
+        countries: Array.isArray(poll.targetGeo?.countries)
+          ? poll.targetGeo!.countries
+          : [],
+        states: Array.isArray(poll.targetGeo?.states)
+          ? poll.targetGeo!.states
+          : [],
+        cities: Array.isArray(poll.targetGeo?.cities)
+          ? poll.targetGeo!.cities
+          : [],
+      },
+    });
+
+    setGeoCountries(
+      Array.isArray(poll.targetGeo?.countries)
+        ? poll.targetGeo!.countries.map((c) => ({ label: c, value: c }))
+        : []
+    );
+    setGeoStates(
+      Array.isArray(poll.targetGeo?.states)
+        ? poll.targetGeo!.states.map((s) => ({ label: s, value: s }))
+        : []
+    );
+    setGeoCities(
+      Array.isArray(poll.targetGeo?.cities)
+        ? poll.targetGeo!.cities.map((c) => ({ label: c, value: c }))
+        : []
+    );
+  }, [poll, reset]);
 
   const { mutate: saveEdit, isPending: isSaving } = useApiMutation<any, any>({
-    route: updateDetailsRoute,
+    route: endpoints.entities.polls.edit.details,
     method: "PUT",
-    onSuccess: () => {
+    onSuccess: (_resp, vars) => {
       appToast.success("Poll updated");
       setIsEditing(false);
 
+      const v = getValues();
+      const tgFromState = {
+        countries: geoCountries.map((c) => c.value),
+        states: geoStates.map((s) => s.value),
+        cities: geoCities.map((c) => c.value),
+      };
+
       patchShowCache(showRoute, (curr) => ({
         ...curr,
-        title,
-        description,
-        media: mediaUrl,
+        title: v.title,
+        description: v.description,
+        media: v.media,
+        targetGeo:
+          (vars as any)?.targetGeo ??
+          tgFromState ?? // optimistic
+          curr.targetGeo,
       }));
 
       queryClient.invalidateQueries({ queryKey: [showRoute] });
@@ -111,25 +228,45 @@ export default function PollShowPage() {
     },
   });
 
-  const onSubmitEdit = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!poll) return;
+  // submit with diffs only (same logic you had)
+  const onSubmitEdit = handleSubmit((v) => {
+    if (!poll) return;
 
-      const payload: any = { pollId: id };
-      if (title !== (poll.title ?? "")) payload.title = title;
-      if (description !== (poll.description ?? ""))
-        payload.description = description;
-      if (mediaUrl !== ((poll as any)?.media ?? "")) payload.media = mediaUrl;
+    const payload: any = { pollId: id };
 
-      if (Object.keys(payload).length <= 1) {
-        setIsEditing(false);
-        return;
-      }
-      saveEdit(payload);
-    },
-    [poll, id, title, description, mediaUrl, saveEdit]
-  );
+    if (v.title !== (poll.title ?? "")) payload.title = v.title;
+    if (v.description !== (poll.description ?? ""))
+      payload.description = v.description;
+    if (v.media !== ((poll as any)?.media ?? "")) payload.media = v.media;
+
+    const nextTG = {
+      countries: geoCountries.map((c) => c.value),
+      states: geoStates.map((s) => s.value),
+      cities: geoCities.map((c) => c.value),
+    };
+    const prevTG = {
+      countries: poll.targetGeo?.countries ?? [],
+      states: poll.targetGeo?.states ?? [],
+      cities: poll.targetGeo?.cities ?? [],
+    };
+
+    const geoChanged =
+      !arrEqUnordered(nextTG.countries, prevTG.countries) ||
+      !arrEqUnordered(nextTG.states, prevTG.states) ||
+      !arrEqUnordered(nextTG.cities, prevTG.cities);
+
+    if (geoChanged) {
+      payload.targetGeo = nextTG;
+    }
+
+    if (Object.keys(payload).length <= 1) {
+      // no changes other than pollId
+      setIsEditing(false);
+      return;
+    }
+
+    saveEdit(payload);
+  });
 
   const activeCount = (poll?.options ?? []).filter((o) => !o.archivedAt).length;
   const canAddOption = activeCount < MAX_OPTIONS;
@@ -185,55 +322,248 @@ export default function PollShowPage() {
             <CardTitle>Edit Poll</CardTitle>
           </CardHeader>
           <CardContent>
-            <form className="space-y-4" onSubmit={onSubmitEdit}>
-              <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Title</label>
-                <Input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Poll title"
-                  required
+            <Form {...form}>
+              <form className="space-y-4" onSubmit={onSubmitEdit}>
+                {/* Title */}
+                <FormField
+                  control={control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs text-muted-foreground">
+                        Title
+                      </FormLabel>
+                      <FormControl>
+                        <Input placeholder="Poll title" required {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">
-                  Description
-                </label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Poll description"
-                  className="flex h-28 w-full rounded-md border border-input bg-transparent text-foreground px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                {/* Description */}
+                <FormField
+                  control={control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs text-muted-foreground">
+                        Description
+                      </FormLabel>
+                      <FormControl>
+                        <textarea
+                          placeholder="Poll description"
+                          className="flex h-28 w-full rounded-md border border-input bg-transparent text-foreground px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">
-                  Media (URL)
-                </label>
-                <Input
-                  type="url"
-                  value={mediaUrl}
-                  onChange={(e) => setMediaUrl(e.target.value)}
-                  placeholder="https://example.com/image-or-video"
+                {/* Media */}
+                <FormField
+                  control={control}
+                  name="media"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs text-muted-foreground">
+                        Media (URL)
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="url"
+                          placeholder="https://example.com/image-or-video"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              <div className="flex items-center gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsEditing(false)}
-                  disabled={isSaving}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isSaving}>
-                  {isSaving ? "Saving…" : "Save"}
-                </Button>
-              </div>
-            </form>
+                {/* ========== Target Geo (multi-selects + chips) ========== */}
+                <div className="space-y-4 text-black">
+                  {/* Countries */}
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">
+                      Countries
+                    </label>
+                    <CountrySelect
+                      value={geoCountries}
+                      onChange={(val) => {
+                        const newVal = Array.isArray(val)
+                          ? val
+                          : val
+                          ? [val]
+                          : [];
+                        setGeoCountries((prev) =>
+                          Array.from(new Set([...prev, ...newVal]))
+                        );
+                      }}
+                      isMulti
+                      isOptionDisabled={(option: LV) =>
+                        geoCountries.some((c) => c.value === option.value)
+                      }
+                    />
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {geoCountries.map((country) => (
+                        <span
+                          key={country.value}
+                          className="px-2 py-1 rounded bg-muted text-sm flex items-center gap-1 text-white"
+                        >
+                          {country.label}
+                          <X
+                            className="w-3 h-3 cursor-pointer"
+                            onClick={() =>
+                              setGeoCountries((prev) =>
+                                prev.filter((x) => x.value !== country.value)
+                              )
+                            }
+                          />
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* States */}
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">
+                      States
+                    </label>
+                    <StateSelect
+                      value={geoStates}
+                      onChange={(val) => {
+                        const newVal = Array.isArray(val)
+                          ? val
+                          : val
+                          ? [val]
+                          : [];
+                        setGeoStates((prev) =>
+                          Array.from(new Set([...prev, ...newVal]))
+                        );
+                      }}
+                      isMulti
+                      isOptionDisabled={(option: LV) =>
+                        geoStates.some((s) => s.value === option.value)
+                      }
+                    />
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {geoStates.map((s) => (
+                        <span
+                          key={s.value}
+                          className="px-2 py-1 rounded bg-muted text-sm flex items-center gap-1 text-white"
+                        >
+                          {s.label}
+                          <X
+                            className="w-3 h-3 cursor-pointer"
+                            onClick={() =>
+                              setGeoStates((prev) =>
+                                prev.filter((x) => x.value !== s.value)
+                              )
+                            }
+                          />
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Cities */}
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">
+                      Cities
+                    </label>
+                    <CitySelect
+                      value={geoCities}
+                      onChange={(val) => {
+                        const newVal = Array.isArray(val)
+                          ? val
+                          : val
+                          ? [val]
+                          : [];
+                        setGeoCities((prev) =>
+                          Array.from(new Set([...prev, ...newVal]))
+                        );
+                      }}
+                      isMulti
+                      isOptionDisabled={(option: LV) =>
+                        geoCities.some((c) => c.value === option.value)
+                      }
+                    />
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {geoCities.map((city) => (
+                        <span
+                          key={city.value}
+                          className="px-2 py-1 rounded bg-muted text-sm flex items-center gap-1 text-white"
+                        >
+                          {city.label}
+                          <X
+                            className="w-3 h-3 cursor-pointer"
+                            onClick={() =>
+                              setGeoCities((prev) =>
+                                prev.filter((x) => x.value !== city.value)
+                              )
+                            }
+                          />
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      // reset to current server values and exit edit
+                      reset({
+                        title: poll.title ?? "",
+                        description: poll.description ?? "",
+                        media: (poll as any)?.media ?? "",
+                        targetGeo: {
+                          countries: poll.targetGeo?.countries ?? [],
+                          states: poll.targetGeo?.states ?? [],
+                          cities: poll.targetGeo?.cities ?? [],
+                        },
+                      });
+                      setGeoCountries(
+                        Array.isArray(poll.targetGeo?.countries)
+                          ? poll.targetGeo!.countries.map((c) => ({
+                              label: c,
+                              value: c,
+                            }))
+                          : []
+                      );
+                      setGeoStates(
+                        Array.isArray(poll.targetGeo?.states)
+                          ? poll.targetGeo!.states.map((s) => ({
+                              label: s,
+                              value: s,
+                            }))
+                          : []
+                      );
+                      setGeoCities(
+                        Array.isArray(poll.targetGeo?.cities)
+                          ? poll.targetGeo!.cities.map((c) => ({
+                              label: c,
+                              value: c,
+                            }))
+                          : []
+                      );
+                      setIsEditing(false);
+                    }}
+                    disabled={isSaving}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={isSaving}>
+                    {isSaving ? "Saving…" : "Save"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
           </CardContent>
         </Card>
       ) : (
@@ -266,6 +596,27 @@ export default function PollShowPage() {
               <div className="text-xs text-muted-foreground">Media</div>
               <div className="break-all">{(poll as any)?.media || "-"}</div>
             </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Target Geo</div>
+              <h2 className="break-all">
+                Countries-{" "}
+                {Array.isArray(poll.targetGeo?.countries)
+                  ? poll.targetGeo!.countries.join(", ")
+                  : "-"}
+              </h2>
+              <h2 className="break-all">
+                States-{" "}
+                {Array.isArray(poll.targetGeo?.states)
+                  ? poll.targetGeo!.states.join(", ")
+                  : "-"}
+              </h2>
+              <h2 className="break-all">
+                Cities-{" "}
+                {Array.isArray(poll.targetGeo?.cities)
+                  ? poll.targetGeo!.cities.join(", ")
+                  : "-"}
+              </h2>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <div className="text-xs text-muted-foreground">Created At</div>
@@ -280,7 +631,7 @@ export default function PollShowPage() {
         </Card>
       )}
 
-      {/* ===== Options card ===== */}
+      {/* ===== Options card (unchanged) ===== */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Options</CardTitle>
@@ -294,8 +645,7 @@ export default function PollShowPage() {
                   }`}
                   onClick={() => {
                     if (!canAddOption) return;
-                    console.log("poll", poll);
-                    setIsAddOption({ pollId: poll._id });
+                    setIsAddOption({ pollId: (poll as any)._id });
                   }}
                   aria-label="Add option"
                   title={canAddOption ? "Add option" : "Max 4 active options"}
@@ -314,7 +664,7 @@ export default function PollShowPage() {
         <CardContent className="space-y-4">
           {poll?.options?.length ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {poll.options.map((opt) => {
+              {(poll.options ?? []).map((opt) => {
                 const isArchived = !!opt.archivedAt;
                 return (
                   <div
@@ -325,13 +675,12 @@ export default function PollShowPage() {
                     )}
                   >
                     <div className="absolute right-2 top-2 flex items-center gap-2">
-                      {/* edit option -> modal */}
                       {!isArchived && (
                         <button
                           className="rounded-md p-1 hover:bg-foreground/10"
                           onClick={() =>
                             setIsEditOption({
-                              pollId: poll._id,
+                              pollId: (poll as any)._id,
                               optionId: opt._id,
                               oldText: opt.text,
                             })
@@ -343,13 +692,12 @@ export default function PollShowPage() {
                         </button>
                       )}
 
-                      {/* delete option  */}
                       {isArchived && activeCount + 1 > MAX_OPTIONS ? null : (
                         <button
                           className="rounded-md p-1 hover:bg-foreground/10"
                           onClick={() =>
                             setIsArchiveToggleOption({
-                              pollId: poll._id,
+                              pollId: (poll as any)._id,
                               optionId: opt._id,
                               shouldArchive: !isArchived,
                             })
@@ -375,9 +723,10 @@ export default function PollShowPage() {
                         {opt._id}
                       </div>
                       <div
-                        className={`text-sm ${
-                          isArchived ? "line-through opacity-60" : ""
-                        }`}
+                        className={cn(
+                          "text-sm",
+                          isArchived && "line-through opacity-60"
+                        )}
                       >
                         {opt.text}
                       </div>

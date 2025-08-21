@@ -1,19 +1,12 @@
 import * as React from "react";
 import {
-  BookCopy,
   Frame,
   GalleryVerticalEnd,
-  GraduationCap,
   House,
-  Images,
-  LampDesk,
   Map,
   PieChart,
   ReceiptText,
-  School,
   Settings,
-  Trophy,
-  UserPen,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -69,13 +62,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ],
       },
       {
-        title: "Sell Order",
+        title: "Actions",
         url: "#",
         icon: ReceiptText,
         isActive: true,
         items: [
           {
-            title: "Trial Polls",
+            title: "Sell Order",
             url: "/sell-order",
           },
         ],
