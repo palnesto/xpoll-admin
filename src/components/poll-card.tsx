@@ -51,7 +51,6 @@ export const formSchema = z.object({
     description: z.string().min(3, "Min 3 chars").trim(),
     resourceAssets: z.array(resourceAssetZ).default([]),
     rewards: z.array(rewardZ).optional(),
-    // NEW: targetGeo same shape as in poll/create.tsx
     targetGeo: z.object({
       countries: z.array(z.string()).default([]),
       states: z.array(z.string()).default([]),
@@ -75,7 +74,6 @@ export function PollCard({
   onRemove: () => void;
   disableRemove: boolean;
 }) {
-  // These hooks live inside the child => stable per mounted child
   const pollAssetsArray = useFieldArray({
     control,
     name: `polls.${index}.resourceAssets` as const,

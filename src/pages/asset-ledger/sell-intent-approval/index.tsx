@@ -1,45 +1,44 @@
 import { useMemo, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 import { endpoints } from "@/api/endpoints";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { ThreeDotMenu } from "@/components/commons/three-dot-menu";
-import { Eye, Trash } from "lucide-react";
+import { ArchiveRestore, ArchiveX } from "lucide-react";
 import { DEFAULT_PAGE_SIZE } from "@/constants";
 import { fmt, PaginatedTable } from "@/components/paginated-table";
+import { useTableSellIntentStore } from "@/stores/table_sell_intent";
 
-import { useTablePollsStore } from "@/stores/table_polls.store";
-import { ConfirmDeletePollsModal } from "@/components/modals/table_polls/delete";
-
-export default function SellOrder() {
-  const navigate = useNavigate();
-
+export default function SellIntent() {
   const [page, setPage] = useState<number>(1);
   const [pageSize] = useState<number>(DEFAULT_PAGE_SIZE);
-  const isDeleting = useTablePollsStore((s) => s.isDeleting);
-  const setIsDeleting = useTablePollsStore((s) => s.setIsDeleting);
+  const isAcecpting = useTableSellIntentStore((s) => s.isAccepting);
+  const setIsAccepting = useTableSellIntentStore((s) => s.setIsAccepting);
+  const isRejecting = useTableSellIntentStore((s) => s.isRejecting);
+  const setIsRejecting = useTableSellIntentStore((s) => s.setIsRejecting);
 
-  const url = `${endpoints.entities.polls.all}?page=${page}&pageSize=${pageSize}`;
+  const url = `${endpoints.entities.assetLedger.sellApproveOrder}?page=${page}&pageSize=${pageSize}`;
   const { data, isFetching } = useApiQuery(url, { keepPreviousData: true });
 
-  const entries = useMemo(() => data?.data?.data?.entries ?? [], [data]);
+  const entries = useMemo(() => data?.data?.data?.items ?? [], [data]);
 
   const actions = useCallback(
     (id: string) => [
       {
-        name: "View",
-        icon: Eye,
-        onClick: () => navigate(`/polls/${id}`),
+        name: "Approve",
+        icon: ArchiveRestore,
+        onClick: () => {
+          setIsAccepting([id]);
+        },
       },
       {
-        name: "Delete",
-        icon: Trash,
+        name: "Reject",
+        icon: ArchiveX,
         onClick: () => {
-          setIsDeleting([id]);
+          setIsRejecting([id]);
         },
         separatorBefore: true,
       },
     ],
-    [navigate, setIsDeleting]
+    [setIsAccepting, setIsRejecting]
   );
 
   const tableData = useMemo(
@@ -53,7 +52,7 @@ export default function SellOrder() {
 
   const columns = [
     { key: "_id", header: "ID", canFilter: true },
-    { key: "title", header: "Title", canFilter: true },
+    { key: "action", header: "Action", canFilter: true },
     {
       key: "createdAt",
       header: "Created At",
@@ -64,20 +63,18 @@ export default function SellOrder() {
       header: "Archived At",
       render: (val: any) => <span>{fmt(val)}</span>,
     },
-    {
-      key: "tableOptions",
-      header: "...",
-      render: (v: any) => <span>{v}</span>,
-      isRightAligned: true,
-    },
+    // {
+    //   key: "tableOptions",
+    //   header: "...",
+    //   render: (v: any) => <span>{v}</span>,
+    //   isRightAligned: true,
+    // },
   ] as const;
 
   return (
     <div>
       <PaginatedTable
-        title="Sell Order"
-        onCreate={() => navigate("/sell-order/create")}
-        createButtonText="Create Sell Order"
+        title="Sell Intent Approved"
         columns={columns}
         tableData={tableData}
         data={data}
@@ -86,8 +83,6 @@ export default function SellOrder() {
         pageSize={pageSize}
         isFetching={isFetching}
       />
-
-      {isDeleting?.length > 0 && <ConfirmDeletePollsModal url={url} />}
     </div>
   );
 }

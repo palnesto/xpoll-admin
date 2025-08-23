@@ -23,6 +23,7 @@ export const endpoints = {
       update: "/internal/trial",
       delete: "/internal/trial",
       getById: (id: string) => `/internal/trial/${id}`,
+      addPollToTrial: (id: string) => `/internal/trial/${id}/polls`,
     },
     actions: {
       createMint: "/internal/actions/mint",
@@ -31,6 +32,13 @@ export const endpoints = {
       createWithdraw: "/internal/actions/withdraw",
       createSellApprove: "/internal/actions/bulk-sell-intent-approve",
       createSellReject: "/internal/actions/bulk-sell-intent-reject",
+    },
+    assetLedger: {
+      all: "/internal/asset-ledger/all",
+      systemReport: "/internal/asset-ledger/system/report",
+      sellIntent: "/internal/asset-ledger/sell-intent",
+      sellApproveOrder: "/internal/asset-ledger/sell-approve",
+      sellRejectOrder: "/internal/asset-ledger/sell-reject",
     },
   },
 };

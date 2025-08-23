@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState, useCallback } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -11,7 +11,6 @@ import { queryClient } from "@/api/queryClient";
 import { appToast } from "@/utils/toast";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Edit, Pencil, PlusSquare, Recycle, Trash2, X } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
@@ -49,19 +48,23 @@ type PollOption = {
 };
 
 type Poll = {
-  _id?: string; // used in some mutations/patch
+  _id?: string;
   pollId: string;
   title: string;
   description?: string;
   createdAt?: string;
   archivedAt?: string | null;
-  resourceAssets?: unknown;
+  media?: string;
   options?: PollOption[];
   targetGeo?: {
     countries?: string[];
     states?: string[];
     cities?: string[];
   };
+  /** present if this poll belongs to a trial */
+  trialId?: string;
+  /** some backends embed trial object instead */
+  trial?: { _id: string; title?: string };
 };
 
 const MAX_OPTIONS = 4;
@@ -80,15 +83,6 @@ function patchShowCache(showKey: string, updater: (curr: any) => any) {
 }
 
 type LV = { label: string; value: string };
-// const dedupeByValue = (arr: LV[]): LV[] => {
-//   const m = new Map<string, LV>();
-//   for (const it of Array.isArray(arr) ? arr : []) {
-//     if (!it?.value) continue;
-//     m.set(it.value, it);
-//   }
-//   return Array.from(m.values());
-// };
-
 const arrEqUnordered = (a: string[], b: string[]) => {
   if (!Array.isArray(a) || !Array.isArray(b)) return false;
   if (a.length !== b.length) return false;
@@ -97,6 +91,7 @@ const arrEqUnordered = (a: string[], b: string[]) => {
   return A.every((v, i) => v === B[i]);
 };
 
+/** Base edit schema. We’ll conditionally HIDE targetGeo if it’s a trial poll. */
 const editSchema = z.object({
   title: z.string().min(3, "Min 3 chars").trim(),
   description: z.string().min(3, "Min 3 chars").trim(),
@@ -123,7 +118,6 @@ export default function PollShowPage() {
   const navigate = useNavigate();
   const { id = "" } = useParams<{ id: string }>();
 
-  // GET one poll
   const showRoute = (endpoints.entities as any)?.polls?.getById
     ? (endpoints.entities as any).polls.getById(id)
     : `/poll/${id}`;
@@ -133,10 +127,10 @@ export default function PollShowPage() {
     return data?.data?.data ?? data?.data ?? null;
   }, [data]);
 
-  // ===== edit mode toggle =====
+  const isTrialPoll = !!(poll?.trialId || poll?.trial?._id);
+
   const [isEditing, setIsEditing] = useState(false);
 
-  // ===== RHF with zod (keep logic; just validation & messages) =====
   const form = useForm<EditValues>({
     resolver: zodResolver(editSchema),
     defaultValues: {
@@ -195,7 +189,7 @@ export default function PollShowPage() {
   const { mutate: saveEdit, isPending: isSaving } = useApiMutation<any, any>({
     route: endpoints.entities.polls.edit.details,
     method: "PUT",
-    onSuccess: (_resp, vars) => {
+    onSuccess: (_resp, _vars) => {
       appToast.success("Poll updated");
       setIsEditing(false);
 
@@ -211,10 +205,8 @@ export default function PollShowPage() {
         title: v.title,
         description: v.description,
         media: v.media,
-        targetGeo:
-          (vars as any)?.targetGeo ??
-          tgFromState ?? // optimistic
-          curr.targetGeo,
+        // IMPORTANT: trial polls do not update targetGeo here (it’s controlled at trial)
+        targetGeo: isTrialPoll ? curr.targetGeo : tgFromState ?? curr.targetGeo,
       }));
 
       queryClient.invalidateQueries({ queryKey: [showRoute] });
@@ -228,7 +220,7 @@ export default function PollShowPage() {
     },
   });
 
-  // submit with diffs only (same logic you had)
+  // submit with diffs only
   const onSubmitEdit = handleSubmit((v) => {
     if (!poll) return;
 
@@ -239,28 +231,28 @@ export default function PollShowPage() {
       payload.description = v.description;
     if (v.media !== ((poll as any)?.media ?? "")) payload.media = v.media;
 
-    const nextTG = {
-      countries: geoCountries.map((c) => c.value),
-      states: geoStates.map((s) => s.value),
-      cities: geoCities.map((c) => c.value),
-    };
-    const prevTG = {
-      countries: poll.targetGeo?.countries ?? [],
-      states: poll.targetGeo?.states ?? [],
-      cities: poll.targetGeo?.cities ?? [],
-    };
+    // Only include targetGeo for NON-trial polls
+    if (!isTrialPoll) {
+      const nextTG = {
+        countries: geoCountries.map((c) => c.value),
+        states: geoStates.map((s) => s.value),
+        cities: geoCities.map((c) => c.value),
+      };
+      const prevTG = {
+        countries: poll.targetGeo?.countries ?? [],
+        states: poll.targetGeo?.states ?? [],
+        cities: poll.targetGeo?.cities ?? [],
+      };
 
-    const geoChanged =
-      !arrEqUnordered(nextTG.countries, prevTG.countries) ||
-      !arrEqUnordered(nextTG.states, prevTG.states) ||
-      !arrEqUnordered(nextTG.cities, prevTG.cities);
+      const geoChanged =
+        !arrEqUnordered(nextTG.countries, prevTG.countries) ||
+        !arrEqUnordered(nextTG.states, prevTG.states) ||
+        !arrEqUnordered(nextTG.cities, prevTG.cities);
 
-    if (geoChanged) {
-      payload.targetGeo = nextTG;
+      if (geoChanged) payload.targetGeo = nextTG;
     }
 
     if (Object.keys(payload).length <= 1) {
-      // no changes other than pollId
       setIsEditing(false);
       return;
     }
@@ -271,7 +263,7 @@ export default function PollShowPage() {
   const activeCount = (poll?.options ?? []).filter((o) => !o.archivedAt).length;
   const canAddOption = activeCount < MAX_OPTIONS;
 
-  // ===== store actions for modals =====
+  // ===== option modals =====
   const isAddOption = usePollViewStore((s) => s.isAddOption);
   const setIsAddOption = usePollViewStore((s) => s.setIsAddOption);
   const isEditOption = usePollViewStore((s) => s.isEditOption);
@@ -319,7 +311,14 @@ export default function PollShowPage() {
       {isEditing ? (
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Edit Poll</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              Edit Poll
+              {/* {isTrialPoll && (
+                <span className="text-xs rounded px-2 py-0.5 bg-muted">
+                  Trial poll — Target Geo managed by Trial
+                </span>
+              )} */}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <Form {...form}>
@@ -334,7 +333,12 @@ export default function PollShowPage() {
                         Title
                       </FormLabel>
                       <FormControl>
-                        <Input placeholder="Poll title" required {...field} />
+                        <input
+                          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                          placeholder="Poll title"
+                          required
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -372,9 +376,10 @@ export default function PollShowPage() {
                         Media (URL)
                       </FormLabel>
                       <FormControl>
-                        <Input
+                        <input
                           type="url"
                           placeholder="https://example.com/image-or-video"
+                          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                           {...field}
                         />
                       </FormControl>
@@ -383,141 +388,157 @@ export default function PollShowPage() {
                   )}
                 />
 
-                {/* ========== Target Geo (multi-selects + chips) ========== */}
-                <div className="space-y-4 text-black">
-                  {/* Countries */}
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">
-                      Countries
-                    </label>
-                    <CountrySelect
-                      value={geoCountries}
-                      onChange={(val) => {
-                        const newVal = Array.isArray(val)
-                          ? val
-                          : val
-                          ? [val]
-                          : [];
-                        setGeoCountries((prev) =>
-                          Array.from(new Set([...prev, ...newVal]))
-                        );
-                      }}
-                      isMulti
-                      isOptionDisabled={(option: LV) =>
-                        geoCountries.some((c) => c.value === option.value)
-                      }
-                    />
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {geoCountries.map((country) => (
-                        <span
-                          key={country.value}
-                          className="px-2 py-1 rounded bg-muted text-sm flex items-center gap-1 text-white"
-                        >
-                          {country.label}
-                          <X
-                            className="w-3 h-3 cursor-pointer"
-                            onClick={() =>
-                              setGeoCountries((prev) =>
-                                prev.filter((x) => x.value !== country.value)
-                              )
+                {/* Target Geo (HIDDEN for trial polls) */}
+                {!isTrialPoll && (
+                  <div className="space-y-4 text-black">
+                    {/* Countries */}
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">
+                        Countries
+                      </label>
+                      <CountrySelect
+                        value={geoCountries}
+                        onChange={(val) => {
+                          const newVal = Array.isArray(val)
+                            ? val
+                            : val
+                            ? [val]
+                            : [];
+                          setGeoCountries((prev) => {
+                            const merged = [...prev];
+                            for (const v of newVal) {
+                              if (!merged.some((m) => m.value === v.value))
+                                merged.push(v);
                             }
-                          />
-                        </span>
-                      ))}
+                            return merged;
+                          });
+                        }}
+                        isMulti
+                        isOptionDisabled={(option: LV) =>
+                          geoCountries.some((c) => c.value === option.value)
+                        }
+                      />
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {geoCountries.map((country) => (
+                          <span
+                            key={country.value}
+                            className="px-2 py-1 rounded bg-muted text-sm flex items-center gap-1 text-white"
+                          >
+                            {country.label}
+                            <X
+                              className="w-3 h-3 cursor-pointer"
+                              onClick={() =>
+                                setGeoCountries((prev) =>
+                                  prev.filter((x) => x.value !== country.value)
+                                )
+                              }
+                            />
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* States */}
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">
-                      States
-                    </label>
-                    <StateSelect
-                      value={geoStates}
-                      onChange={(val) => {
-                        const newVal = Array.isArray(val)
-                          ? val
-                          : val
-                          ? [val]
-                          : [];
-                        setGeoStates((prev) =>
-                          Array.from(new Set([...prev, ...newVal]))
-                        );
-                      }}
-                      isMulti
-                      isOptionDisabled={(option: LV) =>
-                        geoStates.some((s) => s.value === option.value)
-                      }
-                    />
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {geoStates.map((s) => (
-                        <span
-                          key={s.value}
-                          className="px-2 py-1 rounded bg-muted text-sm flex items-center gap-1 text-white"
-                        >
-                          {s.label}
-                          <X
-                            className="w-3 h-3 cursor-pointer"
-                            onClick={() =>
-                              setGeoStates((prev) =>
-                                prev.filter((x) => x.value !== s.value)
-                              )
+                    {/* States */}
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">
+                        States
+                      </label>
+                      <StateSelect
+                        value={geoStates}
+                        onChange={(val) => {
+                          const newVal = Array.isArray(val)
+                            ? val
+                            : val
+                            ? [val]
+                            : [];
+                          setGeoStates((prev) => {
+                            const merged = [...prev];
+                            for (const v of newVal) {
+                              if (!merged.some((m) => m.value === v.value))
+                                merged.push(v);
                             }
-                          />
-                        </span>
-                      ))}
+                            return merged;
+                          });
+                        }}
+                        isMulti
+                        isOptionDisabled={(option: LV) =>
+                          geoStates.some((s) => s.value === option.value)
+                        }
+                      />
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {geoStates.map((s) => (
+                          <span
+                            key={s.value}
+                            className="px-2 py-1 rounded bg-muted text-sm flex items-center gap-1 text-white"
+                          >
+                            {s.label}
+                            <X
+                              className="w-3 h-3 cursor-pointer"
+                              onClick={() =>
+                                setGeoStates((prev) =>
+                                  prev.filter((x) => x.value !== s.value)
+                                )
+                              }
+                            />
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Cities */}
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">
-                      Cities
-                    </label>
-                    <CitySelect
-                      value={geoCities}
-                      onChange={(val) => {
-                        const newVal = Array.isArray(val)
-                          ? val
-                          : val
-                          ? [val]
-                          : [];
-                        setGeoCities((prev) =>
-                          Array.from(new Set([...prev, ...newVal]))
-                        );
-                      }}
-                      isMulti
-                      isOptionDisabled={(option: LV) =>
-                        geoCities.some((c) => c.value === option.value)
-                      }
-                    />
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {geoCities.map((city) => (
-                        <span
-                          key={city.value}
-                          className="px-2 py-1 rounded bg-muted text-sm flex items-center gap-1 text-white"
-                        >
-                          {city.label}
-                          <X
-                            className="w-3 h-3 cursor-pointer"
-                            onClick={() =>
-                              setGeoCities((prev) =>
-                                prev.filter((x) => x.value !== city.value)
-                              )
+                    {/* Cities */}
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">
+                        Cities
+                      </label>
+                      <CitySelect
+                        value={geoCities}
+                        onChange={(val) => {
+                          const newVal = Array.isArray(val)
+                            ? val
+                            : val
+                            ? [val]
+                            : [];
+                          setGeoCities((prev) => {
+                            const merged = [...prev];
+                            for (const v of newVal) {
+                              if (!merged.some((m) => m.value === v.value))
+                                merged.push(v);
                             }
-                          />
-                        </span>
-                      ))}
+                            return merged;
+                          });
+                        }}
+                        isMulti
+                        isOptionDisabled={(option: LV) =>
+                          geoCities.some((c) => c.value === option.value)
+                        }
+                      />
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {geoCities.map((city) => (
+                          <span
+                            key={city.value}
+                            className="px-2 py-1 rounded bg-muted text-sm flex items-center gap-1 text-white"
+                          >
+                            {city.label}
+                            <X
+                              className="w-3 h-3 cursor-pointer"
+                              onClick={() =>
+                                setGeoCities((prev) =>
+                                  prev.filter((x) => x.value !== city.value)
+                                )
+                              }
+                            />
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 <div className="flex items-center gap-2 pt-2">
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => {
-                      // reset to current server values and exit edit
                       reset({
                         title: poll.title ?? "",
                         description: poll.description ?? "",
@@ -569,7 +590,14 @@ export default function PollShowPage() {
       ) : (
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Poll</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              Poll
+              {/* {isTrialPoll && (
+                <span className="text-xs rounded px-2 py-0.5 bg-muted">
+                  Trial poll — Target Geo is controlled by Trial
+                </span>
+              )} */}
+            </CardTitle>
             <button
               className="rounded-md p-1 hover:bg-foreground/10"
               onClick={() => setIsEditing(true)}
@@ -594,29 +622,34 @@ export default function PollShowPage() {
             </div>
             <div>
               <div className="text-xs text-muted-foreground">Media</div>
-              <div className="break-all">{(poll as any)?.media || "-"}</div>
+              <div className="break-all">{poll.media || "-"}</div>
             </div>
-            <div>
-              <div className="text-xs text-muted-foreground">Target Geo</div>
-              <h2 className="break-all">
-                Countries-{" "}
-                {Array.isArray(poll.targetGeo?.countries)
-                  ? poll.targetGeo!.countries.join(", ")
-                  : "-"}
-              </h2>
-              <h2 className="break-all">
-                States-{" "}
-                {Array.isArray(poll.targetGeo?.states)
-                  ? poll.targetGeo!.states.join(", ")
-                  : "-"}
-              </h2>
-              <h2 className="break-all">
-                Cities-{" "}
-                {Array.isArray(poll.targetGeo?.cities)
-                  ? poll.targetGeo!.cities.join(", ")
-                  : "-"}
-              </h2>
-            </div>
+
+            {/* Hide Target Geo block entirely for trial polls */}
+            {!isTrialPoll && (
+              <div>
+                <div className="text-xs text-muted-foreground">Target Geo</div>
+                <h2 className="break-all">
+                  Countries-{" "}
+                  {Array.isArray(poll.targetGeo?.countries)
+                    ? poll.targetGeo!.countries.join(", ")
+                    : "-"}
+                </h2>
+                <h2 className="break-all">
+                  States-{" "}
+                  {Array.isArray(poll.targetGeo?.states)
+                    ? poll.targetGeo!.states.join(", ")
+                    : "-"}
+                </h2>
+                <h2 className="break-all">
+                  Cities-{" "}
+                  {Array.isArray(poll.targetGeo?.cities)
+                    ? poll.targetGeo!.cities.join(", ")
+                    : "-"}
+                </h2>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <div className="text-xs text-muted-foreground">Created At</div>

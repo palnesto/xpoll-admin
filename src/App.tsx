@@ -10,7 +10,6 @@ export function App() {
   const { user } = useAdminAuth();
   const appRoutes = useRoutes(routes);
 
-  // Routes that should remain public (no auth, no layout)
   const publicPaths = useMemo(() => ["/login"], []);
 
   const isPublic = publicPaths.includes(location.pathname);
@@ -20,10 +19,8 @@ export function App() {
     <div>
       <Suspense fallback={<p>Loading…</p>}>
         {isPublic ? (
-          // Public pages render straight
           appRoutes
         ) : (
-          // All other pages are wrapped in PrivateRoute + AppLayout
           <PrivateRoute>
             <DefaultLayout>{appRoutes}</DefaultLayout>
           </PrivateRoute>

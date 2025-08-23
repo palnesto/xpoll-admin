@@ -45,7 +45,6 @@ export default function TrialCreatePage() {
         rewards: [
           { assetId: ASSET_OPTIONS[0].value, amount: 1, rewardAmountCap: 1 },
         ],
-        // NEW: default geo
         targetGeo: {
           countries: [],
           states: [],

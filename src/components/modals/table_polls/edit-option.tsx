@@ -13,18 +13,6 @@ import { Button } from "@/components/ui/button";
 const EditSchema = z.object({ text: z.string().trim().min(3, "Required") });
 type FormVals = z.infer<typeof EditSchema>;
 
-// function patchShowCache(showKey: string, updater: (curr: any) => any) {
-//   const prev = queryClient.getQueryData<any>([showKey]);
-//   if (!prev) return;
-//   const lvl1 = prev?.data ?? {};
-//   const curr = lvl1?.data && typeof lvl1.data === "object" ? lvl1.data : lvl1;
-//   const nextCurr = updater(curr);
-//   const next = lvl1?.data
-//     ? { ...prev, data: { ...lvl1, data: nextCurr } }
-//     : { ...prev, data: nextCurr };
-//   queryClient.setQueryData([showKey], next);
-// }
-
 export const EditOptionModal = () => {
   const isEditOption = usePollViewStore((s) => s.isEditOption);
   const onClose = usePollViewStore((s) => s.onClose);
@@ -40,24 +28,6 @@ export const EditOptionModal = () => {
     method: "PUT",
     onSuccess: (resp) => {
       appToast.success("Option updated");
-
-      // const serverOptions =
-      //   resp?.data?.data?.options ?? resp?.data?.options ?? resp?.options;
-
-      // if (Array.isArray(serverOptions)) {
-      //   patchShowCache(showKey, (curr) => ({
-      //     ...curr,
-      //     options: serverOptions,
-      //   }));
-      // } else if (editData) {
-      //   const newText = form.getValues("text").trim();
-      //   patchShowCache(showKey, (curr) => ({
-      //     ...curr,
-      //     options: (curr?.options ?? []).map((o: any) =>
-      //       o._id === editData.optionId ? { ...o, text: newText } : o
-      //     ),
-      //   }));
-      // }
 
       queryClient.invalidateQueries();
       onClose();

@@ -2,6 +2,7 @@ import * as React from "react";
 import {
   Frame,
   GalleryVerticalEnd,
+  GraduationCap,
   House,
   Map,
   PieChart,
@@ -19,8 +20,6 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar";
-
-// This is sample data.
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const data = {
@@ -68,51 +67,39 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         isActive: true,
         items: [
           {
-            title: "Sell Order",
-            url: "/sell-order",
+            title: "All Actions",
+            url: "/actions",
           },
         ],
       },
-      // {
-      //   title: "About Page",
-      //   url: "#",
-      //   icon: ReceiptText,
-      //   isActive: true,
-      //   items: [
-      //     {
-      //       title: "General Settings",
-      //       url: "/about-page",
-      //     },
-      //     {
-      //       title: "Management",
-      //       url: "/table_management",
-      //     },
-      //     {
-      //       title: "Staff GV Teaching",
-      //       url: "/table_staff_gv_teaching",
-      //     },
-      //     {
-      //       title: "Staff AV Teaching",
-      //       url: "/table_staff_av_teaching",
-      //     },
-      //     {
-      //       title: "Staff GV Non Teaching",
-      //       url: "/table_staff_gv_non_teaching",
-      //     },
-      //     {
-      //       title: "Staff AV Non Teaching",
-      //       url: "/table_staff_av_non_teaching",
-      //     },
-      //     {
-      //       title: "Student Council GV",
-      //       url: "/table_student_council_gv",
-      //     },
-      //     {
-      //       title: "Student Council AV",
-      //       url: "/table_student_council_av",
-      //     },
-      //   ],
-      // },
+      {
+        title: "Asset Ledger",
+        url: "#",
+        icon: GraduationCap,
+        isActive: true,
+        items: [
+          {
+            title: "All Ledgers",
+            url: "/asset-ledger/all-ledger",
+          },
+          {
+            title: "System Report",
+            url: "/asset-ledger/system-report",
+          },
+          {
+            title: "Sell Intent",
+            url: "/asset-ledger/sell-intent",
+          },
+          {
+            title: "Sell Intent Approval",
+            url: "/asset-ledger/sell-intent-approval",
+          },
+          {
+            title: "Sell Intent Rejection",
+            url: "/asset-ledger/sell-intent-rejection",
+          },
+        ],
+      },
       // {
       //   title: "Academics Page",
       //   url: "#",
@@ -122,26 +109,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       //     {
       //       title: "General Settings",
       //       url: "/academics-page",
-      //     },
-      //     {
-      //       title: "Homework",
-      //       url: "/table_homework",
-      //     },
-      //     {
-      //       title: "Table Curriculum",
-      //       url: "/table_curriculum",
-      //     },
-      //     {
-      //       title: "Table Timings",
-      //       url: "/table_timings",
-      //     },
-      //     {
-      //       title: "Table Exam Timetable",
-      //       url: "/table_exam_timetable",
-      //     },
-      //     {
-      //       title: "Time Table",
-      //       url: "/time_table",
       //     },
       //   ],
       // },
@@ -179,14 +146,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       //       title: "General Settings",
       //       url: "/cbse-page",
       //     },
-      //     {
-      //       title: "Table Circulars",
-      //       url: "/table_circular",
-      //     },
-      //     {
-      //       title: "Raj Bhasha",
-      //       url: "/raj-bhasha",
-      //     },
       //   ],
       // },
       // {
@@ -211,10 +170,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       //       title: "General Settings",
       //       url: "/achievements-page",
       //     },
-      //     {
-      //       title: "Table Achievements",
-      //       url: "/table-achievements",
-      //     },
       //   ],
       // },
       // {
@@ -226,22 +181,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       //     {
       //       title: "General Settings",
       //       url: "/miscellaneous-page",
-      //     },
-      //     {
-      //       title: "Blogs",
-      //       url: "/blogs",
-      //     },
-      //     {
-      //       title: "Table Careers",
-      //       url: "/table_careers",
-      //     },
-      //     {
-      //       title: "Alumni",
-      //       url: "/alumni",
-      //     },
-      //     {
-      //       title: "Table TC Issued",
-      //       url: "/table_tc_issued",
       //     },
       //   ],
       // },

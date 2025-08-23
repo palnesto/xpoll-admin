@@ -1,4 +1,3 @@
-// src/hooks/useAdminAuth.ts
 import { useEffect } from "react";
 import { useApiQuery } from "./useApiQuery";
 import { endpoints } from "@/api/endpoints";

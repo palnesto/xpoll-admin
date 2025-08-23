@@ -29,10 +29,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { CustomModal } from "@/components/modals/custom-modal";
+
 import CountrySelect from "@/components/commons/selects/country-select";
 import StateSelect from "@/components/commons/selects/state-select";
 import { CitySelect } from "@/components/commons/selects/city-select";
-import { ASSET_OPTIONS } from "@/components/poll-card";
+
+// ---------------- helpers & types ----------------
 
 type ResourceAsset = { type: "image" | "youtube" | string; value: string };
 type TrialReward = {
@@ -100,6 +102,8 @@ const arrEqUnordered = (a: string[], b: string[]) => {
   return A.every((v, i) => v === B[i]);
 };
 
+// ---------------- validation ----------------
+
 const assetZ = z.object({
   type: z.enum(["image", "youtube"]),
   value: z.string().min(1, "Required"),
@@ -115,6 +119,17 @@ const rewardZ = z
     message: "Cap must be ≥ amount",
   });
 
+// NEW: polls to be *added* during edit
+const pollOptionZ = z.object({
+  text: z.string().min(1, "Required"),
+});
+const pollZ = z.object({
+  title: z.string().min(1, "Required").trim(),
+  description: z.string().optional().default(""),
+  resourceAssets: z.array(assetZ).default([]),
+  options: z.array(pollOptionZ).min(2, "At least 2 options"),
+});
+
 const editSchema = z.object({
   title: z.string().min(3, "Min 3 chars").trim(),
   description: z.string().min(3, "Min 3 chars").trim(),
@@ -127,8 +142,215 @@ const editSchema = z.object({
       cities: z.array(z.string()).default([]),
     })
     .default({ countries: [], states: [], cities: [] }),
+  // NEW: all new polls you add in the edit view
+  newPolls: z.array(pollZ).default([]),
 });
+
 type EditValues = z.infer<typeof editSchema>;
+
+// ---------------- inline “PollCard” for edit ----------------
+// (keeps your existing PollCard used by *create* page untouched)
+
+function InlinePollCard({
+  index,
+  control,
+  watch,
+  onRemove,
+  disableRemove,
+}: {
+  index: number;
+  control: any;
+  watch: any;
+  onRemove: () => void;
+  disableRemove?: boolean;
+}) {
+  const prefix = `newPolls.${index}`;
+  const assetsArray = useFieldArray({
+    control,
+    name: `${prefix}.resourceAssets` as any,
+  });
+  const optionsArray = useFieldArray({
+    control,
+    name: `${prefix}.options` as any,
+  });
+
+  const typeFor = (i: number) => watch(`${prefix}.resourceAssets.${i}.type`);
+  const optCount = (watch(`${prefix}.options`) ?? []).length || 0;
+
+  return (
+    <div className="rounded-lg border p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="text-base font-medium">Poll #{index + 1}</div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onRemove}
+          disabled={!!disableRemove}
+        >
+          Remove Poll
+        </Button>
+      </div>
+
+      {/* Title */}
+      <FormField
+        control={control}
+        name={`${prefix}.title` as any}
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Title</FormLabel>
+            <FormControl>
+              <Input placeholder="Poll title" {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      {/* Description */}
+      <FormField
+        control={control}
+        name={`${prefix}.description` as any}
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Description (optional)</FormLabel>
+            <FormControl>
+              <Input placeholder="Short description" {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      {/* Media */}
+      <div className="space-y-2">
+        <FormLabel>Media (Images / YouTube) – optional</FormLabel>
+        {assetsArray.fields.map((f, idx) => {
+          const t = typeFor(idx);
+          return (
+            <div key={f.id} className="grid grid-cols-12 gap-2 items-end">
+              <div className="col-span-4">
+                <FormField
+                  control={control}
+                  name={`${prefix}.resourceAssets.${idx}.type` as any}
+                  render={({ field }) => (
+                    <FormItem>
+                      <label className="text-xs">Type</label>
+                      <FormControl>
+                        <select
+                          className="w-full h-9 border rounded-md px-2 bg-transparent"
+                          {...field}
+                        >
+                          <option value="image">IMAGE</option>
+                          <option value="youtube">YOUTUBE</option>
+                        </select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="col-span-7">
+                <FormField
+                  control={control}
+                  name={`${prefix}.resourceAssets.${idx}.value` as any}
+                  render={({ field }) => (
+                    <FormItem>
+                      <label className="text-xs">
+                        {t === "youtube" ? "YouTube URL or ID" : "Image URL"}
+                      </label>
+                      <FormControl>
+                        <Input
+                          placeholder={
+                            t === "youtube"
+                              ? "https://youtube.com/watch?v=… or 11-char ID"
+                              : "https://example.com/pic.jpg"
+                          }
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="col-span-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => assetsArray.remove(idx)}
+                >
+                  Remove
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => assetsArray.append({ type: "image", value: "" })}
+          >
+            + Image
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => assetsArray.append({ type: "youtube", value: "" })}
+          >
+            + YouTube
+          </Button>
+        </div>
+      </div>
+
+      {/* Options */}
+      <div className="space-y-2">
+        <FormLabel>Options</FormLabel>
+        {optionsArray.fields.map((f, oIdx) => (
+          <div key={f.id} className="grid grid-cols-12 gap-2 items-end">
+            <div className="col-span-10">
+              <FormField
+                control={control}
+                name={`${prefix}.options.${oIdx}.text` as any}
+                render={({ field }) => (
+                  <FormItem>
+                    <label className="text-xs">Text</label>
+                    <FormControl>
+                      <Input placeholder={`Option ${oIdx + 1}`} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <div className="col-span-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => optionsArray.remove(oIdx)}
+                disabled={optCount <= 2}
+                title={optCount <= 2 ? "At least 2 options required" : ""}
+              >
+                Remove
+              </Button>
+            </div>
+          </div>
+        ))}
+        <div>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => optionsArray.append({ text: "" })}
+          >
+            + Option
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------- page ----------------
 
 export default function TrialShowPage() {
   const navigate = useNavigate();
@@ -151,13 +373,16 @@ export default function TrialShowPage() {
       resourceAssets: [],
       rewards: [],
       targetGeo: { countries: [], states: [], cities: [] },
+      newPolls: [], // NEW
     },
     mode: "onChange",
   });
-  const { control, handleSubmit, watch, reset } = form;
+  const { control, handleSubmit, watch, reset, setValue } = form;
 
   const assetArray = useFieldArray({ control, name: "resourceAssets" });
   const rewardsArray = useFieldArray({ control, name: "rewards" });
+  // NEW: field array for polls in edit view
+  const newPollsArray = useFieldArray({ control, name: "newPolls" });
 
   const [geoCountries, setGeoCountries] = useState<LV[]>([]);
   const [geoStates, setGeoStates] = useState<LV[]>([]);
@@ -188,6 +413,7 @@ export default function TrialShowPage() {
           ? trial.targetGeo!.cities
           : [],
       },
+      newPolls: [], // start empty on edit open
     });
 
     setGeoCountries(
@@ -207,7 +433,11 @@ export default function TrialShowPage() {
     );
   }, [trial, reset]);
 
-  const { mutate: saveEdit, isPending: isSaving } = useApiMutation<any, any>({
+  // UPDATE trial
+  const { mutateAsync: saveEdit, isPending: isSaving } = useApiMutation<
+    any,
+    any
+  >({
     route: endpoints.entities.trials.update,
     method: "PUT",
     onSuccess: (_resp, vars) => {
@@ -237,22 +467,32 @@ export default function TrialShowPage() {
     },
   });
 
-  const onSubmitEdit = handleSubmit((v) => {
+  // CREATE poll(s) (run after trial update)
+  const { mutateAsync: createPollAsync, isPending: isCreatingPoll } =
+    useApiMutation<any, any>({
+      route: endpoints.entities.polls.create, // change if needed
+      method: "POST",
+    });
+
+  const onSubmitEdit = handleSubmit(async (v) => {
     if (!trial) return;
 
-    const normAssets = (v.resourceAssets ?? []).map((a) => ({
-      type: a.type,
-      value:
-        a.type === "youtube"
-          ? extractYouTubeId(a.value.trim())
-          : a.value.trim(),
-    }));
+    const normalizeAssets = (
+      arr?: { type: "image" | "youtube"; value: string }[]
+    ) =>
+      (arr ?? []).map((a) => ({
+        type: a.type,
+        value:
+          a.type === "youtube"
+            ? extractYouTubeId(a.value.trim())
+            : a.value.trim(),
+      }));
 
     const payload: any = {
-      trialId: id,
+      trialId: trial._id,
       title: v.title,
       description: v.description,
-      resourceAssets: normAssets,
+      resourceAssets: normalizeAssets(v.resourceAssets),
     };
     if (Array.isArray(v.rewards)) {
       payload.rewards = v.rewards.map((r) => ({
@@ -279,7 +519,30 @@ export default function TrialShowPage() {
 
     if (geoChanged) payload.targetGeo = nextTG;
 
-    saveEdit(payload);
+    // 1) Update trial
+    await saveEdit(payload);
+
+    // 2) Create newly added polls
+    if (Array.isArray(v.newPolls) && v.newPolls.length > 0) {
+      await Promise.all(
+        v.newPolls.map((p) =>
+          createPollAsync({
+            trialId: trial._id,
+            title: p.title,
+            description: p.description ?? "",
+            resourceAssets: normalizeAssets(p.resourceAssets),
+            options: p.options.map((o) => ({ text: o.text.trim() })),
+          })
+        )
+      );
+
+      // clear form section + refresh listings
+      setValue("newPolls", [], { shouldDirty: false, shouldValidate: false });
+      queryClient.invalidateQueries(); // or narrow to your poll list key
+      appToast.success(
+        `Created ${v.newPolls.length} poll${v.newPolls.length > 1 ? "s" : ""}`
+      );
+    }
   });
 
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -378,6 +641,7 @@ export default function TrialShowPage() {
           {isEditing ? (
             <Form {...form}>
               <form className="space-y-6" onSubmit={onSubmitEdit}>
+                {/* Title */}
                 <FormField
                   control={control}
                   name="title"
@@ -392,6 +656,7 @@ export default function TrialShowPage() {
                   )}
                 />
 
+                {/* Description */}
                 <FormField
                   control={control}
                   name="description"
@@ -406,6 +671,7 @@ export default function TrialShowPage() {
                   )}
                 />
 
+                {/* Media */}
                 <div className="space-y-2">
                   <FormLabel>Media (Images / YouTube) – optional</FormLabel>
                   {assetArray.fields.map((f, idx) => {
@@ -498,9 +764,11 @@ export default function TrialShowPage() {
                   </div>
                 </div>
 
+                {/* Target Geo */}
                 <div className="space-y-2">
                   <FormLabel>Target Geo</FormLabel>
 
+                  {/* Countries */}
                   <CountrySelect
                     value={geoCountries}
                     onChange={(val: any) => {
@@ -641,7 +909,7 @@ export default function TrialShowPage() {
                       <div className="col-span-4">
                         <FormField
                           control={control}
-                          name={`rewards.${rIdx}.assetId`}
+                          name={`rewards.${rIdx}.assetId` as const}
                           render={({ field }) => (
                             <FormItem>
                               <label className="text-xs">Asset</label>
@@ -650,15 +918,9 @@ export default function TrialShowPage() {
                                   className="w-full h-9 border rounded-md px-2 bg-transparent"
                                   {...field}
                                 >
-                                  {ASSET_OPTIONS.map((o) => (
-                                    <option
-                                      key={o.value}
-                                      value={o.value}
-                                      className="bg-gray-900"
-                                    >
-                                      {o.label}
-                                    </option>
-                                  ))}
+                                  <option value="xOcta">xOCTA</option>
+                                  <option value="xMYST">XMYST</option>
+                                  <option value="xDrop">XDROP</option>
                                 </select>
                               </FormControl>
                               <FormMessage />
@@ -669,7 +931,7 @@ export default function TrialShowPage() {
                       <div className="col-span-3">
                         <FormField
                           control={control}
-                          name={`rewards.${rIdx}.amount`}
+                          name={`rewards.${rIdx}.amount` as const}
                           render={({ field }) => (
                             <FormItem>
                               <label className="text-xs">Amount</label>
@@ -689,7 +951,7 @@ export default function TrialShowPage() {
                       <div className="col-span-3">
                         <FormField
                           control={control}
-                          name={`rewards.${rIdx}.rewardAmountCap`}
+                          name={`rewards.${rIdx}.rewardAmountCap` as const}
                           render={({ field }) => (
                             <FormItem>
                               <label className="text-xs">Reward Cap</label>
@@ -723,13 +985,46 @@ export default function TrialShowPage() {
                       variant="secondary"
                       onClick={() =>
                         rewardsArray.append({
-                          assetId: ASSET_OPTIONS[0].value,
+                          assetId: "xOcta",
                           amount: 1,
                           rewardAmountCap: 1,
                         })
                       }
                     >
                       + Reward
+                    </Button>
+                  </div>
+                </div>
+
+                {/* NEW: Add Polls */}
+                <div className="space-y-2">
+                  <FormLabel>Polls (add to this trial)</FormLabel>
+
+                  {newPollsArray.fields.map((pf, pIdx) => (
+                    <InlinePollCard
+                      key={pf.id}
+                      control={control}
+                      watch={watch}
+                      index={pIdx}
+                      onRemove={() => newPollsArray.remove(pIdx)}
+                      disableRemove={newPollsArray.fields.length <= 1}
+                    />
+                  ))}
+
+                  <div>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() =>
+                        newPollsArray.append({
+                          title: "",
+                          description: "",
+                          resourceAssets: [],
+                          options: [{ text: "" }, { text: "" }],
+                        })
+                      }
+                    >
+                      + Add Poll
                     </Button>
                   </div>
                 </div>
@@ -762,6 +1057,7 @@ export default function TrialShowPage() {
                           states: trial.targetGeo?.states ?? [],
                           cities: trial.targetGeo?.cities ?? [],
                         },
+                        newPolls: [],
                       });
                       setGeoCountries(
                         Array.isArray(trial.targetGeo?.countries)
@@ -789,12 +1085,12 @@ export default function TrialShowPage() {
                       );
                       setIsEditing(false);
                     }}
-                    disabled={isSaving}
+                    disabled={isSaving || isCreatingPoll}
                   >
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={isSaving}>
-                    {isSaving ? "Saving…" : "Save"}
+                  <Button type="submit" disabled={isSaving || isCreatingPoll}>
+                    {isSaving || isCreatingPoll ? "Saving…" : "Save"}
                   </Button>
                 </div>
               </form>
@@ -899,7 +1195,7 @@ export default function TrialShowPage() {
         </CardContent>
       </Card>
 
-      {/* Polls in this trial */}
+      {/* Existing polls table under this trial */}
       <TrialPollTable trialId={id} />
 
       {/* Delete modal */}

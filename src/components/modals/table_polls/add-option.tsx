@@ -42,25 +42,6 @@ export const AddOptionModal = () => {
     onSuccess: (resp) => {
       appToast.success("Option added");
 
-      // const serverOptions =
-      //   resp?.data?.data?.options ?? resp?.data?.options ?? resp?.options;
-
-      // if (Array.isArray(serverOptions)) {
-      //   patchShowCache(showKey, (curr) => ({
-      //     ...curr,
-      //     options: serverOptions,
-      //   }));
-      // } else {
-      //   const text = form.getValues("text").trim();
-      //   patchShowCache(showKey, (curr) => ({
-      //     ...curr,
-      //     options: [
-      //       ...(curr?.options ?? []),
-      //       { _id: crypto.randomUUID(), text, archivedAt: null },
-      //     ],
-      //   }));
-      // }
-
       queryClient.invalidateQueries();
       onClose();
     },

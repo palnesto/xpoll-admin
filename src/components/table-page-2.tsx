@@ -34,7 +34,6 @@ export const DraggableTableRow = React.forwardRef<
   HTMLTableRowElement,
   React.HTMLAttributes<HTMLTableRowElement>
 >((props, ref) => {
-  // This component renders a native <tr> and forwards its ref and props.
   return <tr ref={ref} {...props} />;
 });
 DraggableTableRow.displayName = "DraggableTableRow";
@@ -50,7 +49,6 @@ type TablePageProps<T> = {
   title?: string;
   createButtonText?: string;
   onCreate?: () => void;
-  // When onReorder is provided, drag & drop reordering is enabled.
   onReorder?: (params: {
     movedRow: T;
     sourceIndex: number;

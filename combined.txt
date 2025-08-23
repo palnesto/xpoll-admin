@@ -3,30 +3,37 @@ src\api\endpoints\index.ts
 --------------------------
 export const endpoints = {
   healthCheck: "/health-check",
-  adminLogin: "/admin/auth/login",
-  adminLogout: "/admin/auth/logout",
-  adminMe: "/admin/auth/me",
+  adminLogin: "/public/admin/login",
+  adminLogout: "/public/admin/logout",
+  adminMe: "/internal/auth/me",
   entities: {
     polls: {
-      all: "/poll/list",
+      all: "/internal/poll/list",
       create: "/poll",
-      updateDetails: `/poll/details`,
-      getById: (id: string) => `/poll/${id}`,
-      delete: `/poll`,
+      getById: (id: string) => `/internal/poll/${id}`,
+      delete: `/internal/poll`,
       edit: {
-        details: `/poll/details`,
-        addOption: `/poll/options`,
-        editOption: `/poll/options`,
+        details: `/internal/poll/details`,
+        addOption: `/internal/poll/options`,
+        editOption: `/internal/poll/options`,
+        toggleOption: `/internal/poll/archive`,
       },
-      getPollsByTrialId: (id: string) => `/poll/trial/${id}`,
+      getPollsByTrialId: (id: string) => `/internal/poll/trial/${id}`,
     },
     trials: {
-      all: "/trial/list",
-      create: "/trial",
-      update: "/trial",
-      delete: "/trial",
-      getById: (id: string) => `/trial/${id}`,
-      cast: "/trial/cast",
+      all: "/internal/trial/list",
+      create: "/internal/trial",
+      update: "/internal/trial",
+      delete: "/internal/trial",
+      getById: (id: string) => `/internal/trial/${id}`,
+    },
+    actions: {
+      createMint: "/internal/actions/mint",
+      createBurn: "/internal/actions/burn",
+      createFund: "/internal/actions/fund",
+      createWithdraw: "/internal/actions/withdraw",
+      createSellApprove: "/internal/actions/bulk-sell-intent-approve",
+      createSellReject: "/internal/actions/bulk-sell-intent-reject",
     },
   },
 };
@@ -119,20 +126,13 @@ src\components\app-sidebar.tsx
 ------------------------------
 import * as React from "react";
 import {
-  BookCopy,
   Frame,
   GalleryVerticalEnd,
-  GraduationCap,
   House,
-  Images,
-  LampDesk,
   Map,
   PieChart,
   ReceiptText,
-  School,
   Settings,
-  Trophy,
-  UserPen,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -188,13 +188,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ],
       },
       {
-        title: "Sell Order",
+        title: "Actions",
         url: "#",
         icon: ReceiptText,
         isActive: true,
         items: [
           {
-            title: "Trial Polls",
+            title: "Sell Order",
             url: "/sell-order",
           },
         ],
@@ -643,7 +643,7 @@ export function CitySelect({
 }: Props) {
   return (
     <InfiniteSelect<CityItem>
-      route="/location/cities"
+      route="/common/location/cities"
       pageSize={pageSize}
       getFilters={(search) => ({ q: search })}
       mapItemToOption={(item) => ({
@@ -703,7 +703,7 @@ export default function CountrySelect({
 }: Props) {
   return (
     <InfiniteSelect<CountryItem>
-      route="/location/countries"
+      route="/common/location/countries"
       pageSize={pageSize}
       getFilters={(search) => ({ q: search })}
       mapItemToOption={(item) => ({
@@ -760,7 +760,7 @@ export default function StateSelect({
 }: Props) {
   return (
     <InfiniteSelect<StateItem>
-      route="/location/states"
+      route="/common/location/states"
       pageSize={pageSize}
       getFilters={(search) => ({ q: search })}
       mapItemToOption={(item) => ({
@@ -1062,18 +1062,19 @@ import { useApiMutation } from "@/hooks/useApiMutation";
 import { queryClient } from "@/api/queryClient";
 import { appToast } from "@/utils/toast";
 import { usePollViewStore } from "@/stores/poll_view.store";
+import { endpoints } from "@/api/endpoints";
 
-function patchShowCache(showKey: string, updater: (curr: any) => any) {
-  const prev = queryClient.getQueryData<any>([showKey]);
-  if (!prev) return;
-  const lvl1 = prev?.data ?? {};
-  const curr = lvl1?.data && typeof lvl1.data === "object" ? lvl1.data : lvl1;
-  const nextCurr = updater(curr);
-  const next = lvl1?.data
-    ? { ...prev, data: { ...lvl1, data: nextCurr } }
-    : { ...prev, data: nextCurr };
-  queryClient.setQueryData([showKey], next);
-}
+// function patchShowCache(showKey: string, updater: (curr: any) => any) {
+//   const prev = queryClient.getQueryData<any>([showKey]);
+//   if (!prev) return;
+//   const lvl1 = prev?.data ?? {};
+//   const curr = lvl1?.data && typeof lvl1.data === "object" ? lvl1.data : lvl1;
+//   const nextCurr = updater(curr);
+//   const next = lvl1?.data
+//     ? { ...prev, data: { ...lvl1, data: nextCurr } }
+//     : { ...prev, data: nextCurr };
+//   queryClient.setQueryData([showKey], next);
+// }
 
 export const ArchiveToggleOptionModal = () => {
   const isArchiveToggleOption = usePollViewStore(
@@ -1082,7 +1083,7 @@ export const ArchiveToggleOptionModal = () => {
   const onClose = usePollViewStore((s) => s.onClose);
 
   const { mutate: toggleArchive, isPending } = useApiMutation<any, any>({
-    route: "/poll/options/archive",
+    route: endpoints.entities.polls.edit.toggleOption,
     method: "PATCH",
     onSuccess: (resp) => {
       appToast.success("Option removed");
@@ -1792,6 +1793,280 @@ export const PaginatedTable = ({
     </>
   );
 };
+
+
+src\components\poll-card.tsx
+----------------------------
+import { Control, useFieldArray, UseFormWatch } from "react-hook-form";
+import z from "zod";
+import { Button } from "./ui/button";
+import {
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "./ui/form";
+import { Input } from "./ui/input";
+
+export const ASSET_OPTIONS = [
+  { label: "OCTA", value: "xOcta" },
+  { label: "MYST", value: "xMYST" },
+  { label: "DROP", value: "xDrop" },
+] as const;
+
+const resourceAssetZ = z.object({
+  type: z.enum(["image", "youtube"]),
+  value: z.string().min(1, "Required"),
+});
+
+const optionZ = z.object({
+  text: z.string().min(3, "Min 3 chars").trim(),
+});
+
+const rewardZ = z
+  .object({
+    assetId: z.enum(["xOcta", "xMYST", "xDrop"]),
+    amount: z.coerce.number().int().min(1, "Min 1"),
+    rewardAmountCap: z.coerce.number().int().min(1, "Min 1"),
+  })
+  .refine((r) => r.rewardAmountCap >= r.amount, {
+    path: ["rewardAmountCap"],
+    message: "Cap must be >= amount",
+  });
+
+export const pollCreateZ = z.object({
+  title: z.string().min(3, "Min 3 chars").trim(),
+  description: z.string().min(3, "Min 3 chars").trim(),
+  resourceAssets: z.array(resourceAssetZ).default([]),
+  options: z
+    .array(optionZ)
+    .min(2, "Need 2–4 options")
+    .max(4, "Need 2–4 options"),
+});
+export const formSchema = z.object({
+  trial: z.object({
+    title: z.string().min(3, "Min 3 chars").trim(),
+    description: z.string().min(3, "Min 3 chars").trim(),
+    resourceAssets: z.array(resourceAssetZ).default([]),
+    rewards: z.array(rewardZ).optional(),
+    // NEW: targetGeo same shape as in poll/create.tsx
+    targetGeo: z.object({
+      countries: z.array(z.string()).default([]),
+      states: z.array(z.string()).default([]),
+      cities: z.array(z.string()).default([]),
+    }),
+  }),
+  polls: z.array(pollCreateZ).min(1, "Add at least 1 poll"),
+});
+export type FormValues = z.infer<typeof formSchema>;
+
+export function PollCard({
+  control,
+  watch,
+  index,
+  onRemove,
+  disableRemove,
+}: {
+  control: Control<FormValues>;
+  watch: UseFormWatch<FormValues>;
+  index: number;
+  onRemove: () => void;
+  disableRemove: boolean;
+}) {
+  // These hooks live inside the child => stable per mounted child
+  const pollAssetsArray = useFieldArray({
+    control,
+    name: `polls.${index}.resourceAssets` as const,
+  });
+  const pollOptionsArray = useFieldArray({
+    control,
+    name: `polls.${index}.options` as const,
+  });
+
+  const optionsLen = watch(`polls.${index}.options`)?.length ?? 0;
+
+  return (
+    <div className="border rounded-lg p-4 space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="text-sm font-medium">Poll #{index + 1}</div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onRemove}
+          disabled={disableRemove}
+        >
+          Remove Poll
+        </Button>
+      </div>
+
+      {/* Title */}
+      <FormField
+        control={control}
+        name={`polls.${index}.title` as const}
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Title</FormLabel>
+            <FormControl>
+              <Input placeholder="Poll title" {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      {/* Description */}
+      <FormField
+        control={control}
+        name={`polls.${index}.description` as const}
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Description</FormLabel>
+            <FormControl>
+              <Input placeholder="Short description" {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      {/* Assets */}
+      <div className="space-y-2">
+        <FormLabel>Media (Images / YouTube) – optional</FormLabel>
+        {pollAssetsArray.fields.map((f, aIdx) => {
+          const typeName =
+            `polls.${index}.resourceAssets.${aIdx}.type` as const;
+          const valueName =
+            `polls.${index}.resourceAssets.${aIdx}.value` as const;
+          const t = watch(typeName);
+
+          return (
+            <div key={f.id} className="grid grid-cols-12 gap-2 items-end">
+              <div className="col-span-4">
+                <FormField
+                  control={control}
+                  name={typeName}
+                  render={({ field }) => (
+                    <FormItem>
+                      <label className="text-xs">Type</label>
+                      <FormControl>
+                        <select
+                          className="w-full h-9 border rounded-md px-2 bg-transparent"
+                          {...field}
+                        >
+                          <option value="image">IMAGE</option>
+                          <option value="youtube">YOUTUBE</option>
+                        </select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="col-span-7">
+                <FormField
+                  control={control}
+                  name={valueName}
+                  render={({ field }) => (
+                    <FormItem>
+                      <label className="text-xs">
+                        {t === "youtube" ? "YouTube URL or ID" : "Image URL"}
+                      </label>
+                      <FormControl>
+                        <Input
+                          placeholder={
+                            t === "youtube"
+                              ? "https://youtube.com/watch?v=… or 11-char ID"
+                              : "https://example.com/pic.jpg"
+                          }
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="col-span-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => pollAssetsArray.remove(aIdx)}
+                >
+                  Remove
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => pollAssetsArray.append({ type: "image", value: "" })}
+          >
+            + Image
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() =>
+              pollAssetsArray.append({ type: "youtube", value: "" })
+            }
+          >
+            + YouTube
+          </Button>
+        </div>
+      </div>
+
+      {/* Options */}
+      <div className="space-y-2">
+        <FormLabel>Options (2–4)</FormLabel>
+        {pollOptionsArray.fields.map((f, oIdx) => (
+          <div key={f.id} className="flex gap-2 items-end">
+            <FormField
+              control={control}
+              name={`polls.${index}.options.${oIdx}.text` as const}
+              render={({ field }) => (
+                <FormItem className="flex-1">
+                  <FormControl>
+                    <Input placeholder={`Option #${oIdx + 1}`} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => pollOptionsArray.remove(oIdx)}
+              disabled={pollOptionsArray.fields.length <= 2}
+            >
+              Remove
+            </Button>
+          </div>
+        ))}
+
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => pollOptionsArray.append({ text: "" })}
+            disabled={optionsLen >= 4}
+          >
+            Add Option
+          </Button>
+          <span className="text-sm text-destructive">
+            {(false as any) || (formSchema?.shape?.polls && undefined)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 
 src\components\table-page-2.tsx
@@ -5561,6 +5836,10 @@ import { queryClient } from "@/api/queryClient";
 import { appToast } from "@/utils/toast";
 import { useNavigate } from "react-router-dom";
 import { useMemo } from "react";
+import { CitySelect } from "@/components/commons/selects/city-select";
+import { X } from "lucide-react";
+import StateSelect from "@/components/commons/selects/state-select";
+import CountrySelect from "@/components/commons/selects/country-select";
 
 const ASSET_OPTIONS = [
   { label: "OCTA", value: "xOcta" },
@@ -5592,6 +5871,11 @@ const formSchema = z.object({
       path: ["rewardAmountCap"],
       message: "rewardAmountCap must be >= amount",
     }),
+  targetGeo: z.object({
+    countries: z.array(z.string()).default([]),
+    states: z.array(z.string()).default([]),
+    cities: z.array(z.string()).default([]),
+  }),
   resourceAssets: z.array(resourceAssetZ).default([]),
 });
 
@@ -5623,6 +5907,11 @@ export default function PollCreatePage() {
       description: "",
       options: [{ text: "" }, { text: "" }],
       reward: { assetId: ASSET_OPTIONS[0].value, amount: 1 },
+      targetGeo: {
+        countries: [],
+        states: [],
+        cities: [],
+      },
       resourceAssets: [],
     }),
     []
@@ -5675,6 +5964,11 @@ export default function PollCreatePage() {
           currentDistribution: 0,
         },
       ],
+      targetGeo: {
+        countries: v.targetGeo.countries,
+        states: v.targetGeo.states,
+        cities: v.targetGeo.cities,
+      },
       expireRewardAt: null,
     };
     mutate(payload as any);
@@ -5919,6 +6213,107 @@ export default function PollCreatePage() {
             </div>
           </div>
 
+          <div className="space-y-2">
+            <FormLabel>Target Geo</FormLabel>
+
+            {/* Countries */}
+            <CountrySelect
+              placeholder="Select country"
+              onChange={(opt) => {
+                if (opt?.value) {
+                  form.setValue("targetGeo.countries", [
+                    ...form.getValues("targetGeo.countries"),
+                    opt.value,
+                  ]);
+                }
+              }}
+            />
+            <div className="flex flex-wrap gap-2 mt-2">
+              {watch("targetGeo.countries").map((c, i) => (
+                <span
+                  key={`country-${i}`}
+                  className="flex items-center gap-1 px-2 py-1 border rounded text-sm"
+                >
+                  {c}
+                  <X
+                    className="w-4 h-4 cursor-pointer"
+                    onClick={() =>
+                      form.setValue(
+                        "targetGeo.countries",
+                        watch("targetGeo.countries").filter(
+                          (_, idx) => idx !== i
+                        )
+                      )
+                    }
+                  />
+                </span>
+              ))}
+            </div>
+
+            {/* States */}
+            <StateSelect
+              placeholder="Select state"
+              onChange={(opt) => {
+                if (opt?.value) {
+                  form.setValue("targetGeo.states", [
+                    ...form.getValues("targetGeo.states"),
+                    opt.value,
+                  ]);
+                }
+              }}
+            />
+            <div className="flex flex-wrap gap-2 mt-2">
+              {watch("targetGeo.states").map((s, i) => (
+                <span
+                  key={`state-${i}`}
+                  className="flex items-center gap-1 px-2 py-1 border rounded text-sm"
+                >
+                  {s}
+                  <X
+                    className="w-4 h-4 cursor-pointer"
+                    onClick={() =>
+                      form.setValue(
+                        "targetGeo.states",
+                        watch("targetGeo.states").filter((_, idx) => idx !== i)
+                      )
+                    }
+                  />
+                </span>
+              ))}
+            </div>
+
+            {/* Cities */}
+            <CitySelect
+              placeholder="Select city"
+              onChange={(opt) => {
+                if (opt?.value) {
+                  form.setValue("targetGeo.cities", [
+                    ...form.getValues("targetGeo.cities"),
+                    opt.value,
+                  ]);
+                }
+              }}
+            />
+            <div className="flex flex-wrap gap-2 mt-2">
+              {watch("targetGeo.cities").map((city, i) => (
+                <span
+                  key={`city-${i}`}
+                  className="flex items-center gap-1 px-2 py-1 border rounded text-sm"
+                >
+                  {city}
+                  <X
+                    className="w-4 h-4 cursor-pointer"
+                    onClick={() =>
+                      form.setValue(
+                        "targetGeo.cities",
+                        watch("targetGeo.cities").filter((_, idx) => idx !== i)
+                      )
+                    }
+                  />
+                </span>
+              ))}
+            </div>
+          </div>
           <div className="flex justify-end gap-2">
             <Button type="submit" disabled={isPending}>
               Create
@@ -6030,8 +6425,12 @@ export default function Polls() {
 
 src\pages\polls\[id]\index.tsx
 ------------------------------
-import { useMemo, useCallback, useEffect, useState } from "react";
+import { useMemo, useEffect, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
 import { endpoints } from "@/api/endpoints";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { useApiMutation } from "@/hooks/useApiMutation";
@@ -6040,7 +6439,7 @@ import { appToast } from "@/utils/toast";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Edit, Pencil, PlusSquare, Recycle, Trash2 } from "lucide-react";
+import { Edit, Pencil, PlusSquare, Recycle, Trash2, X } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   Tooltip,
@@ -6050,11 +6449,24 @@ import {
 } from "@/components/ui/tooltip";
 import { fmt } from "@/components/paginated-table";
 
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+
 import { usePollViewStore } from "@/stores/poll_view.store";
 import { AddOptionModal } from "@/components/modals/table_polls/add-option";
 import { EditOptionModal } from "@/components/modals/table_polls/edit-option";
 import { ArchiveToggleOptionModal } from "@/components/modals/table_polls/archive-toggle-option";
 import { cn } from "@/lib/utils";
+
+import CountrySelect from "@/components/commons/selects/country-select";
+import StateSelect from "@/components/commons/selects/state-select";
+import { CitySelect } from "@/components/commons/selects/city-select";
 
 /* ---------- types ---------- */
 type PollOption = {
@@ -6064,6 +6476,7 @@ type PollOption = {
 };
 
 type Poll = {
+  _id?: string; // used in some mutations/patch
   pollId: string;
   title: string;
   description?: string;
@@ -6071,11 +6484,16 @@ type Poll = {
   archivedAt?: string | null;
   resourceAssets?: unknown;
   options?: PollOption[];
+  targetGeo?: {
+    countries?: string[];
+    states?: string[];
+    cities?: string[];
+  };
 };
 
 const MAX_OPTIONS = 4;
 
-/* small helper for details patch */
+/* ---------- helpers ---------- */
 function patchShowCache(showKey: string, updater: (curr: any) => any) {
   const prev = queryClient.getQueryData<any>([showKey]);
   if (!prev) return;
@@ -6087,6 +6505,46 @@ function patchShowCache(showKey: string, updater: (curr: any) => any) {
     : { ...prev, data: nextCurr };
   queryClient.setQueryData([showKey], next);
 }
+
+type LV = { label: string; value: string };
+// const dedupeByValue = (arr: LV[]): LV[] => {
+//   const m = new Map<string, LV>();
+//   for (const it of Array.isArray(arr) ? arr : []) {
+//     if (!it?.value) continue;
+//     m.set(it.value, it);
+//   }
+//   return Array.from(m.values());
+// };
+
+const arrEqUnordered = (a: string[], b: string[]) => {
+  if (!Array.isArray(a) || !Array.isArray(b)) return false;
+  if (a.length !== b.length) return false;
+  const A = [...a].sort();
+  const B = [...b].sort();
+  return A.every((v, i) => v === B[i]);
+};
+
+const editSchema = z.object({
+  title: z.string().min(3, "Min 3 chars").trim(),
+  description: z.string().min(3, "Min 3 chars").trim(),
+  media: z
+    .string()
+    .trim()
+    .optional()
+    .or(z.literal(""))
+    .refine(
+      (v) => !v || /^https?:\/\/.+/i.test(v),
+      "Must be a valid URL (http/https) or leave empty"
+    ),
+  targetGeo: z
+    .object({
+      countries: z.array(z.string()).default([]),
+      states: z.array(z.string()).default([]),
+      cities: z.array(z.string()).default([]),
+    })
+    .default({ countries: [], states: [], cities: [] }),
+});
+type EditValues = z.infer<typeof editSchema>;
 
 export default function PollShowPage() {
   const navigate = useNavigate();
@@ -6102,34 +6560,88 @@ export default function PollShowPage() {
     return data?.data?.data ?? data?.data ?? null;
   }, [data]);
 
-  // ===== details editing =====
+  // ===== edit mode toggle =====
   const [isEditing, setIsEditing] = useState(false);
-  const [title, setTitle] = useState<string>("");
-  const [description, setDescription] = useState<string>("");
-  const [mediaUrl, setMediaUrl] = useState<string>("");
 
+  // ===== RHF with zod (keep logic; just validation & messages) =====
+  const form = useForm<EditValues>({
+    resolver: zodResolver(editSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      media: "",
+      targetGeo: { countries: [], states: [], cities: [] },
+    },
+    mode: "onChange",
+  });
+  const { control, handleSubmit, reset, getValues } = form;
+
+  // ===== Target Geo local state (multi-select LV[]) =====
+  const [geoCountries, setGeoCountries] = useState<LV[]>([]);
+  const [geoStates, setGeoStates] = useState<LV[]>([]);
+  const [geoCities, setGeoCities] = useState<LV[]>([]);
+
+  // hydrate form + geos when poll loads
   useEffect(() => {
     if (!poll) return;
-    setTitle(poll.title ?? "");
-    setDescription(poll.description ?? "");
-    setMediaUrl((poll as any)?.media ?? "");
-  }, [poll]);
 
-  const updateDetailsRoute =
-    (endpoints.entities as any)?.polls?.updateDetails ?? "/poll/details";
+    reset({
+      title: poll.title ?? "",
+      description: poll.description ?? "",
+      media: (poll as any)?.media ?? "",
+      targetGeo: {
+        countries: Array.isArray(poll.targetGeo?.countries)
+          ? poll.targetGeo!.countries
+          : [],
+        states: Array.isArray(poll.targetGeo?.states)
+          ? poll.targetGeo!.states
+          : [],
+        cities: Array.isArray(poll.targetGeo?.cities)
+          ? poll.targetGeo!.cities
+          : [],
+      },
+    });
+
+    setGeoCountries(
+      Array.isArray(poll.targetGeo?.countries)
+        ? poll.targetGeo!.countries.map((c) => ({ label: c, value: c }))
+        : []
+    );
+    setGeoStates(
+      Array.isArray(poll.targetGeo?.states)
+        ? poll.targetGeo!.states.map((s) => ({ label: s, value: s }))
+        : []
+    );
+    setGeoCities(
+      Array.isArray(poll.targetGeo?.cities)
+        ? poll.targetGeo!.cities.map((c) => ({ label: c, value: c }))
+        : []
+    );
+  }, [poll, reset]);
 
   const { mutate: saveEdit, isPending: isSaving } = useApiMutation<any, any>({
-    route: updateDetailsRoute,
+    route: endpoints.entities.polls.edit.details,
     method: "PUT",
-    onSuccess: () => {
+    onSuccess: (_resp, vars) => {
       appToast.success("Poll updated");
       setIsEditing(false);
 
+      const v = getValues();
+      const tgFromState = {
+        countries: geoCountries.map((c) => c.value),
+        states: geoStates.map((s) => s.value),
+        cities: geoCities.map((c) => c.value),
+      };
+
       patchShowCache(showRoute, (curr) => ({
         ...curr,
-        title,
-        description,
-        media: mediaUrl,
+        title: v.title,
+        description: v.description,
+        media: v.media,
+        targetGeo:
+          (vars as any)?.targetGeo ??
+          tgFromState ?? // optimistic
+          curr.targetGeo,
       }));
 
       queryClient.invalidateQueries({ queryKey: [showRoute] });
@@ -6143,25 +6655,45 @@ export default function PollShowPage() {
     },
   });
 
-  const onSubmitEdit = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!poll) return;
+  // submit with diffs only (same logic you had)
+  const onSubmitEdit = handleSubmit((v) => {
+    if (!poll) return;
 
-      const payload: any = { pollId: id };
-      if (title !== (poll.title ?? "")) payload.title = title;
-      if (description !== (poll.description ?? ""))
-        payload.description = description;
-      if (mediaUrl !== ((poll as any)?.media ?? "")) payload.media = mediaUrl;
+    const payload: any = { pollId: id };
 
-      if (Object.keys(payload).length <= 1) {
-        setIsEditing(false);
-        return;
-      }
-      saveEdit(payload);
-    },
-    [poll, id, title, description, mediaUrl, saveEdit]
-  );
+    if (v.title !== (poll.title ?? "")) payload.title = v.title;
+    if (v.description !== (poll.description ?? ""))
+      payload.description = v.description;
+    if (v.media !== ((poll as any)?.media ?? "")) payload.media = v.media;
+
+    const nextTG = {
+      countries: geoCountries.map((c) => c.value),
+      states: geoStates.map((s) => s.value),
+      cities: geoCities.map((c) => c.value),
+    };
+    const prevTG = {
+      countries: poll.targetGeo?.countries ?? [],
+      states: poll.targetGeo?.states ?? [],
+      cities: poll.targetGeo?.cities ?? [],
+    };
+
+    const geoChanged =
+      !arrEqUnordered(nextTG.countries, prevTG.countries) ||
+      !arrEqUnordered(nextTG.states, prevTG.states) ||
+      !arrEqUnordered(nextTG.cities, prevTG.cities);
+
+    if (geoChanged) {
+      payload.targetGeo = nextTG;
+    }
+
+    if (Object.keys(payload).length <= 1) {
+      // no changes other than pollId
+      setIsEditing(false);
+      return;
+    }
+
+    saveEdit(payload);
+  });
 
   const activeCount = (poll?.options ?? []).filter((o) => !o.archivedAt).length;
   const canAddOption = activeCount < MAX_OPTIONS;
@@ -6217,55 +6749,248 @@ export default function PollShowPage() {
             <CardTitle>Edit Poll</CardTitle>
           </CardHeader>
           <CardContent>
-            <form className="space-y-4" onSubmit={onSubmitEdit}>
-              <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Title</label>
-                <Input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Poll title"
-                  required
+            <Form {...form}>
+              <form className="space-y-4" onSubmit={onSubmitEdit}>
+                {/* Title */}
+                <FormField
+                  control={control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs text-muted-foreground">
+                        Title
+                      </FormLabel>
+                      <FormControl>
+                        <Input placeholder="Poll title" required {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">
-                  Description
-                </label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Poll description"
-                  className="flex h-28 w-full rounded-md border border-input bg-transparent text-foreground px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                {/* Description */}
+                <FormField
+                  control={control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs text-muted-foreground">
+                        Description
+                      </FormLabel>
+                      <FormControl>
+                        <textarea
+                          placeholder="Poll description"
+                          className="flex h-28 w-full rounded-md border border-input bg-transparent text-foreground px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">
-                  Media (URL)
-                </label>
-                <Input
-                  type="url"
-                  value={mediaUrl}
-                  onChange={(e) => setMediaUrl(e.target.value)}
-                  placeholder="https://example.com/image-or-video"
+                {/* Media */}
+                <FormField
+                  control={control}
+                  name="media"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs text-muted-foreground">
+                        Media (URL)
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="url"
+                          placeholder="https://example.com/image-or-video"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              <div className="flex items-center gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsEditing(false)}
-                  disabled={isSaving}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isSaving}>
-                  {isSaving ? "Saving…" : "Save"}
-                </Button>
-              </div>
-            </form>
+                {/* ========== Target Geo (multi-selects + chips) ========== */}
+                <div className="space-y-4 text-black">
+                  {/* Countries */}
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">
+                      Countries
+                    </label>
+                    <CountrySelect
+                      value={geoCountries}
+                      onChange={(val) => {
+                        const newVal = Array.isArray(val)
+                          ? val
+                          : val
+                          ? [val]
+                          : [];
+                        setGeoCountries((prev) =>
+                          Array.from(new Set([...prev, ...newVal]))
+                        );
+                      }}
+                      isMulti
+                      isOptionDisabled={(option: LV) =>
+                        geoCountries.some((c) => c.value === option.value)
+                      }
+                    />
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {geoCountries.map((country) => (
+                        <span
+                          key={country.value}
+                          className="px-2 py-1 rounded bg-muted text-sm flex items-center gap-1 text-white"
+                        >
+                          {country.label}
+                          <X
+                            className="w-3 h-3 cursor-pointer"
+                            onClick={() =>
+                              setGeoCountries((prev) =>
+                                prev.filter((x) => x.value !== country.value)
+                              )
+                            }
+                          />
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* States */}
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">
+                      States
+                    </label>
+                    <StateSelect
+                      value={geoStates}
+                      onChange={(val) => {
+                        const newVal = Array.isArray(val)
+                          ? val
+                          : val
+                          ? [val]
+                          : [];
+                        setGeoStates((prev) =>
+                          Array.from(new Set([...prev, ...newVal]))
+                        );
+                      }}
+                      isMulti
+                      isOptionDisabled={(option: LV) =>
+                        geoStates.some((s) => s.value === option.value)
+                      }
+                    />
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {geoStates.map((s) => (
+                        <span
+                          key={s.value}
+                          className="px-2 py-1 rounded bg-muted text-sm flex items-center gap-1 text-white"
+                        >
+                          {s.label}
+                          <X
+                            className="w-3 h-3 cursor-pointer"
+                            onClick={() =>
+                              setGeoStates((prev) =>
+                                prev.filter((x) => x.value !== s.value)
+                              )
+                            }
+                          />
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Cities */}
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">
+                      Cities
+                    </label>
+                    <CitySelect
+                      value={geoCities}
+                      onChange={(val) => {
+                        const newVal = Array.isArray(val)
+                          ? val
+                          : val
+                          ? [val]
+                          : [];
+                        setGeoCities((prev) =>
+                          Array.from(new Set([...prev, ...newVal]))
+                        );
+                      }}
+                      isMulti
+                      isOptionDisabled={(option: LV) =>
+                        geoCities.some((c) => c.value === option.value)
+                      }
+                    />
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {geoCities.map((city) => (
+                        <span
+                          key={city.value}
+                          className="px-2 py-1 rounded bg-muted text-sm flex items-center gap-1 text-white"
+                        >
+                          {city.label}
+                          <X
+                            className="w-3 h-3 cursor-pointer"
+                            onClick={() =>
+                              setGeoCities((prev) =>
+                                prev.filter((x) => x.value !== city.value)
+                              )
+                            }
+                          />
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      // reset to current server values and exit edit
+                      reset({
+                        title: poll.title ?? "",
+                        description: poll.description ?? "",
+                        media: (poll as any)?.media ?? "",
+                        targetGeo: {
+                          countries: poll.targetGeo?.countries ?? [],
+                          states: poll.targetGeo?.states ?? [],
+                          cities: poll.targetGeo?.cities ?? [],
+                        },
+                      });
+                      setGeoCountries(
+                        Array.isArray(poll.targetGeo?.countries)
+                          ? poll.targetGeo!.countries.map((c) => ({
+                              label: c,
+                              value: c,
+                            }))
+                          : []
+                      );
+                      setGeoStates(
+                        Array.isArray(poll.targetGeo?.states)
+                          ? poll.targetGeo!.states.map((s) => ({
+                              label: s,
+                              value: s,
+                            }))
+                          : []
+                      );
+                      setGeoCities(
+                        Array.isArray(poll.targetGeo?.cities)
+                          ? poll.targetGeo!.cities.map((c) => ({
+                              label: c,
+                              value: c,
+                            }))
+                          : []
+                      );
+                      setIsEditing(false);
+                    }}
+                    disabled={isSaving}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={isSaving}>
+                    {isSaving ? "Saving…" : "Save"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
           </CardContent>
         </Card>
       ) : (
@@ -6298,6 +7023,27 @@ export default function PollShowPage() {
               <div className="text-xs text-muted-foreground">Media</div>
               <div className="break-all">{(poll as any)?.media || "-"}</div>
             </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Target Geo</div>
+              <h2 className="break-all">
+                Countries-{" "}
+                {Array.isArray(poll.targetGeo?.countries)
+                  ? poll.targetGeo!.countries.join(", ")
+                  : "-"}
+              </h2>
+              <h2 className="break-all">
+                States-{" "}
+                {Array.isArray(poll.targetGeo?.states)
+                  ? poll.targetGeo!.states.join(", ")
+                  : "-"}
+              </h2>
+              <h2 className="break-all">
+                Cities-{" "}
+                {Array.isArray(poll.targetGeo?.cities)
+                  ? poll.targetGeo!.cities.join(", ")
+                  : "-"}
+              </h2>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <div className="text-xs text-muted-foreground">Created At</div>
@@ -6312,7 +7058,7 @@ export default function PollShowPage() {
         </Card>
       )}
 
-      {/* ===== Options card ===== */}
+      {/* ===== Options card (unchanged) ===== */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Options</CardTitle>
@@ -6326,8 +7072,7 @@ export default function PollShowPage() {
                   }`}
                   onClick={() => {
                     if (!canAddOption) return;
-                    console.log("poll", poll);
-                    setIsAddOption({ pollId: poll._id });
+                    setIsAddOption({ pollId: (poll as any)._id });
                   }}
                   aria-label="Add option"
                   title={canAddOption ? "Add option" : "Max 4 active options"}
@@ -6346,7 +7091,7 @@ export default function PollShowPage() {
         <CardContent className="space-y-4">
           {poll?.options?.length ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {poll.options.map((opt) => {
+              {(poll.options ?? []).map((opt) => {
                 const isArchived = !!opt.archivedAt;
                 return (
                   <div
@@ -6357,13 +7102,12 @@ export default function PollShowPage() {
                     )}
                   >
                     <div className="absolute right-2 top-2 flex items-center gap-2">
-                      {/* edit option -> modal */}
                       {!isArchived && (
                         <button
                           className="rounded-md p-1 hover:bg-foreground/10"
                           onClick={() =>
                             setIsEditOption({
-                              pollId: poll._id,
+                              pollId: (poll as any)._id,
                               optionId: opt._id,
                               oldText: opt.text,
                             })
@@ -6375,13 +7119,12 @@ export default function PollShowPage() {
                         </button>
                       )}
 
-                      {/* delete option  */}
                       {isArchived && activeCount + 1 > MAX_OPTIONS ? null : (
                         <button
                           className="rounded-md p-1 hover:bg-foreground/10"
                           onClick={() =>
                             setIsArchiveToggleOption({
-                              pollId: poll._id,
+                              pollId: (poll as any)._id,
                               optionId: opt._id,
                               shouldArchive: !isArchived,
                             })
@@ -6407,9 +7150,10 @@ export default function PollShowPage() {
                         {opt._id}
                       </div>
                       <div
-                        className={`text-sm ${
-                          isArchived ? "line-through opacity-60" : ""
-                        }`}
+                        className={cn(
+                          "text-sm",
+                          isArchived && "line-through opacity-60"
+                        )}
                       >
                         {opt.text}
                       </div>
@@ -6536,11 +7280,9 @@ export default function SellOrder() {
 
 src\pages\trials\create.tsx
 ---------------------------
-// src/pages/trials/create.tsx
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { z } from "zod";
-import { useForm, useFieldArray, Control, UseFormWatch } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { endpoints } from "@/api/endpoints";
@@ -6561,266 +7303,17 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { extractYouTubeId } from "../polls/create";
 
-/* -------------------- Schema -------------------- */
-
-const ASSET_OPTIONS = [
-  { label: "OCTA", value: "xOcta" },
-  { label: "MYST", value: "xMYST" },
-  { label: "DROP", value: "xDrop" },
-] as const;
-
-const resourceAssetZ = z.object({
-  type: z.enum(["image", "youtube"]),
-  value: z.string().min(1, "Required"),
-});
-
-const optionZ = z.object({
-  text: z.string().min(3, "Min 3 chars").trim(),
-});
-
-const rewardZ = z
-  .object({
-    assetId: z.enum(["xOcta", "xMYST", "xDrop"]),
-    amount: z.coerce.number().int().min(1, "Min 1"),
-    rewardAmountCap: z.coerce.number().int().min(1, "Min 1"),
-  })
-  .refine((r) => r.rewardAmountCap >= r.amount, {
-    path: ["rewardAmountCap"],
-    message: "Cap must be >= amount",
-  });
-
-const pollCreateZ = z.object({
-  title: z.string().min(3, "Min 3 chars").trim(),
-  description: z.string().min(3, "Min 3 chars").trim(),
-  resourceAssets: z.array(resourceAssetZ).default([]),
-  options: z
-    .array(optionZ)
-    .min(2, "Need 2–4 options")
-    .max(4, "Need 2–4 options"),
-});
-
-const formSchema = z.object({
-  trial: z.object({
-    title: z.string().min(3, "Min 3 chars").trim(),
-    description: z.string().min(3, "Min 3 chars").trim(),
-    resourceAssets: z.array(resourceAssetZ).default([]),
-    rewards: z.array(rewardZ).optional(),
-  }),
-  polls: z.array(pollCreateZ).min(1, "Add at least 1 poll"),
-});
-
-type FormValues = z.infer<typeof formSchema>;
-
-/* -------------------- Child component (per poll) -------------------- */
-
-function PollCard({
-  control,
-  watch,
-  index,
-  onRemove,
-  disableRemove,
-}: {
-  control: Control<FormValues>;
-  watch: UseFormWatch<FormValues>;
-  index: number;
-  onRemove: () => void;
-  disableRemove: boolean;
-}) {
-  // These hooks live inside the child => stable per mounted child
-  const pollAssetsArray = useFieldArray({
-    control,
-    name: `polls.${index}.resourceAssets` as const,
-  });
-  const pollOptionsArray = useFieldArray({
-    control,
-    name: `polls.${index}.options` as const,
-  });
-
-  const optionsLen = watch(`polls.${index}.options`)?.length ?? 0;
-
-  return (
-    <div className="border rounded-lg p-4 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="text-sm font-medium">Poll #{index + 1}</div>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onRemove}
-          disabled={disableRemove}
-        >
-          Remove Poll
-        </Button>
-      </div>
-
-      {/* Title */}
-      <FormField
-        control={control}
-        name={`polls.${index}.title` as const}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Title</FormLabel>
-            <FormControl>
-              <Input placeholder="Poll title" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      {/* Description */}
-      <FormField
-        control={control}
-        name={`polls.${index}.description` as const}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Description</FormLabel>
-            <FormControl>
-              <Input placeholder="Short description" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      {/* Assets */}
-      <div className="space-y-2">
-        <FormLabel>Media (Images / YouTube) – optional</FormLabel>
-        {pollAssetsArray.fields.map((f, aIdx) => {
-          const typeName =
-            `polls.${index}.resourceAssets.${aIdx}.type` as const;
-          const valueName =
-            `polls.${index}.resourceAssets.${aIdx}.value` as const;
-          const t = watch(typeName);
-
-          return (
-            <div key={f.id} className="grid grid-cols-12 gap-2 items-end">
-              <div className="col-span-4">
-                <FormField
-                  control={control}
-                  name={typeName}
-                  render={({ field }) => (
-                    <FormItem>
-                      <label className="text-xs">Type</label>
-                      <FormControl>
-                        <select
-                          className="w-full h-9 border rounded-md px-2 bg-transparent"
-                          {...field}
-                        >
-                          <option value="image">IMAGE</option>
-                          <option value="youtube">YOUTUBE</option>
-                        </select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="col-span-7">
-                <FormField
-                  control={control}
-                  name={valueName}
-                  render={({ field }) => (
-                    <FormItem>
-                      <label className="text-xs">
-                        {t === "youtube" ? "YouTube URL or ID" : "Image URL"}
-                      </label>
-                      <FormControl>
-                        <Input
-                          placeholder={
-                            t === "youtube"
-                              ? "https://youtube.com/watch?v=… or 11-char ID"
-                              : "https://example.com/pic.jpg"
-                          }
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="col-span-1">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => pollAssetsArray.remove(aIdx)}
-                >
-                  Remove
-                </Button>
-              </div>
-            </div>
-          );
-        })}
-
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => pollAssetsArray.append({ type: "image", value: "" })}
-          >
-            + Image
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() =>
-              pollAssetsArray.append({ type: "youtube", value: "" })
-            }
-          >
-            + YouTube
-          </Button>
-        </div>
-      </div>
-
-      {/* Options */}
-      <div className="space-y-2">
-        <FormLabel>Options (2–4)</FormLabel>
-        {pollOptionsArray.fields.map((f, oIdx) => (
-          <div key={f.id} className="flex gap-2 items-end">
-            <FormField
-              control={control}
-              name={`polls.${index}.options.${oIdx}.text` as const}
-              render={({ field }) => (
-                <FormItem className="flex-1">
-                  <FormControl>
-                    <Input placeholder={`Option #${oIdx + 1}`} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => pollOptionsArray.remove(oIdx)}
-              disabled={pollOptionsArray.fields.length <= 2}
-            >
-              Remove
-            </Button>
-          </div>
-        ))}
-
-        <div className="flex items-center gap-3">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => pollOptionsArray.append({ text: "" })}
-            disabled={optionsLen >= 4}
-          >
-            Add Option
-          </Button>
-          <span className="text-sm text-destructive">
-            {(false as any) || (formSchema?.shape?.polls && undefined)}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* -------------------- Page -------------------- */
+// NEW: geo selects + chip icon
+import CountrySelect from "@/components/commons/selects/country-select";
+import StateSelect from "@/components/commons/selects/state-select";
+import { CitySelect } from "@/components/commons/selects/city-select";
+import { X } from "lucide-react";
+import {
+  ASSET_OPTIONS,
+  formSchema,
+  FormValues,
+  PollCard,
+} from "@/components/poll-card";
 
 export default function TrialCreatePage() {
   const navigate = useNavigate();
@@ -6834,6 +7327,12 @@ export default function TrialCreatePage() {
         rewards: [
           { assetId: ASSET_OPTIONS[0].value, amount: 1, rewardAmountCap: 1 },
         ],
+        // NEW: default geo
+        targetGeo: {
+          countries: [],
+          states: [],
+          cities: [],
+        },
       },
       polls: [
         {
@@ -6853,7 +7352,7 @@ export default function TrialCreatePage() {
     mode: "onChange",
   });
 
-  const { control, handleSubmit, watch } = form;
+  const { control, handleSubmit, watch, setValue, getValues } = form;
 
   const trialAssetsArray = useFieldArray({
     control,
@@ -6904,7 +7403,12 @@ export default function TrialCreatePage() {
               })),
             }
           : {}),
-        // no expireRewardAt per your instruction
+        // NEW: include targetGeo
+        targetGeo: {
+          countries: v.trial.targetGeo.countries,
+          states: v.trial.targetGeo.states,
+          cities: v.trial.targetGeo.cities,
+        },
       },
       polls: v.polls.map((p) => ({
         title: p.title,
@@ -6915,6 +7419,20 @@ export default function TrialCreatePage() {
     };
 
     await mutate(payload as any);
+  };
+
+  // small helper: push unique values (no duplicates)
+  const pushUnique = (
+    path:
+      | "trial.targetGeo.countries"
+      | "trial.targetGeo.states"
+      | "trial.targetGeo.cities",
+    val?: string
+  ) => {
+    if (!val) return;
+    const curr = getValues(path) as string[];
+    if (curr.includes(val)) return;
+    setValue(path, [...curr, val], { shouldValidate: true, shouldDirty: true });
   };
 
   return (
@@ -7145,6 +7663,127 @@ export default function TrialCreatePage() {
                 </Button>
               </div>
             </div>
+
+            <div className="space-y-2">
+              <FormLabel>Target Geo</FormLabel>
+
+              {/* Countries */}
+              <CountrySelect
+                placeholder="Select country"
+                onChange={(opt: any) => {
+                  if (opt?.value) {
+                    const current = watch("trial.targetGeo.countries");
+                    if (!current.includes(opt.value)) {
+                      setValue(
+                        "trial.targetGeo.countries",
+                        [...current, opt.value],
+                        { shouldValidate: true, shouldDirty: true }
+                      );
+                    }
+                  }
+                }}
+              />
+              <div className="flex flex-wrap gap-2 mt-2">
+                {watch("trial.targetGeo.countries").map((c, i) => (
+                  <span
+                    key={`country-${i}`}
+                    className="flex items-center gap-1 px-2 py-1 border rounded text-sm"
+                  >
+                    {c}
+                    <X
+                      className="w-4 h-4 cursor-pointer"
+                      onClick={() =>
+                        setValue(
+                          "trial.targetGeo.countries",
+                          watch("trial.targetGeo.countries").filter(
+                            (_, idx) => idx !== i
+                          ),
+                          { shouldValidate: true, shouldDirty: true }
+                        )
+                      }
+                    />
+                  </span>
+                ))}
+              </div>
+
+              {/* States */}
+              <StateSelect
+                placeholder="Select state"
+                onChange={(opt: any) => {
+                  if (opt?.value) {
+                    const current = watch("trial.targetGeo.states");
+                    if (!current.includes(opt.value)) {
+                      setValue(
+                        "trial.targetGeo.states",
+                        [...current, opt.value],
+                        { shouldValidate: true, shouldDirty: true }
+                      );
+                    }
+                  }
+                }}
+              />
+              <div className="flex flex-wrap gap-2 mt-2">
+                {watch("trial.targetGeo.states").map((s, i) => (
+                  <span
+                    key={`state-${i}`}
+                    className="flex items-center gap-1 px-2 py-1 border rounded text-sm"
+                  >
+                    {s}
+                    <X
+                      className="w-4 h-4 cursor-pointer"
+                      onClick={() =>
+                        setValue(
+                          "trial.targetGeo.states",
+                          watch("trial.targetGeo.states").filter(
+                            (_, idx) => idx !== i
+                          ),
+                          { shouldValidate: true, shouldDirty: true }
+                        )
+                      }
+                    />
+                  </span>
+                ))}
+              </div>
+
+              {/* Cities */}
+              <CitySelect
+                placeholder="Select city"
+                onChange={(opt: any) => {
+                  if (opt?.value) {
+                    const current = watch("trial.targetGeo.cities");
+                    if (!current.includes(opt.value)) {
+                      setValue(
+                        "trial.targetGeo.cities",
+                        [...current, opt.value],
+                        { shouldValidate: true, shouldDirty: true }
+                      );
+                    }
+                  }
+                }}
+              />
+              <div className="flex flex-wrap gap-2 mt-2">
+                {watch("trial.targetGeo.cities").map((city, i) => (
+                  <span
+                    key={`city-${i}`}
+                    className="flex items-center gap-1 px-2 py-1 border rounded text-sm"
+                  >
+                    {city}
+                    <X
+                      className="w-4 h-4 cursor-pointer"
+                      onClick={() =>
+                        setValue(
+                          "trial.targetGeo.cities",
+                          watch("trial.targetGeo.cities").filter(
+                            (_, idx) => idx !== i
+                          ),
+                          { shouldValidate: true, shouldDirty: true }
+                        )
+                      }
+                    />
+                  </span>
+                ))}
+              </div>
+            </div>
           </Form>
         </CardContent>
       </Card>
@@ -7299,13 +7938,11 @@ import { useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-
 import { endpoints } from "@/api/endpoints";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { queryClient } from "@/api/queryClient";
 import { appToast } from "@/utils/toast";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -7319,8 +7956,7 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { fmt } from "@/components/paginated-table";
 import TrialPollTable from "@/components/table-trial-poll";
-
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, X } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -7328,6 +7964,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { CustomModal } from "@/components/modals/custom-modal";
+import CountrySelect from "@/components/commons/selects/country-select";
+import StateSelect from "@/components/commons/selects/state-select";
+import { CitySelect } from "@/components/commons/selects/city-select";
+import { ASSET_OPTIONS } from "@/components/poll-card";
 
 type ResourceAsset = { type: "image" | "youtube" | string; value: string };
 type TrialReward = {
@@ -7343,6 +7983,11 @@ type Trial = {
   rewards?: TrialReward[];
   createdAt?: string;
   archivedAt?: string | null;
+  targetGeo?: {
+    countries?: string[];
+    states?: string[];
+    cities?: string[];
+  };
 };
 
 function asYouTubeUrl(v: string) {
@@ -7381,7 +8026,15 @@ function patchShowCache(showKey: string, updater: (curr: any) => any) {
   queryClient.setQueryData([showKey], next);
 }
 
-/* ---------- edit form schema ---------- */
+type LV = { label: string; value: string };
+const arrEqUnordered = (a: string[], b: string[]) => {
+  if (!Array.isArray(a) || !Array.isArray(b)) return false;
+  if (a.length !== b.length) return false;
+  const A = [...a].sort();
+  const B = [...b].sort();
+  return A.every((v, i) => v === B[i]);
+};
+
 const assetZ = z.object({
   type: z.enum(["image", "youtube"]),
   value: z.string().min(1, "Required"),
@@ -7402,16 +8055,16 @@ const editSchema = z.object({
   description: z.string().min(3, "Min 3 chars").trim(),
   resourceAssets: z.array(assetZ).default([]),
   rewards: z.array(rewardZ).default([]),
+  targetGeo: z
+    .object({
+      countries: z.array(z.string()).default([]),
+      states: z.array(z.string()).default([]),
+      cities: z.array(z.string()).default([]),
+    })
+    .default({ countries: [], states: [], cities: [] }),
 });
 type EditValues = z.infer<typeof editSchema>;
 
-const ASSET_OPTIONS = [
-  { label: "OCTA", value: "xOcta" },
-  { label: "MYST", value: "xMYST" },
-  { label: "DROP", value: "xDrop" },
-] as const;
-
-/* ---------- page ---------- */
 export default function TrialShowPage() {
   const navigate = useNavigate();
   const { id = "" } = useParams<{ id: string }>();
@@ -7423,10 +8076,8 @@ export default function TrialShowPage() {
     return data?.data?.data ?? data?.data ?? null;
   }, [data]);
 
-  // edit toggle
   const [isEditing, setIsEditing] = useState(false);
 
-  // RHF lives at top-level (no conditional hooks)
   const form = useForm<EditValues>({
     resolver: zodResolver(editSchema),
     defaultValues: {
@@ -7434,16 +8085,19 @@ export default function TrialShowPage() {
       description: "",
       resourceAssets: [],
       rewards: [],
+      targetGeo: { countries: [], states: [], cities: [] },
     },
     mode: "onChange",
   });
   const { control, handleSubmit, watch, reset } = form;
 
-  // arrays for assets/rewards
   const assetArray = useFieldArray({ control, name: "resourceAssets" });
   const rewardsArray = useFieldArray({ control, name: "rewards" });
 
-  // hydrate form when trial loads
+  const [geoCountries, setGeoCountries] = useState<LV[]>([]);
+  const [geoStates, setGeoStates] = useState<LV[]>([]);
+  const [geoCities, setGeoCities] = useState<LV[]>([]);
+
   useEffect(() => {
     if (!trial) return;
     reset({
@@ -7458,24 +8112,57 @@ export default function TrialShowPage() {
         amount: Number(r.amount ?? 1),
         rewardAmountCap: Number(r.rewardAmountCap ?? r.amount ?? 1),
       })),
+      targetGeo: {
+        countries: Array.isArray(trial.targetGeo?.countries)
+          ? trial.targetGeo!.countries
+          : [],
+        states: Array.isArray(trial.targetGeo?.states)
+          ? trial.targetGeo!.states
+          : [],
+        cities: Array.isArray(trial.targetGeo?.cities)
+          ? trial.targetGeo!.cities
+          : [],
+      },
     });
+
+    setGeoCountries(
+      Array.isArray(trial.targetGeo?.countries)
+        ? trial.targetGeo!.countries.map((c) => ({ label: c, value: c }))
+        : []
+    );
+    setGeoStates(
+      Array.isArray(trial.targetGeo?.states)
+        ? trial.targetGeo!.states.map((s) => ({ label: s, value: s }))
+        : []
+    );
+    setGeoCities(
+      Array.isArray(trial.targetGeo?.cities)
+        ? trial.targetGeo!.cities.map((c) => ({ label: c, value: c }))
+        : []
+    );
   }, [trial, reset]);
 
   const { mutate: saveEdit, isPending: isSaving } = useApiMutation<any, any>({
-    route: endpoints.entities.trials.update, // PUT /trial
+    route: endpoints.entities.trials.update,
     method: "PUT",
     onSuccess: (_resp, vars) => {
       appToast.success("Trial updated");
       setIsEditing(false);
 
-      // optimistic patch with submitted values
       const v = vars as any;
+      const tgFromState = {
+        countries: geoCountries.map((c) => c.value),
+        states: geoStates.map((s) => s.value),
+        cities: geoCities.map((c) => c.value),
+      };
+
       patchShowCache(showRoute, (curr) => ({
         ...curr,
         title: v.title ?? curr.title,
         description: v.description ?? curr.description,
         resourceAssets: v.resourceAssets ?? curr.resourceAssets,
         rewards: v.rewards ?? curr.rewards,
+        targetGeo: v.targetGeo ?? tgFromState ?? curr.targetGeo,
       }));
 
       queryClient.invalidateQueries({ queryKey: [showRoute] });
@@ -7488,7 +8175,6 @@ export default function TrialShowPage() {
   const onSubmitEdit = handleSubmit((v) => {
     if (!trial) return;
 
-    // normalize youtube ids
     const normAssets = (v.resourceAssets ?? []).map((a) => ({
       type: a.type,
       value:
@@ -7511,13 +8197,29 @@ export default function TrialShowPage() {
       }));
     }
 
+    const nextTG = {
+      countries: geoCountries.map((c) => c.value),
+      states: geoStates.map((s) => s.value),
+      cities: geoCities.map((c) => c.value),
+    };
+    const prevTG = {
+      countries: trial.targetGeo?.countries ?? [],
+      states: trial.targetGeo?.states ?? [],
+      cities: trial.targetGeo?.cities ?? [],
+    };
+    const geoChanged =
+      !arrEqUnordered(nextTG.countries, prevTG.countries) ||
+      !arrEqUnordered(nextTG.states, prevTG.states) ||
+      !arrEqUnordered(nextTG.cities, prevTG.cities);
+
+    if (geoChanged) payload.targetGeo = nextTG;
+
     saveEdit(payload);
   });
 
-  // delete
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const { mutate: doDelete, isPending: isDeleting } = useApiMutation<any, any>({
-    route: endpoints.entities.trials.delete, // DELETE /trial
+    route: endpoints.entities.trials.delete,
     method: "DELETE",
     onSuccess: () => {
       appToast.success("Trial deleted");
@@ -7568,7 +8270,6 @@ export default function TrialShowPage() {
         </Button>
       </div>
 
-      {/* ===== TRIAL CARD ===== */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Trial</CardTitle>
@@ -7612,7 +8313,6 @@ export default function TrialShowPage() {
           {isEditing ? (
             <Form {...form}>
               <form className="space-y-6" onSubmit={onSubmitEdit}>
-                {/* Title */}
                 <FormField
                   control={control}
                   name="title"
@@ -7627,7 +8327,6 @@ export default function TrialShowPage() {
                   )}
                 />
 
-                {/* Description */}
                 <FormField
                   control={control}
                   name="description"
@@ -7642,7 +8341,6 @@ export default function TrialShowPage() {
                   )}
                 />
 
-                {/* Resource Assets */}
                 <div className="space-y-2">
                   <FormLabel>Media (Images / YouTube) – optional</FormLabel>
                   {assetArray.fields.map((f, idx) => {
@@ -7732,6 +8430,138 @@ export default function TrialShowPage() {
                     >
                       + YouTube
                     </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <FormLabel>Target Geo</FormLabel>
+
+                  <CountrySelect
+                    value={geoCountries}
+                    onChange={(val: any) => {
+                      const newVal = Array.isArray(val)
+                        ? val
+                        : val
+                        ? [val]
+                        : [];
+                      setGeoCountries((prev) => {
+                        const merged = [...prev];
+                        for (const v of newVal) {
+                          if (!merged.some((m) => m.value === v.value)) {
+                            merged.push(v);
+                          }
+                        }
+                        return merged;
+                      });
+                    }}
+                    isMulti
+                    isOptionDisabled={(option: LV) =>
+                      geoCountries.some((c) => c.value === option.value)
+                    }
+                  />
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {geoCountries.map((c) => (
+                      <span
+                        key={c.value}
+                        className="px-2 py-1 rounded bg-muted text-sm flex items-center gap-1 text-white"
+                      >
+                        {c.label}
+                        <X
+                          className="w-3 h-3 cursor-pointer"
+                          onClick={() =>
+                            setGeoCountries((prev) =>
+                              prev.filter((x) => x.value !== c.value)
+                            )
+                          }
+                        />
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* States */}
+                  <StateSelect
+                    value={geoStates}
+                    onChange={(val: any) => {
+                      const newVal = Array.isArray(val)
+                        ? val
+                        : val
+                        ? [val]
+                        : [];
+                      setGeoStates((prev) => {
+                        const merged = [...prev];
+                        for (const v of newVal) {
+                          if (!merged.some((m) => m.value === v.value)) {
+                            merged.push(v);
+                          }
+                        }
+                        return merged;
+                      });
+                    }}
+                    isMulti
+                    isOptionDisabled={(option: LV) =>
+                      geoStates.some((s) => s.value === option.value)
+                    }
+                  />
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {geoStates.map((s) => (
+                      <span
+                        key={s.value}
+                        className="px-2 py-1 rounded bg-muted text-sm flex items-center gap-1 text-white"
+                      >
+                        {s.label}
+                        <X
+                          className="w-3 h-3 cursor-pointer"
+                          onClick={() =>
+                            setGeoStates((prev) =>
+                              prev.filter((x) => x.value !== s.value)
+                            )
+                          }
+                        />
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Cities */}
+                  <CitySelect
+                    value={geoCities}
+                    onChange={(val: any) => {
+                      const newVal = Array.isArray(val)
+                        ? val
+                        : val
+                        ? [val]
+                        : [];
+                      setGeoCities((prev) => {
+                        const merged = [...prev];
+                        for (const v of newVal) {
+                          if (!merged.some((m) => m.value === v.value)) {
+                            merged.push(v);
+                          }
+                        }
+                        return merged;
+                      });
+                    }}
+                    isMulti
+                    isOptionDisabled={(option: LV) =>
+                      geoCities.some((c) => c.value === option.value)
+                    }
+                  />
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {geoCities.map((city) => (
+                      <span
+                        key={city.value}
+                        className="px-2 py-1 rounded bg-muted text-sm flex items-center gap-1 text-white"
+                      >
+                        {city.label}
+                        <X
+                          className="w-3 h-3 cursor-pointer"
+                          onClick={() =>
+                            setGeoCities((prev) =>
+                              prev.filter((x) => x.value !== city.value)
+                            )
+                          }
+                        />
+                      </span>
+                    ))}
                   </div>
                 </div>
 
@@ -7844,7 +8674,6 @@ export default function TrialShowPage() {
                     type="button"
                     variant="outline"
                     onClick={() => {
-                      // reset to current server values and exit edit
                       reset({
                         title: trial.title ?? "",
                         description: trial.description ?? "",
@@ -7863,7 +8692,36 @@ export default function TrialShowPage() {
                               r.rewardAmountCap ?? r.amount ?? 1
                             ),
                           })) ?? [],
+                        targetGeo: {
+                          countries: trial.targetGeo?.countries ?? [],
+                          states: trial.targetGeo?.states ?? [],
+                          cities: trial.targetGeo?.cities ?? [],
+                        },
                       });
+                      setGeoCountries(
+                        Array.isArray(trial.targetGeo?.countries)
+                          ? trial.targetGeo!.countries.map((c) => ({
+                              label: c,
+                              value: c,
+                            }))
+                          : []
+                      );
+                      setGeoStates(
+                        Array.isArray(trial.targetGeo?.states)
+                          ? trial.targetGeo!.states.map((s) => ({
+                              label: s,
+                              value: s,
+                            }))
+                          : []
+                      );
+                      setGeoCities(
+                        Array.isArray(trial.targetGeo?.cities)
+                          ? trial.targetGeo!.cities.map((c) => ({
+                              label: c,
+                              value: c,
+                            }))
+                          : []
+                      );
                       setIsEditing(false);
                     }}
                     disabled={isSaving}
@@ -7878,7 +8736,6 @@ export default function TrialShowPage() {
             </Form>
           ) : (
             <>
-              {/* read view */}
               <div>
                 <div className="text-xs text-muted-foreground">ID</div>
                 <div className="font-mono break-all">{trial._id}</div>
@@ -7934,39 +8791,28 @@ export default function TrialShowPage() {
               </div>
 
               <div>
-                <div className="text-xs text-muted-foreground">Rewards</div>
-                {Array.isArray(trial.rewards) && trial.rewards.length > 0 ? (
-                  <div className="overflow-x-auto rounded border">
-                    <table className="min-w-full text-sm">
-                      <thead className="bg-muted/50">
-                        <tr>
-                          <th className="text-left px-3 py-2 font-medium">
-                            Asset
-                          </th>
-                          <th className="text-left px-3 py-2 font-medium">
-                            Amount
-                          </th>
-                          <th className="text-left px-3 py-2 font-medium">
-                            Reward Cap
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {trial.rewards.map((r, idx) => (
-                          <tr key={`${r.assetId}-${idx}`} className="border-t">
-                            <td className="px-3 py-2">{r.assetId}</td>
-                            <td className="px-3 py-2">{r.amount}</td>
-                            <td className="px-3 py-2">
-                              {r.rewardAmountCap ?? "-"}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div>-</div>
-                )}
+                <div className="text-xs text-muted-foreground">Target Geo</div>
+                <h2 className="break-all">
+                  Countries{" – "}
+                  {Array.isArray(trial.targetGeo?.countries) &&
+                  trial.targetGeo!.countries.length
+                    ? trial.targetGeo!.countries.join(", ")
+                    : "-"}
+                </h2>
+                <h2 className="break-all">
+                  States{" – "}
+                  {Array.isArray(trial.targetGeo?.states) &&
+                  trial.targetGeo!.states.length
+                    ? trial.targetGeo!.states.join(", ")
+                    : "-"}
+                </h2>
+                <h2 className="break-all">
+                  Cities{" – "}
+                  {Array.isArray(trial.targetGeo?.cities) &&
+                  trial.targetGeo!.cities.length
+                    ? trial.targetGeo!.cities.join(", ")
+                    : "-"}
+                </h2>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
