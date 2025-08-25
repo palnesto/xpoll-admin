@@ -98,6 +98,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             title: "Sell Intent Rejection",
             url: "/asset-ledger/sell-intent-rejection",
           },
+          {
+            title: "Slugs",
+            url: "/slugs",
+          },
         ],
       },
       // {

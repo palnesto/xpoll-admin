@@ -40,5 +40,9 @@ export const endpoints = {
       sellApproveOrder: "/internal/asset-ledger/sell-approve",
       sellRejectOrder: "/internal/asset-ledger/sell-reject",
     },
+    slug: {
+      create: "/internal/preference/slugs",
+      all: "/internal/preference/slugs",
+    },
   },
 };

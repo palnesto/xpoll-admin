@@ -4,7 +4,11 @@ import { useApiQuery } from "@/hooks/useApiQuery";
 import { DEFAULT_PAGE_SIZE } from "@/constants";
 import { fmt, PaginatedTable } from "@/components/paginated-table";
 
-export default function SellIntent() {
+export default function AllLedgerPage() {
+  return <AllLedgerTable />;
+}
+
+export const AllLedgerTable = () => {
   const [page, setPage] = useState<number>(1);
   const [pageSize] = useState<number>(DEFAULT_PAGE_SIZE);
 
@@ -50,4 +54,4 @@ export default function SellIntent() {
       />
     </div>
   );
-}
+};

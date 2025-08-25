@@ -2,14 +2,12 @@ import { useApiQuery } from "@/hooks/useApiQuery";
 import { Button } from "../ui/button";
 import { endpoints } from "@/api/endpoints";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
-import { useNavigate } from "react-router-dom";
 import { ModeToggle } from "../mode-toggle";
 
 export const DevStrip = () => {
   const appName = "Xpoll Admin";
-  const navigate = useNavigate();
   const { refetch } = useApiQuery(endpoints.healthCheck);
-  const { logout, user, isLoading } = useAdminAuth();
+  const { logout } = useAdminAuth();
 
   return import.meta.env.VITE_MODE !== "" ? (
     <div className="bg-orange-500 text-white text-sm px-4 py-2 flex flex-col">

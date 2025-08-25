@@ -99,3 +99,13 @@ export function extractFileName(url: string) {
     return null;
   }
 }
+
+export function trimUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    return u.origin + u.pathname.replace(/\/+$/, ""); // remove trailing slash if needed
+  } catch {
+    // fallback: if it's not a valid URL, just strip manually
+    return url.split(/[?#]/)[0].replace(/\/+$/, "");
+  }
+}

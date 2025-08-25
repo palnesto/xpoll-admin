@@ -1,35 +1,20 @@
-import { readFile, writeFile, stat, readdir } from 'fs/promises';
-import { join, relative } from 'path';
+import { readFile, writeFile, stat, readdir } from "fs/promises";
+import { join, relative } from "path";
 
 // Specify file or folder paths to combine:
 const filePaths: string[] = [
-  'src/bootstrap',
-  'src/db/base',
-  'src/db/configs',
-  'src/db/plugins',
-  'src/db/redis',
-  'src/db/common-schemas.ts',
-  'src/db/connect.ts',
-  'src/db/models/account.ts',
-  'src/db/models/nige-nest/nest-account.ts',
-  'src/db/models/user.ts',
-  'src/db/models/auth-provider.ts',
-  'src/db/models/account-role.ts',
-  'src/db/models/twitter-token.ts',
-  'src/db/models/role.ts',
-  'src/middlewares/auth-cookie.ts',
-  'src/middlewares/authorize.ts',
-  'src/routes/auth/index.ts',
-  'src/routes/index.ts',
-  'src/controllers/auth/index.ts',
-  'src/controllers/auth/user.controller.ts',
-  'src/services/auth/auth.service.ts',
-  'src/services/auth/user-status.service.ts',
-  'src/constants/roles.ts',
-  'src/constants/permissions.ts',
+  "src/api",
+  "src/config",
+  "src/hooks",
+  "src/layouts",
+  "src/lib",
+  "src/pages/login.tsx",
+  "src/pages/index.tsx",
+  "src/App.tsx",
+  "src/stores/useAdminAuth.ts",
+  "src/main.tsx",
 ];
-
-const outputFile = 'combined.txt';
+const outputFile = "combined.txt";
 
 /**
  * Recursively collects all file paths under a directory.
@@ -70,20 +55,20 @@ async function combineSelectedFiles() {
     const fileContents = await Promise.all(
       allPaths.map(async (file) => {
         try {
-          const content = await readFile(file, 'utf8');
+          const content = await readFile(file, "utf8");
           const relPath = relative(process.cwd(), file);
-          return `\n${relPath}\n${'-'.repeat(relPath.length)}\n${content}`;
+          return `\n${relPath}\n${"-".repeat(relPath.length)}\n${content}`;
         } catch {
-          return '';
+          return "";
         }
       })
     );
 
-    const finalContent = fileContents.filter(Boolean).join('\n');
-    await writeFile(outputFile, finalContent, 'utf8');
+    const finalContent = fileContents.filter(Boolean).join("\n");
+    await writeFile(outputFile, finalContent, "utf8");
     console.log(`Combined content written to ${outputFile}`);
   } catch (error) {
-    console.error('Error combining selected files:', error);
+    console.error("Error combining selected files:", error);
   }
 }
 

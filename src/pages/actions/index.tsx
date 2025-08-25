@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, FormProvider, Controller } from "react-hook-form";
@@ -27,6 +27,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { endpoints } from "@/api/endpoints";
+import { AllLedgerTable } from "../asset-ledger/all-ledger";
+import { queryClient } from "@/api/queryClient";
+import { trimUrl } from "@/utils/formatter";
 
 type Asset = { _id: string; name: string; symbol: string };
 
@@ -261,10 +264,18 @@ export default function Actions() {
     return Array.isArray(arr) ? arr : FALLBACK_ASSETS;
   }, [assetsResp]);
 
+  const onSuccessCallBacked = useCallback((resp) => {
+    console.log("reaching?", trimUrl(endpoints.entities.assetLedger.all));
+    queryClient.invalidateQueries({
+      queryKey: [trimUrl(endpoints.entities.assetLedger.all)],
+    });
+  }, []);
+
   // mutations
   const mintMutation = useApiMutation({
     route: endpoints.entities.actions.createMint,
     method: "POST",
+    onSuccess: onSuccessCallBacked,
   });
   const burnMutation = useApiMutation({
     route: endpoints.entities.actions.createBurn,
@@ -280,7 +291,7 @@ export default function Actions() {
   });
 
   return (
-    <div className="p-4 space-y-6 max-w-4xl">
+    <div className="p-4 space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>Ledger Actions</CardTitle>
@@ -471,6 +482,8 @@ export default function Actions() {
           </div>
         </CardContent>
       </Card>
+
+      <AllLedgerTable />
     </div>
   );
 }
