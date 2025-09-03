@@ -6,11 +6,11 @@
   "scripts": {
     "dev:local": "dotenv -e src/env/.env.local vite",
     "dev:development": "dotenv -e src/env/.env.development vite",
-    "dev:prod": "dotenv -e src/env/.env.prod vite",
+    "dev:production": "dotenv -e src/env/.env.production vite",
     "build:local": "dotenv -e /app/src/env/.env.local vite build",
     "build:test": "dotenv -e /app/src/env/.env.test vite build",
     "build:development": "dotenv -e /app/src/env/.env.development vite build",
-    "build:prod": "dotenv -e /app/src/env/.env.prod vite build",
+    "build:production": "dotenv -e /app/src/env/.env.production vite build",
     "lint": "eslint .",
     "preview": "dotenv -e src/env/.env.local vite preview"
   },

@@ -273,20 +273,20 @@ export default function Actions() {
 
   // mutations
   const mintMutation = useApiMutation({
-    route: endpoints.entities.actions.createMint,
+    route: endpoints.entities.actions.mint,
     method: "POST",
     onSuccess: onSuccessCallBacked,
   });
   const burnMutation = useApiMutation({
-    route: endpoints.entities.actions.createBurn,
+    route: endpoints.entities.actions.burn,
     method: "POST",
   });
   const fundMutation = useApiMutation({
-    route: endpoints.entities.actions.createFund,
+    route: endpoints.entities.actions.fund,
     method: "POST",
   });
   const withdrawMutation = useApiMutation({
-    route: endpoints.entities.actions.createWithdraw,
+    route: endpoints.entities.actions.withdraw,
     method: "POST",
   });
 

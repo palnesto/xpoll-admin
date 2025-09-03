@@ -17,19 +17,19 @@ RUN pnpm install
 COPY . .
 
 # Build the client admin app
-FROM base AS client-nige-nest-build
+FROM base AS client-xpoll-admin-prod-build
 
 # Run the build script
-RUN pnpm run build:prod
+RUN pnpm run build:production
 
 # Final production image with Nginx
-FROM nginx:alpine AS client-react-nige-nest
+FROM nginx:alpine AS client-react-xpoll-admin-prod
 
 # Copy the built files from the client-admin-build stage
-COPY --from=client-nige-nest-build /app/dist /usr/share/nginx/html
+COPY --from=client-xpoll-admin-prod-build /app/dist /usr/share/nginx/html
 
 # Copy the nginx configuration file
-COPY --from=client-nige-nest-build /app/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=client-xpoll-admin-prod-build /app/nginx.conf /etc/nginx/conf.d/default.conf
 
 # Expose port 80
 EXPOSE 80
