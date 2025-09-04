@@ -41,10 +41,10 @@ jobs:
           docker build --target client-react-xpoll-admin-prod -t ${{ env.DIGITALOCEAN_REGISTRY }}/$DOCKER_REPOSITORY:$IMAGE_TAG -f Dockerfile.prod .
           docker push ${{ env.DIGITALOCEAN_REGISTRY }}/$DOCKER_REPOSITORY:$IMAGE_TAG
 
-      # - name: Configure kubectl
-      #   run: |
-      #     doctl kubernetes cluster kubeconfig save ${{ secrets.PROD_CLUSTER_ID }}
+      - name: Configure kubectl
+        run: |
+          doctl kubernetes cluster kubeconfig save ${{ secrets.PROD_CLUSTER_ID }}
 
-      # - name: Restart Kubernetes deployment
-      #   run: |
-      #     kubectl rollout restart deployment -n nige-ecosystem-kubernetes nige-earn-admin-production
+      - name: Restart Kubernetes deployment
+        run: |
+          kubectl rollout restart deployment -n xpoll xpoll-admin-production
