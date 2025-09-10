@@ -13,7 +13,7 @@ export default defineConfig(({ mode }: ConfigEnv) => {
       },
     },
     server:
-      env.VITE_MODE === "development"
+      env.VITE_MODE === "development" || env.VITE_MODE === "local"
         ? {
             proxy: {
               "/api": env.VITE_BACKEND_URL,
