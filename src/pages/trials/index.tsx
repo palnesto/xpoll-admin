@@ -77,7 +77,7 @@ export default function Trials() {
       <PaginatedTable
         title="Trials"
         onCreate={() => navigate("/trials/create")}
-        createButtonText="Create Trial Poll"
+        createButtonText="Create Trial"
         columns={columns}
         tableData={tableData}
         data={data}

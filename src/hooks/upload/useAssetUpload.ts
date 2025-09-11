@@ -304,7 +304,7 @@ function useAssetUpload() {
     setError(null);
     try {
       // 1) Get presigned POST data from server (pass file.type!)
-      const { signedUrl, fields } = await fetchPresignedPostData(
+      const { signedUrl, fields, publicUrl } = await fetchPresignedPostData(
         file.name,
         file.type
       );
@@ -323,7 +323,7 @@ function useAssetUpload() {
         }),
       });
 
-      return finalFileUrl;
+      return publicUrl;
     } catch (err: any) {
       setError(err.message);
       throw err;

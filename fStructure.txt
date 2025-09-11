@@ -1,0 +1,11 @@
+src/pages/polls
+├── [id]
+│   └── index.tsx
+├── create.tsx
+└── index.tsx
+
+src/pages/trials
+├── [id]
+│   └── index.tsx
+├── create.tsx
+└── index.tsx

@@ -3,16 +3,9 @@ import { join, relative } from "path";
 
 // Specify file or folder paths to combine:
 const filePaths: string[] = [
-  "src/api",
-  "src/config",
-  "src/hooks",
-  "src/layouts",
-  "src/lib",
-  "src/pages/login.tsx",
-  "src/pages/index.tsx",
-  "src/App.tsx",
-  "src/stores/useAdminAuth.ts",
-  "src/main.tsx",
+  "src/components/polling",
+  "src/pages/polls/create.tsx",
+  "src/pages/trials/create.tsx",
 ];
 const outputFile = "combined.txt";
 
