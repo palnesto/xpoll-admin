@@ -3,9 +3,8 @@ import { join, relative } from "path";
 
 // Specify file or folder paths to combine:
 const filePaths: string[] = [
-  "src/components/polling",
-  "src/pages/polls/create.tsx",
-  "src/pages/trials/create.tsx",
+  "src/hooks/useApiQuery.ts",
+  "src/hooks/useApiMutation.ts",
 ];
 const outputFile = "combined.txt";
 

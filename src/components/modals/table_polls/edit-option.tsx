@@ -9,6 +9,7 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
+import { endpoints } from "@/api/endpoints";
 
 const EditSchema = z.object({ text: z.string().trim().min(3, "Required") });
 type FormVals = z.infer<typeof EditSchema>;
@@ -24,7 +25,7 @@ export const EditOptionModal = () => {
   });
 
   const { mutate: updateOption, isPending } = useApiMutation<any, any>({
-    route: "/poll/options",
+    route: endpoints.entities.polls.edit.editOption,
     method: "PUT",
     onSuccess: (resp) => {
       appToast.success("Option updated");

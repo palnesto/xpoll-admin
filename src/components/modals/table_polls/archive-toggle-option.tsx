@@ -13,11 +13,10 @@ export const ArchiveToggleOptionModal = () => {
   const onClose = usePollViewStore((s) => s.onClose);
 
   const { mutate: toggleArchive, isPending } = useApiMutation<any, any>({
-    route: endpoints.entities.polls.edit.toggleOption,
+    route: endpoints.entities.polls.edit.toggleArchiveOption,
     method: "PATCH",
     onSuccess: (resp) => {
       appToast.success("Option removed");
-
       queryClient.invalidateQueries();
       onClose();
     },

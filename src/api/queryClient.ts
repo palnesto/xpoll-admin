@@ -15,6 +15,7 @@ apiInstance.interceptors.response.use(
   (error) => {
     const status = error?.response?.status;
     const url = error?.config?.url || "";
+    console.log("error", error);
     const errorMessage =
       error?.response?.data?.message || "An unexpected error occurred";
 

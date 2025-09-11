@@ -11,7 +11,7 @@ import { queryClient } from "@/api/queryClient";
 import { appToast } from "@/utils/toast";
 
 import { Button } from "@/components/ui/button";
-import { Edit, Pencil, PlusSquare, Recycle, Trash2, X } from "lucide-react";
+import { Edit, Pencil, PlusSquare, Recycle, Trash2 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   Tooltip,
@@ -36,15 +36,38 @@ import { EditOptionModal } from "@/components/modals/table_polls/edit-option";
 import { ArchiveToggleOptionModal } from "@/components/modals/table_polls/archive-toggle-option";
 import { cn } from "@/lib/utils";
 
-import CountrySelect from "@/components/commons/selects/country-select";
-import StateSelect from "@/components/commons/selects/state-select";
-import { CitySelect } from "@/components/commons/selects/city-select";
+import ResourceAssetsEditor from "@/components/polling/editors/ResourceAssetsEditor";
+import RewardsEditor, {
+  type AssetOption,
+} from "@/components/polling/editors/RewardsEditor";
+import ExpireRewardAtPicker from "@/components/polling/editors/ExpireRewardAtPicker";
+import TargetGeoEditor from "@/components/polling/editors/TargetGeoEditor";
+import { useImageUpload } from "@/hooks/upload/useAssetUpload";
+import { extractYouTubeId } from "@/utils/youtube";
+
+/* ---------- constants ---------- */
+const TOTAL_LEVELS = 10 as const;
+const ASSET_OPTIONS: AssetOption[] = [
+  { label: "OCTA", value: "xOcta" },
+  { label: "MYST", value: "xMYST" },
+  { label: "DROP", value: "xDrop" },
+  { label: "XPOLL", value: "xPoll" },
+];
 
 /* ---------- types ---------- */
 type PollOption = {
   _id: string;
   text: string;
   archivedAt?: string | null;
+};
+
+type ResourceAsset = { type: "image" | "youtube"; value: string };
+
+type RewardRow = {
+  assetId: "xOcta" | "xMYST" | "xDrop" | "xPoll";
+  amount: number;
+  rewardAmountCap: number;
+  rewardType: "max" | "min";
 };
 
 type Poll = {
@@ -54,7 +77,16 @@ type Poll = {
   description?: string;
   createdAt?: string;
   archivedAt?: string | null;
+
+  // modern preferred
+  resourceAssets?: ResourceAsset[];
+  // legacy single url
   media?: string;
+
+  // optional if your backend returns rewards on show
+  rewards?: RewardRow[];
+  expireRewardAt?: string | null;
+
   options?: PollOption[];
   targetGeo?: {
     countries?: string[];
@@ -82,7 +114,6 @@ function patchShowCache(showKey: string, updater: (curr: any) => any) {
   queryClient.setQueryData([showKey], next);
 }
 
-type LV = { label: string; value: string };
 const arrEqUnordered = (a: string[], b: string[]) => {
   if (!Array.isArray(a) || !Array.isArray(b)) return false;
   if (a.length !== b.length) return false;
@@ -91,29 +122,81 @@ const arrEqUnordered = (a: string[], b: string[]) => {
   return A.every((v, i) => v === B[i]);
 };
 
-/** Base edit schema. We’ll conditionally HIDE targetGeo if it’s a trial poll. */
-const editSchema = z.object({
-  title: z.string().min(3, "Min 3 chars").trim(),
-  description: z.string().min(3, "Min 3 chars").trim(),
-  media: z
-    .string()
-    .trim()
-    .optional()
-    .or(z.literal(""))
-    .refine(
-      (v) => !v || /^https?:\/\/.+/i.test(v),
-      "Must be a valid URL (http/https) or leave empty"
-    ),
-  targetGeo: z
-    .object({
+function cmpRewards(a: RewardRow[] = [], b: RewardRow[] = []) {
+  const norm = (arr: RewardRow[]) =>
+    [...arr]
+      .sort((x, y) => x.assetId.localeCompare(y.assetId))
+      .map(
+        (r) => `${r.assetId}:${r.amount}:${r.rewardAmountCap}:${r.rewardType}`
+      )
+      .join("|");
+  return norm(a) === norm(b);
+}
+
+/* ---------- zod: same field names/rules as Create Poll ---------- */
+const resourceAssetZ = z.union([
+  z.object({ type: z.literal("youtube"), value: z.string().min(11) }),
+  z.object({
+    type: z.literal("image"),
+    // keep as [File|string] in-form for preview; collapse to string on save
+    value: z.array(z.union([z.instanceof(File), z.string()])).nullable(),
+  }),
+]);
+
+const rewardRowZ = z
+  .object({
+    assetId: z.enum(["xOcta", "xMYST", "xDrop", "xPoll"]),
+    amount: z.coerce.number().int().min(1),
+    rewardAmountCap: z.coerce.number().int().min(1),
+    rewardType: z.enum(["max", "min"]).default("max"),
+  })
+  .refine((r) => r.rewardAmountCap >= r.amount, {
+    message: "rewardAmountCap must be >= amount",
+    path: ["rewardAmountCap"],
+  });
+
+const editSchema = z
+  .object({
+    title: z.string().min(3, "Min 3 chars").trim(),
+    description: z.string().min(3, "Min 3 chars").trim(),
+    resourceAssets: z.array(resourceAssetZ).default([]),
+    rewards: z.array(rewardRowZ).min(1, "At least one reward is required"),
+    targetGeo: z.object({
       countries: z.array(z.string()).default([]),
       states: z.array(z.string()).default([]),
       cities: z.array(z.string()).default([]),
-    })
-    .default({ countries: [], states: [], cities: [] }),
-});
-type EditValues = z.infer<typeof editSchema>;
+    }),
+    expireRewardAt: z
+      .string()
+      .datetime()
+      .optional()
+      .or(z.literal("").optional())
+      .optional(),
+  })
+  .superRefine((v, ctx) => {
+    const ids = (v.rewards ?? []).map((r) => r.assetId);
+    const dup = ids.find((a, i) => ids.indexOf(a) !== i);
+    if (dup)
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["rewards"],
+        message: `Duplicate reward assetId: ${dup}`,
+      });
+  });
 
+type EditValues = z.infer<typeof editSchema>;
+type OutputResourceAsset = { type: "image" | "youtube"; value: string };
+
+/* ---------- assets helpers ---------- */
+function toComparableAssets(arr?: OutputResourceAsset[]) {
+  return (arr ?? []).map((a) =>
+    a.type === "youtube" ? `yt:${extractYouTubeId(a.value)}` : `img:${a.value}`
+  );
+}
+
+/* =========================================================
+   Component
+   ========================================================= */
 export default function PollShowPage() {
   const navigate = useNavigate();
   const { id = "" } = useParams<{ id: string }>();
@@ -136,26 +219,57 @@ export default function PollShowPage() {
     defaultValues: {
       title: "",
       description: "",
-      media: "",
+      resourceAssets: [],
+      rewards: [
+        {
+          assetId: ASSET_OPTIONS[0].value as any,
+          amount: 1,
+          rewardAmountCap: 1,
+          rewardType: "max",
+        },
+      ],
       targetGeo: { countries: [], states: [], cities: [] },
+      expireRewardAt: "",
     },
     mode: "onChange",
   });
-  const { control, handleSubmit, reset, getValues } = form;
+  const { control, handleSubmit, reset, getValues, setValue, watch } = form;
 
-  // ===== Target Geo local state (multi-select LV[]) =====
-  const [geoCountries, setGeoCountries] = useState<LV[]>([]);
-  const [geoStates, setGeoStates] = useState<LV[]>([]);
-  const [geoCities, setGeoCities] = useState<LV[]>([]);
+  const { uploadImage, loading: isUploading } = useImageUpload();
 
-  // hydrate form + geos when poll loads
+  // hydrate form when poll loads
   useEffect(() => {
     if (!poll) return;
+
+    // Prefer modern resourceAssets; fallback to legacy media string
+    const initialAssets: EditValues["resourceAssets"] =
+      Array.isArray(poll.resourceAssets) && poll.resourceAssets.length > 0
+        ? poll.resourceAssets.map((a) =>
+            a.type === "image"
+              ? { type: "image", value: [a.value] }
+              : { type: "youtube", value: extractYouTubeId(a.value) }
+          )
+        : poll.media
+        ? [{ type: "image", value: [poll.media] }]
+        : [];
+
+    const initialRewards: EditValues["rewards"] =
+      Array.isArray(poll.rewards) && poll.rewards.length > 0
+        ? poll.rewards
+        : [
+            {
+              assetId: ASSET_OPTIONS[0].value as any,
+              amount: 1,
+              rewardAmountCap: 1,
+              rewardType: "max",
+            },
+          ];
 
     reset({
       title: poll.title ?? "",
       description: poll.description ?? "",
-      media: (poll as any)?.media ?? "",
+      resourceAssets: initialAssets,
+      rewards: initialRewards,
       targetGeo: {
         countries: Array.isArray(poll.targetGeo?.countries)
           ? poll.targetGeo!.countries
@@ -167,23 +281,8 @@ export default function PollShowPage() {
           ? poll.targetGeo!.cities
           : [],
       },
+      expireRewardAt: poll.expireRewardAt ?? "",
     });
-
-    setGeoCountries(
-      Array.isArray(poll.targetGeo?.countries)
-        ? poll.targetGeo!.countries.map((c) => ({ label: c, value: c }))
-        : []
-    );
-    setGeoStates(
-      Array.isArray(poll.targetGeo?.states)
-        ? poll.targetGeo!.states.map((s) => ({ label: s, value: s }))
-        : []
-    );
-    setGeoCities(
-      Array.isArray(poll.targetGeo?.cities)
-        ? poll.targetGeo!.cities.map((c) => ({ label: c, value: c }))
-        : []
-    );
   }, [poll, reset]);
 
   const { mutate: saveEdit, isPending: isSaving } = useApiMutation<any, any>({
@@ -194,19 +293,34 @@ export default function PollShowPage() {
       setIsEditing(false);
 
       const v = getValues();
-      const tgFromState = {
-        countries: geoCountries.map((c) => c.value),
-        states: geoStates.map((s) => s.value),
-        cities: geoCities.map((c) => c.value),
-      };
+
+      // Prepare normalized assets for cache patch
+      const normalizedNow: OutputResourceAsset[] = (v.resourceAssets ?? []).map(
+        (a: any) =>
+          a.type === "youtube"
+            ? { type: "youtube", value: extractYouTubeId(a.value) }
+            : {
+                type: "image",
+                value:
+                  typeof a.value?.[0] === "string"
+                    ? a.value[0]
+                    : String(a.value),
+              }
+      );
 
       patchShowCache(showRoute, (curr) => ({
         ...curr,
         title: v.title,
         description: v.description,
-        media: v.media,
-        // IMPORTANT: trial polls do not update targetGeo here (it’s controlled at trial)
-        targetGeo: isTrialPoll ? curr.targetGeo : tgFromState ?? curr.targetGeo,
+        resourceAssets: normalizedNow,
+        rewards: v.rewards,
+        expireRewardAt: v.expireRewardAt?.trim() ? v.expireRewardAt : undefined,
+        // IMPORTANT: trial polls do not update targetGeo here (controlled at trial)
+        targetGeo: isTrialPoll ? curr.targetGeo : v.targetGeo ?? curr.targetGeo,
+        // legacy "media" (first image) for backward-compat viewers
+        media:
+          normalizedNow.find((x) => x.type === "image")?.value ??
+          (curr as any)?.media,
       }));
 
       queryClient.invalidateQueries({ queryKey: [showRoute] });
@@ -220,29 +334,60 @@ export default function PollShowPage() {
     },
   });
 
+  // normalize editor assets -> server format (uploads new Files)
+  const normalizeAssetsForSave = async (
+    arr?: EditValues["resourceAssets"]
+  ): Promise<OutputResourceAsset[]> => {
+    const items = arr ?? [];
+    return Promise.all(
+      items.map(async (a) => {
+        if (a.type === "youtube") {
+          return { type: "youtube", value: extractYouTubeId(String(a.value)) };
+        }
+        // image: a.value is [File|string] | null
+        const list = (a.value ?? []) as (File | string)[];
+        let first = list[0];
+        if (first instanceof File) {
+          first = await uploadImage(first); // upload and replace with URL
+        }
+        return { type: "image", value: typeof first === "string" ? first : "" };
+      })
+    );
+  };
+
   // submit with diffs only
-  const onSubmitEdit = handleSubmit((v) => {
+  const onSubmitEdit = handleSubmit(async (v) => {
     if (!poll) return;
+
+    // Build normalized assets from current editor state
+    const normalizedNow = await normalizeAssetsForSave(v.resourceAssets);
+
+    // Build previous normalized assets (from poll) for diff
+    const prevAssets: OutputResourceAsset[] =
+      Array.isArray(poll.resourceAssets) && poll.resourceAssets.length > 0
+        ? poll.resourceAssets.map((a) =>
+            a.type === "youtube"
+              ? { type: "youtube", value: extractYouTubeId(a.value) }
+              : { type: "image", value: a.value }
+          )
+        : poll.media
+        ? [{ type: "image", value: poll.media }]
+        : [];
 
     const payload: any = { pollId: id };
 
     if (v.title !== (poll.title ?? "")) payload.title = v.title;
     if (v.description !== (poll.description ?? ""))
       payload.description = v.description;
-    if (v.media !== ((poll as any)?.media ?? "")) payload.media = v.media;
 
     // Only include targetGeo for NON-trial polls
     if (!isTrialPoll) {
-      const nextTG = {
-        countries: geoCountries.map((c) => c.value),
-        states: geoStates.map((s) => s.value),
-        cities: geoCities.map((c) => c.value),
-      };
       const prevTG = {
         countries: poll.targetGeo?.countries ?? [],
         states: poll.targetGeo?.states ?? [],
         cities: poll.targetGeo?.cities ?? [],
       };
+      const nextTG = v.targetGeo ?? { countries: [], states: [], cities: [] };
 
       const geoChanged =
         !arrEqUnordered(nextTG.countries, prevTG.countries) ||
@@ -252,7 +397,40 @@ export default function PollShowPage() {
       if (geoChanged) payload.targetGeo = nextTG;
     }
 
+    // resourceAssets diffs
+    const prevCmp = toComparableAssets(prevAssets);
+    const nowCmp = toComparableAssets(normalizedNow);
+    const assetsChanged =
+      prevCmp.length !== nowCmp.length ||
+      prevCmp.some((v, i) => v !== nowCmp[i]); // order preserved by UI
+    if (assetsChanged) {
+      payload.resourceAssets = normalizedNow;
+      // Optional: keep legacy "media" in sync if your backend still reads it
+      const firstImg = normalizedNow.find((x) => x.type === "image")?.value;
+      if (firstImg) payload.media = firstImg;
+    }
+
+    // rewards diffs
+    const prevRewards = (poll.rewards ?? []) as RewardRow[];
+    const nowRewards = (v.rewards ?? []) as RewardRow[];
+    if (!cmpRewards(prevRewards, nowRewards)) {
+      payload.rewards = nowRewards.map((r) => ({
+        assetId: r.assetId,
+        amount: r.amount,
+        rewardAmountCap: r.rewardAmountCap,
+        rewardType: r.rewardType,
+      }));
+    }
+
+    // expireRewardAt diff (treat "" and undefined as unset)
+    const prevExpire = (poll.expireRewardAt ?? "").trim();
+    const nowExpire = (v.expireRewardAt ?? "").trim();
+    if (prevExpire !== nowExpire) {
+      payload.expireRewardAt = nowExpire ? nowExpire : undefined;
+    }
+
     if (Object.keys(payload).length <= 1) {
+      // nothing changed
       setIsEditing(false);
       return;
     }
@@ -271,6 +449,8 @@ export default function PollShowPage() {
   const isArchiveToggleOption = usePollViewStore(
     (s) => s.isArchiveToggleOption
   );
+
+  console.log("isArchiveToggleOption", isArchiveToggleOption);
   const setIsArchiveToggleOption = usePollViewStore(
     (s) => s.setIsArchiveToggleOption
   );
@@ -306,6 +486,13 @@ export default function PollShowPage() {
     );
   }
 
+  const viewAssets: OutputResourceAsset[] =
+    Array.isArray(poll.resourceAssets) && poll.resourceAssets.length > 0
+      ? poll.resourceAssets
+      : poll.media
+      ? [{ type: "image", value: poll.media }]
+      : [];
+
   return (
     <div className="p-4 space-y-6 max-w-4xl">
       {isEditing ? (
@@ -322,8 +509,8 @@ export default function PollShowPage() {
           </CardHeader>
           <CardContent>
             <Form {...form}>
-              <form className="space-y-4" onSubmit={onSubmitEdit}>
-                {/* Title */}
+              <form className="space-y-6" onSubmit={onSubmitEdit}>
+                {/* Title (same as create) */}
                 <FormField
                   control={control}
                   name="title"
@@ -345,7 +532,7 @@ export default function PollShowPage() {
                   )}
                 />
 
-                {/* Description */}
+                {/* Description (same as create) */}
                 <FormField
                   control={control}
                   name="description"
@@ -356,7 +543,7 @@ export default function PollShowPage() {
                       </FormLabel>
                       <FormControl>
                         <textarea
-                          placeholder="Poll description"
+                          placeholder="Short description"
                           className="flex h-28 w-full rounded-md border border-input bg-transparent text-foreground px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                           {...field}
                         />
@@ -366,172 +553,36 @@ export default function PollShowPage() {
                   )}
                 />
 
-                {/* Media */}
-                <FormField
+                {/* Resource Assets (same as create) */}
+                <ResourceAssetsEditor
                   control={control}
-                  name="media"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs text-muted-foreground">
-                        Media (URL)
-                      </FormLabel>
-                      <FormControl>
-                        <input
-                          type="url"
-                          placeholder="https://example.com/image-or-video"
-                          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  name="resourceAssets"
+                  label="Media (Images / YouTube)"
                 />
 
-                {/* Target Geo (HIDDEN for trial polls) */}
+                {/* Rewards (same as create) */}
+                <RewardsEditor
+                  control={control}
+                  name="rewards"
+                  assetOptions={ASSET_OPTIONS}
+                  includeRewardType
+                  showCurvePreview
+                  totalLevelsForPreview={TOTAL_LEVELS}
+                  label="Rewards"
+                />
+
+                {/* Expire Reward At (same as create) */}
+                <ExpireRewardAtPicker control={control} name="expireRewardAt" />
+
+                {/* Target Geo (hidden for trial polls) */}
                 {!isTrialPoll && (
-                  <div className="space-y-4 text-black">
-                    {/* Countries */}
-                    <div className="space-y-1">
-                      <label className="text-xs text-muted-foreground">
-                        Countries
-                      </label>
-                      <CountrySelect
-                        value={geoCountries}
-                        onChange={(val) => {
-                          const newVal = Array.isArray(val)
-                            ? val
-                            : val
-                            ? [val]
-                            : [];
-                          setGeoCountries((prev) => {
-                            const merged = [...prev];
-                            for (const v of newVal) {
-                              if (!merged.some((m) => m.value === v.value))
-                                merged.push(v);
-                            }
-                            return merged;
-                          });
-                        }}
-                        isMulti
-                        isOptionDisabled={(option: LV) =>
-                          geoCountries.some((c) => c.value === option.value)
-                        }
-                      />
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {geoCountries.map((country) => (
-                          <span
-                            key={country.value}
-                            className="px-2 py-1 rounded bg-muted text-sm flex items-center gap-1 text-white"
-                          >
-                            {country.label}
-                            <X
-                              className="w-3 h-3 cursor-pointer"
-                              onClick={() =>
-                                setGeoCountries((prev) =>
-                                  prev.filter((x) => x.value !== country.value)
-                                )
-                              }
-                            />
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* States */}
-                    <div className="space-y-1">
-                      <label className="text-xs text-muted-foreground">
-                        States
-                      </label>
-                      <StateSelect
-                        value={geoStates}
-                        onChange={(val) => {
-                          const newVal = Array.isArray(val)
-                            ? val
-                            : val
-                            ? [val]
-                            : [];
-                          setGeoStates((prev) => {
-                            const merged = [...prev];
-                            for (const v of newVal) {
-                              if (!merged.some((m) => m.value === v.value))
-                                merged.push(v);
-                            }
-                            return merged;
-                          });
-                        }}
-                        isMulti
-                        isOptionDisabled={(option: LV) =>
-                          geoStates.some((s) => s.value === option.value)
-                        }
-                      />
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {geoStates.map((s) => (
-                          <span
-                            key={s.value}
-                            className="px-2 py-1 rounded bg-muted text-sm flex items-center gap-1 text-white"
-                          >
-                            {s.label}
-                            <X
-                              className="w-3 h-3 cursor-pointer"
-                              onClick={() =>
-                                setGeoStates((prev) =>
-                                  prev.filter((x) => x.value !== s.value)
-                                )
-                              }
-                            />
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Cities */}
-                    <div className="space-y-1">
-                      <label className="text-xs text-muted-foreground">
-                        Cities
-                      </label>
-                      <CitySelect
-                        value={geoCities}
-                        onChange={(val) => {
-                          const newVal = Array.isArray(val)
-                            ? val
-                            : val
-                            ? [val]
-                            : [];
-                          setGeoCities((prev) => {
-                            const merged = [...prev];
-                            for (const v of newVal) {
-                              if (!merged.some((m) => m.value === v.value))
-                                merged.push(v);
-                            }
-                            return merged;
-                          });
-                        }}
-                        isMulti
-                        isOptionDisabled={(option: LV) =>
-                          geoCities.some((c) => c.value === option.value)
-                        }
-                      />
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {geoCities.map((city) => (
-                          <span
-                            key={city.value}
-                            className="px-2 py-1 rounded bg-muted text-sm flex items-center gap-1 text-white"
-                          >
-                            {city.label}
-                            <X
-                              className="w-3 h-3 cursor-pointer"
-                              onClick={() =>
-                                setGeoCities((prev) =>
-                                  prev.filter((x) => x.value !== city.value)
-                                )
-                              }
-                            />
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+                  <TargetGeoEditor
+                    control={control}
+                    watch={watch}
+                    setValue={setValue}
+                    basePath="targetGeo"
+                    label="Target Geo"
+                  />
                 )}
 
                 <div className="flex items-center gap-2 pt-2">
@@ -539,48 +590,62 @@ export default function PollShowPage() {
                     type="button"
                     variant="outline"
                     onClick={() => {
+                      if (!poll) return;
+
+                      // Reset to server state
+                      const initialAssets: EditValues["resourceAssets"] =
+                        Array.isArray(poll.resourceAssets) &&
+                        poll.resourceAssets.length > 0
+                          ? poll.resourceAssets.map((a) =>
+                              a.type === "image"
+                                ? { type: "image", value: [a.value] }
+                                : {
+                                    type: "youtube",
+                                    value: extractYouTubeId(a.value),
+                                  }
+                            )
+                          : poll.media
+                          ? [{ type: "image", value: [poll.media] }]
+                          : [];
+
+                      const initialRewards: EditValues["rewards"] =
+                        Array.isArray(poll.rewards) && poll.rewards.length > 0
+                          ? poll.rewards
+                          : [
+                              {
+                                assetId: ASSET_OPTIONS[0].value as any,
+                                amount: 1,
+                                rewardAmountCap: 1,
+                                rewardType: "max",
+                              },
+                            ];
+
                       reset({
                         title: poll.title ?? "",
                         description: poll.description ?? "",
-                        media: (poll as any)?.media ?? "",
+                        resourceAssets: initialAssets,
+                        rewards: initialRewards,
                         targetGeo: {
-                          countries: poll.targetGeo?.countries ?? [],
-                          states: poll.targetGeo?.states ?? [],
-                          cities: poll.targetGeo?.cities ?? [],
+                          countries: Array.isArray(poll.targetGeo?.countries)
+                            ? poll.targetGeo!.countries
+                            : [],
+                          states: Array.isArray(poll.targetGeo?.states)
+                            ? poll.targetGeo!.states
+                            : [],
+                          cities: Array.isArray(poll.targetGeo?.cities)
+                            ? poll.targetGeo!.cities
+                            : [],
                         },
+                        expireRewardAt: poll.expireRewardAt ?? "",
                       });
-                      setGeoCountries(
-                        Array.isArray(poll.targetGeo?.countries)
-                          ? poll.targetGeo!.countries.map((c) => ({
-                              label: c,
-                              value: c,
-                            }))
-                          : []
-                      );
-                      setGeoStates(
-                        Array.isArray(poll.targetGeo?.states)
-                          ? poll.targetGeo!.states.map((s) => ({
-                              label: s,
-                              value: s,
-                            }))
-                          : []
-                      );
-                      setGeoCities(
-                        Array.isArray(poll.targetGeo?.cities)
-                          ? poll.targetGeo!.cities.map((c) => ({
-                              label: c,
-                              value: c,
-                            }))
-                          : []
-                      );
                       setIsEditing(false);
                     }}
-                    disabled={isSaving}
+                    disabled={isSaving || isUploading}
                   >
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={isSaving}>
-                    {isSaving ? "Saving…" : "Save"}
+                  <Button type="submit" disabled={isSaving || isUploading}>
+                    {isSaving || isUploading ? "Saving…" : "Save"}
                   </Button>
                 </div>
               </form>
@@ -610,19 +675,63 @@ export default function PollShowPage() {
           <CardContent className="space-y-4">
             <div>
               <div className="text-xs text-muted-foreground">ID</div>
-              <div className="font-mono break-all">{poll.pollId}</div>
+              <div className="font-mono break-all">{poll._id}</div>
             </div>
+
             <div>
               <div className="text-xs text-muted-foreground">Title</div>
               <div className="font-medium">{poll.title}</div>
             </div>
+
             <div>
               <div className="text-xs text-muted-foreground">Description</div>
               <div>{poll.description || "-"}</div>
             </div>
+
+            {/* Resource Assets view */}
             <div>
               <div className="text-xs text-muted-foreground">Media</div>
-              <div className="break-all">{poll.media || "-"}</div>
+              {viewAssets.length ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                  {viewAssets.map((a, i) => {
+                    console.log("a", a);
+                    return a.type === "youtube" ? (
+                      <div
+                        key={`yt-${i}`}
+                        className="flex items-center justify-between rounded-md border p-3"
+                      >
+                        <div className="flex min-w-0 flex-col">
+                          <div className="text-xs text-muted-foreground">
+                            YouTube
+                          </div>
+                          <div className="truncate text-sm font-medium">
+                            {extractYouTubeId(a.value)}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        key={`img-${i}`}
+                        className="flex items-center justify-between gap-3 rounded-md border p-3"
+                      >
+                        <div className="flex items-center gap-3">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={a.value}
+                            alt="image"
+                            className="h-16 w-16 rounded object-cover"
+                          />
+                          <div className="text-xs text-muted-foreground">
+                            Image
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-sm text-muted-foreground">-</div>
+              )}
             </div>
 
             {/* Hide Target Geo block entirely for trial polls */}
@@ -630,19 +739,19 @@ export default function PollShowPage() {
               <div>
                 <div className="text-xs text-muted-foreground">Target Geo</div>
                 <h2 className="break-all">
-                  Countries-{" "}
+                  Countries –{" "}
                   {Array.isArray(poll.targetGeo?.countries)
                     ? poll.targetGeo!.countries.join(", ")
                     : "-"}
                 </h2>
                 <h2 className="break-all">
-                  States-{" "}
+                  States –{" "}
                   {Array.isArray(poll.targetGeo?.states)
                     ? poll.targetGeo!.states.join(", ")
                     : "-"}
                 </h2>
                 <h2 className="break-all">
-                  Cities-{" "}
+                  Cities –{" "}
                   {Array.isArray(poll.targetGeo?.cities)
                     ? poll.targetGeo!.cities.join(", ")
                     : "-"}
@@ -664,7 +773,7 @@ export default function PollShowPage() {
         </Card>
       )}
 
-      {/* ===== Options card (unchanged) ===== */}
+      {/* ===== Options card (kept at bottom exactly as before) ===== */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Options</CardTitle>
@@ -718,7 +827,7 @@ export default function PollShowPage() {
                               oldText: opt.text,
                             })
                           }
-                          aria-label={`Edit option ${opt.text}`}
+                          aria-label="Edit option"
                           title="Edit option"
                         >
                           <Pencil className="w-4 h-4" />
@@ -728,19 +837,21 @@ export default function PollShowPage() {
                       {isArchived && activeCount + 1 > MAX_OPTIONS ? null : (
                         <button
                           className="rounded-md p-1 hover:bg-foreground/10"
-                          onClick={() =>
+                          onClick={() => {
+                            console.log("is reaching archiving");
                             setIsArchiveToggleOption({
                               pollId: (poll as any)._id,
                               optionId: opt._id,
                               shouldArchive: !isArchived,
-                            })
-                          }
+                            });
+                          }}
                           aria-label={`Delete option ${opt.text}`}
                           title="Delete option"
-                          disabled={!isArchived && activeCount <= 2}
                         >
                           {!isArchived ? (
-                            <Trash2 className={`w-4 h-4 text-red-600`} />
+                            <>
+                              <Trash2 className={`w-4 h-4 text-red-600`} />
+                            </>
                           ) : (
                             <Recycle className={`w-4 h-4 text-white`} />
                           )}

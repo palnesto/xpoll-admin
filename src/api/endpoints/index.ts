@@ -13,7 +13,7 @@ export const endpoints = {
         details: `/internal/poll/details`,
         addOption: `/internal/poll/options`,
         editOption: `/internal/poll/options`,
-        toggleOption: `/internal/poll/archive`,
+        toggleArchiveOption: `/internal/poll/options/archive`,
       },
       getPollsByTrialId: (id: string) => `/internal/poll/trial/${id}`,
     },
