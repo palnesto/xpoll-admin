@@ -6,7 +6,7 @@ export const endpoints = {
   entities: {
     polls: {
       all: "/internal/poll/list",
-      create: "/poll",
+      create: "/internal/poll",
       getById: (id: string) => `/internal/poll/${id}`,
       delete: `/internal/poll`,
       edit: {
