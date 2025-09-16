@@ -4,8 +4,10 @@ import CountrySelect from "@/components/commons/selects/country-select";
 import { SlugCreatableSelect } from "@/components/commons/selects/slug-creatable-select";
 import StateSelect from "@/components/commons/selects/state-select";
 import { useState } from "react";
+import { Navigate } from "react-router-dom";
 
 const IndexPage = () => {
+  return <Navigate to="/actions" />;
   return (
     <div className="text-black">
       <div style={{ maxWidth: 420 }}>

@@ -6,6 +6,8 @@ import { ArchiveRestore, ArchiveX } from "lucide-react";
 import { DEFAULT_PAGE_SIZE } from "@/constants";
 import { fmt, PaginatedTable } from "@/components/paginated-table";
 import { useTableSellIntentStore } from "@/stores/table_sell_intent";
+import { amount, unwrapString } from "@/utils/currency-assets/base";
+import { generateStatus } from "../sell-intent";
 
 export default function SellIntent() {
   const [page, setPage] = useState<number>(1);
@@ -43,15 +45,45 @@ export default function SellIntent() {
 
   const tableData = useMemo(
     () =>
-      entries.map((r: any) => ({
-        ...r,
-        tableOptions: <ThreeDotMenu actions={actions(r._id)} />,
-      })),
+      entries.map((r: any) => {
+        const intentLeg = r.legs?.find((l) => {
+          return l?.legType === "intent-amount";
+        });
+        const status = "REJECT";
+
+        const parentAmountVal = unwrapString(
+          amount({
+            op: "toParent",
+            assetId: intentLeg?.assetId,
+            value: intentLeg?.amount,
+            output: "string",
+            trim: true,
+            group: false,
+          })
+        );
+
+        return {
+          ...r,
+          username: r.metadata?.username,
+          walletAddress: r.metadata?.walletAddress,
+          chain: r.metadata?.chain,
+          assetId: intentLeg?.assetId,
+          parentAmountVal,
+          status: generateStatus(status),
+          tableOptions: <ThreeDotMenu actions={actions(r._id)} />,
+        };
+      }),
     [entries, actions]
   );
 
   const columns = [
     { key: "_id", header: "ID", canFilter: true },
+    { key: "username", header: "Username", canFilter: true },
+    { key: "walletAddress", header: "Wallet Address", canFilter: true },
+    { key: "chain", header: "Chain", canFilter: true },
+    { key: "assetId", header: "Asset ID", canFilter: true },
+    { key: "parentAmountVal", header: "Amount", canFilter: true },
+    { key: "status", header: "Status", canFilter: true },
     { key: "action", header: "Action", canFilter: true },
     {
       key: "createdAt",
