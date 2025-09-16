@@ -207,11 +207,7 @@ function ActionDialog<
   const submit = async (v: Values) => {
     const r = await onSubmit(v);
     setResp(r);
-    if ((r as any)?.success || (r as any)?.statusCode === 200) {
-      appToast.success("Success");
-    } else {
-      appToast.error("Failed");
-    }
+    setOpen(false);
   };
 
   const close = () => {
@@ -266,9 +262,7 @@ export default function Actions() {
 
   const onSuccessCallBacked = useCallback((resp) => {
     console.log("reaching?", trimUrl(endpoints.entities.assetLedger.all));
-    queryClient.invalidateQueries({
-      queryKey: [trimUrl(endpoints.entities.assetLedger.all)],
-    });
+    queryClient.invalidateQueries();
   }, []);
 
   // mutations
@@ -280,14 +274,17 @@ export default function Actions() {
   const burnMutation = useApiMutation({
     route: endpoints.entities.actions.burn,
     method: "POST",
+    onSuccess: onSuccessCallBacked,
   });
   const fundMutation = useApiMutation({
     route: endpoints.entities.actions.fund,
     method: "POST",
+    onSuccess: onSuccessCallBacked,
   });
   const withdrawMutation = useApiMutation({
     route: endpoints.entities.actions.withdraw,
     method: "POST",
+    onSuccess: onSuccessCallBacked,
   });
 
   return (
