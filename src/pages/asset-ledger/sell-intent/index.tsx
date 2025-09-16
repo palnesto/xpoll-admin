@@ -136,6 +136,21 @@ export default function SellIntent() {
         pageSize={pageSize}
         isFetching={isFetching}
       />
+      {isAcecpting?.length > 0 && (
+        <ApproveSellIntentModal
+          ids={isAcecpting}
+          onClose={() => setIsAccepting([])}
+          invalidateKey={url}
+        />
+      )}
+
+      {isRejecting?.length > 0 && (
+        <RejectSellIntentModal
+          ids={isRejecting}
+          onClose={() => setIsRejecting([])}
+          invalidateKey={url}
+        />
+      )}
     </div>
   );
 }
