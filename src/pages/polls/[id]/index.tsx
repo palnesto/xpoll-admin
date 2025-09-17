@@ -209,7 +209,7 @@ export default function PollShowPage() {
   const poll: Poll | null = useMemo(() => {
     return data?.data?.data ?? data?.data ?? null;
   }, [data]);
-
+  console.log("poll", poll);
   const isTrialPoll = !!(poll?.trialId || poll?.trial?._id);
 
   const [isEditing, setIsEditing] = useState(false);
@@ -223,8 +223,8 @@ export default function PollShowPage() {
       rewards: [
         {
           assetId: ASSET_OPTIONS[0].value as any,
-          amount: 1,
-          rewardAmountCap: 1,
+          amount: "",
+          rewardAmountCap: "",
           rewardType: "max",
         },
       ],
@@ -610,7 +610,12 @@ export default function PollShowPage() {
 
                       const initialRewards: EditValues["rewards"] =
                         Array.isArray(poll.rewards) && poll.rewards.length > 0
-                          ? poll.rewards
+                          ? poll.rewards.map((r) => ({
+                              assetId: r.assetId as any,
+                              amount: Number(r.amount), // convert
+                              rewardAmountCap: Number(r.rewardAmountCap), // convert
+                              rewardType: r.rewardType as "max" | "min",
+                            }))
                           : [
                               {
                                 assetId: ASSET_OPTIONS[0].value as any,
