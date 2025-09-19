@@ -79,6 +79,7 @@
     "react-select": "^5.10.1",
     "react-simple-maps": "^3.0.0",
     "react-tweet": "^3.2.1",
+    "recharts": "^3.2.1",
     "shadcn": "^2.1.6",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",

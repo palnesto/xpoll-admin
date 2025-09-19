@@ -87,8 +87,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             url: "/asset-ledger/system-report",
           },
           {
-            title: "Sell Intent",
+            title: "Sell Intent All",
             url: "/asset-ledger/sell-intent",
+          },
+          {
+            title: "Sell Intent Pending",
+            url: "/asset-ledger/sell-intent-pending",
           },
           {
             title: "Sell Intent Approval",
@@ -101,6 +105,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           {
             title: "Slugs",
             url: "/slugs",
+          },
+        ],
+      },
+      {
+        title: "Analytics",
+        url: "#",
+        icon: Settings,
+        isActive: true,
+        items: [
+          {
+            title: "Polls",
+            url: "/analytics/polls",
           },
         ],
       },
