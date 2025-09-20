@@ -20,7 +20,7 @@ export default function Trials() {
 
   const url = `${endpoints.entities.trials.all}?page=${page}&pageSize=${pageSize}`;
   const { data, isFetching } = useApiQuery(url, { keepPreviousData: true });
-
+  console.log("data", data);
   const entries = useMemo(() => data?.data?.data?.entries ?? [], [data]);
 
   const actions = useCallback(

@@ -20,7 +20,7 @@ export default function Polls() {
 
   const url = `${endpoints.entities.polls.all}?page=${page}&pageSize=${pageSize}`;
   const { data, isFetching } = useApiQuery(url, { keepPreviousData: true });
-
+  console.log("data", data);
   const entries = useMemo(() => data?.data?.data?.entries ?? [], [data]);
 
   const actions = useCallback(
