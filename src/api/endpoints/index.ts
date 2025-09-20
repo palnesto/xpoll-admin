@@ -45,13 +45,13 @@ export const endpoints = {
       create: "/internal/preference/slugs",
       all: "/internal/preference/slugs",
     },
-    web3: {
+  },
+  web3: {
     createXamanPayload: "/internal/web3/createxamanpayload",
     getXamanPayload: (uuid: string) =>
       `/internal/web3/getxamanpayload?uuid=${encodeURIComponent(uuid)}`,
     createbatchTransfer: "/internal/asset-ledger/sell-intent/batch-transfer",
     recordAptosBatchResult: "/internal/asset-ledger/sell-intent/aptos/result",
     checkAddressActivation: "/internal/asset-ledger/sell-intent/address-status",
-  },
   },
 };

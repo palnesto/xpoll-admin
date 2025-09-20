@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { appToast } from "@/utils/toast";
 import api from "@/api/queryClient";
+import { DEFAULT_PAGE_SIZE } from "@/constants";
 import XamanConnect from "@/components/walletconnect/xamanconnect";
 import SuiConnect from "@/components/walletconnect/suiconnect";
 import AptosConnect from "@/components/walletconnect/aptosconnect";
@@ -9,16 +10,39 @@ import { createXamanPayload, getXamanPayload } from "@/lib/xaman";
 import { useCurrentAccount, useSignAndExecuteTransaction, useSuiClient } from "@mysten/dapp-kit";
 import { Transaction } from "@mysten/sui/transactions";
 import { endpoints } from "@/api/endpoints";
+import { amount, unwrapString } from "@/utils/currency-assets/base";
+import { cn } from "@/lib/utils";
+import { ThreeDotMenu } from "@/components/commons/three-dot-menu";
+import { useApiQuery } from "@/hooks/useApiQuery";
+import { useApiMutation } from "@/hooks/useApiMutation";
 
+export const generateStatus = (status: string) => {
+  return (
+    <p
+      className={cn({
+        "text-red-500": status === "REJECT",
+        "text-green-500": status === "APPROVE",
+        "text-yellow-500": status === "PENDING",
+      })}
+    >
+      {status === "REJECT" && "REJECTED"}
+      {status === "APPROVE" && "APPROVED"}
+      {status === "PENDING" && "PENDING"}
+    </p>
+  );
+};
 type WalletName = "XRP" | "SUI" | "APTOS";
 
 type WithdrawReq = {
-  id: string;
+  _id: string;
   user: string;
   walletName: WalletName;
   walletAddress: string;
   amount: number; // in network unit for simplicity
   status: "pending" | "transferred" | "rejected";
+  metadata: {
+    amount: string;
+  },
   txHash?: string;
   remark?: string;
 };
@@ -54,101 +78,80 @@ export default function SellIntent() {
   const aptosTransferBase = import.meta.env.VITE_APTOS_TRANSFER_URL || 'http://localhost:3000/transferAptos.tsx';
   const aptosTransferNetwork = import.meta.env.VITE_APTOS_TRANSFER_NETWORK || 'devnet';
   const aptosTransferFullnode = import.meta.env.VITE_APTOS_TRANSFER_FULLNODE || '';
+  
+  const [page ] = useState<number>(1);
+  const [pageSize] = useState<number>(DEFAULT_PAGE_SIZE);
+  const url = `${endpoints.entities.assetLedger.sellIntentAdmin}?page=${page}&pageSize=${pageSize}&status=PENDING`;
+  const { data, isFetching } = useApiQuery(url, { keepPreviousData: true });
+
+  const entries = useMemo(() => data?.data?.data?.items ?? [], [data]);
 
   const isMobile = typeof window !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-  const [requests, setRequests] = useState<WithdrawReq[]>([
-    {
-      id: "REQ-1001",
-      user: "Alice",
-      walletName: "XRP",
-      walletAddress: "r4rtdUM6haJtcX45MDmKyAszJv1snwA9dv",
-      amount: 0.005,
-      status: "pending",
-    },
-    {
-      id: "REQ-1002",
-      user: "Bob",
-      walletName: "SUI",
-      walletAddress: "0xe45af03471553ac02afaa1a54d9f8295135b74d86bb4d31a166f9e4f288a16af",
-      amount: 0.6,
-      status: "pending",
-    },
-    {
-      id: "REQ-1003",
-      user: "Charlie",
-      walletName: "XRP",
-      walletAddress: "rmcQD8isfRKaLAJrP19arMPx3e71Na9Un",
-      amount: 0.003,
-      status: "pending",
-    },
-    {
-      id: "REQ-1004",
-      user: "Diana",
-      walletName: "APTOS",
-      walletAddress: "0xa35d4e66ee45291fa56ab07da6e0b1dde8494a04bad6a6aaca315e188fcedbb4",
-      amount: 0.04,
-      status: "pending",
-    },
-    {
-      id: "REQ-1005",
-      user: "Ethan",
-      walletName: "SUI",
-      walletAddress: "0x139387b5935ac18f4a19d06dd83dfdef0cd1c963b6f9d49c4aba5ca315bc3ec2",
-      amount: 0.5,
-      status: "pending",
-    },
-    {
-      id: "REQ-1006",
-      user: "Fiona",
-      walletName: "APTOS",
-      walletAddress: "0xa35d4e66ee45291fa56ab07da6e0b1dde8494a04bad6a6aaca315e188fcedbb4",
-      amount: 0.035,
-      status: "pending",
-    },
-    {
-      id: "REQ-1007",
-      user: "George",
-      walletName: "XRP",
-      walletAddress: "rmcQD8isfRKaLAJrP19arMPx3e71Na9Un",
-      amount: 0.004,
-      status: "pending",
-    },
-    {
-      id: "REQ-1008",
-      user: "Hannah",
-      walletName: "SUI",
-      walletAddress: "0x9d803cbdbcd1532277757d2009f1fb464c4ccbd800a054e3f095a1a569e729c5",
-      amount: 0.4,
-      status: "pending",
-    },
-    {
-      id: "REQ-1009",
-      user: "Ivan",
-      walletName: "APTOS",
-      walletAddress: "0xa35d4e66ee45291fa56ab07da6e0b1dde8494a04bad6a6aaca315e188fcedbb4",
-      amount: 0.025,
-      status: "pending",
-    },
-    {
-      id: "REQ-1010",
-      user: "Jasmine",
-      walletName: "XRP",
-      walletAddress: "rmcQD8isfRKaLAJrP19arMPx3e71Na9Un",
-      amount: 0.003,
-      status: "pending",
-    },
-  ]);
 
   const isValidXrplClassic = (addr: string) => /^r[1-9A-HJ-NP-Za-km-z]{25,35}$/.test(addr);
   const isValidAptosAddress = (addr: string) => /^0x[0-9a-fA-F]{1,64}$/.test(addr);
 
+  const actions = useCallback((id: string) => [
+    {
+      label: 'Approve',
+      onClick: () => {
+        // Add your approve logic here
+        console.log('Approve', id);
+      },
+    },
+    {
+      label: 'Reject',
+      onClick: () => {
+        // Add your reject logic here
+        console.log('Reject', id);
+      },
+    },
+  ], []);
+
+  const tableData = useMemo(
+    () =>
+      entries.map((r: any) => {
+        const intentLeg = r.legs?.find((l) => {
+          return l?.legType === "intent-amount";
+        });
+
+        const status = r.metadata?.status;
+        const parentAmountVal = unwrapString(
+          amount({
+            op: "toParent",
+            assetId: intentLeg?.assetId,
+            value: intentLeg?.amount,
+            output: "string",
+            trim: true,
+            group: false,
+          })
+        );
+        return {
+          ...r,
+          username: r.metadata?.username,
+          walletAddress: r.metadata?.walletAddress,
+          chain: r.metadata?.chain,
+          assetId: intentLeg?.assetId,
+          parentAmountVal,
+          status: generateStatus(status),
+          tableOptions:
+            status === "PENDING" ? (
+              <ThreeDotMenu actions={actions(r._id)} />
+            ) : null,
+        };
+      }),
+    [entries]
+  );
+
+  console.log("tableData", tableData);
+
   const filteredRequests = useMemo(() => {
     if (!selectedNetwork) return [];
-    return requests.filter((r) => r.walletName === selectedNetwork);
-  }, [requests, selectedNetwork]);
+    return tableData.filter((r) => r.metadata?.chain === selectedNetwork);
+  }, [tableData, selectedNetwork]);
 
   const pendingFiltered = useMemo(
-    () => filteredRequests.filter((r) => r.status === "pending"),
+    () => filteredRequests.filter((r) => r.metadata?.status === "PENDING"),
     [filteredRequests]
   );
 
@@ -186,14 +189,9 @@ export default function SellIntent() {
     []
   );
 
-  const applyRemarks = useCallback((entries: Array<{ id: string; remark?: string }>) => {
+  const applyRemarks = useCallback((entries: Array<{ _id: string; remark?: string }>) => {
     if (!entries.length) return;
-    const remarkMap = new Map(entries.map((entry) => [entry.id, entry.remark]));
-    setRequests((prev) =>
-      prev.map((req) =>
-        remarkMap.has(req.id) ? { ...req, remark: remarkMap.get(req.id) } : req
-      )
-    );
+    const remarkMap = new Map(entries.map((entry) => [entry._id, entry.remark]));
   }, []);
 
   const persistAptosResults = useCallback(
@@ -236,12 +234,12 @@ export default function SellIntent() {
           endpoints.web3.checkAddressActivation,
           {
             network,
-            addresses: items.map(({ id, walletAddress }) => ({ id, walletAddress })),
+            addresses: items.map(({ _id, walletAddress }) => ({ id: String(_id), walletAddress })),
           },
           { signal: controller.signal }
         );
         return (data?.data?.results ?? []) as Array<{
-          id: string;
+          _id: string;
           walletAddress: string;
           active: boolean;
           reason?: string;
@@ -272,13 +270,6 @@ export default function SellIntent() {
       if (addr) setAdminAptos(addr);
       if (tx && ref) {
         console.log('Aptos transfer result', { ref, tx });
-        setRequests((prev) =>
-          prev.map((x) =>
-            x.id === ref
-              ? { ...x, status: 'transferred', txHash: tx, remark: undefined }
-              : x
-          )
-        );
         appToast.success(`Aptos transfer complete (tx: ${tx.slice(0,8)}...)`);
         void persistAptosResults([{ ref, success: true, tx }], { ref, tx });
       }
@@ -291,26 +282,7 @@ export default function SellIntent() {
             let successCount = 0;
             let failureCount = 0;
             const failureRefs: string[] = [];
-            setRequests((prev) => prev.map((req) => {
-              const match = decoded.find((item: any) => item?.ref === req.id);
-              if (!match) return req;
-              if (match?.success) {
-                successCount += 1;
-                return {
-                  ...req,
-                  status: 'transferred' as const,
-                  txHash: match?.tx ? String(match.tx) : req.txHash,
-                  remark: undefined,
-                };
-              }
-              failureCount += 1;
-              if (match?.ref) failureRefs.push(String(match.ref));
-              return {
-                ...req,
-                txHash: match?.tx ? String(match.tx) : req.txHash,
-                remark: match?.reason ? String(match.reason) : req.remark,
-              };
-            }));
+
             if (successCount) {
               appToast.success(`Transferred ${successCount} Aptos request${successCount > 1 ? 's' : ''}.`);
             }
@@ -359,12 +331,12 @@ export default function SellIntent() {
     ensureExpectedWallet(currentSui.address, adminSuiAddress, 'SUI');
     const tx = new Transaction();
     tx.setSender(currentSui.address);
-    const totalMist = items.reduce((sum, req) => sum + toMist(req.amount), 0n);
+    const totalMist = items.reduce((sum, req) => sum + toMist(Number(req.metadata.amount)), 0n);
     const buffer = baseSuiBuffer + BigInt(items.length) * BigInt(5e7); // extra per transfer
     await ensureSuiFunds(totalMist + buffer);
 
     const coins = items.map((req) => {
-      const mist = toMist(req.amount);
+      const mist = toMist(Number(req.metadata.amount));
       const [coin] = tx.splitCoins(tx.gas, [mist]);
       return coin;
     });
@@ -457,7 +429,31 @@ export default function SellIntent() {
         endpoints.web3.createbatchTransfer,
         {
           network: 'XRP',
-          transfers: items.map(({ id, walletAddress, amount }) => ({ id, walletAddress, amount })),
+          transfers: items.map(({ _id, walletAddress, metadata }) => ({ id: String(_id), walletAddress, amount: Number(metadata.amount) })),
+        },
+        { signal: controller.signal }
+      );
+      console.log(data);
+      appToast.success('Batch transfer request submitted successfully');
+    } catch (err: any) {
+      if (err?.name === 'AbortError') {
+        throw new Error('Batch transfer request timed out. Please retry or check backend connectivity.');
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }, []);
+
+  const submitAptosBatch = useCallback(async (items: WithdrawReq[]) => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000);
+    try {
+      const { data } = await api.post(
+        'http://localhost:3010/aptos/transfer/batch',
+        {
+          network: 'APTOS',
+          transfers: items.map(({ _id, walletAddress, metadata }) => ({ ref: String(_id), to: walletAddress, amount: Number(metadata.amount)/10000 })),
         },
         { signal: controller.signal }
       );
@@ -481,10 +477,10 @@ export default function SellIntent() {
       url.searchParams.set(
         'batch',
         JSON.stringify(
-          items.map(({ id, walletAddress, amount }) => ({
-            ref: id,
+          items.map(({ _id, walletAddress, metadata }) => ({
+            ref: String(_id),
             to: walletAddress,
-            amountApt: amount.toString(),
+            amountApt: Number(metadata.amount),
           }))
         )
       );
@@ -503,43 +499,37 @@ export default function SellIntent() {
     }
   }, [aptosTransferBase, aptosTransferFullnode, aptosTransferNetwork]);
 
-  const approveAndTransfer = useCallback(async (req: WithdrawReq) => {
-    setProcessingId(req.id);
-    try {
-      appToast.info(`Transferring ${req.amount} ${req.walletName}…`);
-      let txid: string | undefined;
-      if (req.walletName === "SUI") {
-        txid = await transferSui(req);
-      } else if (req.walletName === "XRP") {
-        txid = await transferXrpViaXaman(req);
-      } else if (req.walletName === 'APTOS') {
-        ensureExpectedWallet(adminAptos, adminAptosAddress, 'APTOS');
-        if (!isValidAptosAddress(req.walletAddress)) {
-          throw new Error('Invalid Aptos address');
-        }
-        const opened = launchAptosTransferWindow([req]);
-        if (!opened) {
-          throw new Error('Popup blocked. Allow popups to continue and retry the Aptos transfer.');
-        }
-        appToast.info('Aptos transfer window opened. Complete the transfer there to sync results.');
-        return;
+  const { mutateAsync: approveSellIntentMutation } = useApiMutation<{ actionIds: string[] }, { approvedIds: string[] }>({
+    route: '/internal/actions/bulk-sell-intent-approve',
+    method: 'POST',
+    onSuccess: (data: { approvedIds: string[] }) => {
+      const ids = data?.approvedIds || [];
+      if (ids.length > 0) {
+        appToast.success(`Successfully approved ${ids.length} sell intent${ids.length > 1 ? 's' : ''}`);
       }
-      setRequests((prev) =>
-        prev.map((x) =>
-          x.id === req.id
-            ? { ...x, status: 'transferred', txHash: txid || x.txHash, remark: undefined }
-            : x
-        )
-      );
-      appToast.success(
-        `Transferred ${req.amount} ${req.walletName} to ${req.walletAddress.slice(0, 6)}...${req.walletAddress.slice(-4)}${txid ? ` (tx: ${txid.slice(0,8)}...)` : ''}`
-      );
-    } catch (e: any) {
-      appToast.error(e?.message || "Transfer failed");
+    },
+    onError: (error: any) => {
+      console.error('Failed to approve sell intent:', error);
+      appToast.error('Failed to approve sell intent');
+    },
+  });
+
+  const bulkApproveSellIntents = useCallback(async (actionItems: Array<{ actionId: string; txnHash: string }>) => {
+    if (!actionItems.length) return;
+    
+    try {
+      setIsBatchProcessing(true);
+      // Ensure each item has both actionId and txnHash
+      const payload = actionItems.map(item => ({
+        actionId: item.actionId,
+        txnHash: item.txnHash || '' // Ensure txnHash is always a string, even if empty
+      }));
+      
+      await approveSellIntentMutation({ actionIds: payload });
     } finally {
-      setProcessingId(null);
+      setIsBatchProcessing(false);
     }
-  }, [adminAptos, ensureExpectedWallet, launchAptosTransferWindow, transferSui, transferXrpViaXaman]);
+  }, [approveSellIntentMutation]);
 
   const batchTransfer = useCallback(async () => {
     if (!selectedNetwork) {
@@ -552,6 +542,7 @@ export default function SellIntent() {
     }
 
     if (selectedNetwork === 'APTOS') {
+      setIsBatchProcessing(true);
       try {
         ensureExpectedWallet(adminAptos, adminAptosAddress, 'APTOS');
       } catch (err: any) {
@@ -566,17 +557,14 @@ export default function SellIntent() {
 
       let activationResults: Array<{ id: string; walletAddress: string; active: boolean; reason?: string }> = [];
       try {
-        activationResults = await validateAddresses('APTOS', pendingFiltered);
-        if (activationResults.length) {
           applyRemarks(
             activationResults.map((item) => ({
-              id: item.id,
+              _id: item.id,
               remark: item.active
                 ? undefined
                 : item.reason || 'Wallet address is not active on ledger. Please activate it on ledger and try again.',
             }))
           );
-        }
       } catch (err: any) {
         console.error('Aptos address activation check failed', err);
         appToast.error(err?.message || 'Failed to verify Aptos wallet activation.');
@@ -595,18 +583,35 @@ export default function SellIntent() {
 
       setIsBatchProcessing(true);
       try {
-        console.log('Launching Aptos batch transfer', {
-          count: pendingFiltered.length,
-          requests: pendingFiltered.map(({ id, walletAddress, amount }) => ({ id, walletAddress, amount })),
-        });
-        const opened = launchAptosTransferWindow(pendingFiltered);
-        if (!opened) {
-          appToast.error('Popup blocked. Allow popups to start the Aptos batch transfer.');
-          return;
+        const batches: WithdrawReq[][] = [];
+        for (let i = 0; i < pendingFiltered.length; i += BATCH_LIMIT) {
+          batches.push(pendingFiltered.slice(i, i + BATCH_LIMIT));
         }
-        appToast.info(
-          `Opened Aptos batch transfer for ${pendingFiltered.length} request${pendingFiltered.length > 1 ? 's' : ''}. Complete the flow in the new window.`
-        );
+        const globalSuccess = new Set<string>();
+        const globalFailures: BackendBatchResult[] = [];
+        for (let i = 0; i < batches.length; i++) {
+          const batch = batches[i];
+          appToast.info(`Processing APTOS batch ${i + 1}/${batches.length} (${batch.length} transfers)…`);
+
+          await submitAptosBatch(batch);
+          
+        }
+        if (globalSuccess.size) {
+          appToast.success(
+            `Transferred ${globalSuccess.size} XRP request${globalSuccess.size > 1 ? 's' : ''} across ${
+              batches.length
+            } batch${batches.length > 1 ? 'es' : ''}.`
+          );
+        }
+        if (globalFailures.length) {
+          appToast.error(
+            `Failed to transfer ${globalFailures.length} XRP request${globalFailures.length > 1 ? 's' : ''}: ${
+              globalFailures
+                .map((f) => `${f.id}${f.error ? ` (${f.error})` : ''}`)
+                .join(', ')
+            }`
+          );
+        }
       } catch (err: any) {
         console.error('Failed to launch Aptos batch transfer', err);
         appToast.error(err?.message || 'Failed to start Aptos batch transfer.');
@@ -633,16 +638,17 @@ export default function SellIntent() {
       try {
         for (let i = 0; i < batches.length; i++) {
           const batch = batches[i];
-          const ids = new Set(batch.map((req) => req.id));
           appToast.info(`Processing SUI batch ${i + 1}/${batches.length} (${batch.length} transfers)…`);
           const txid = await transferSuiBatch(batch);
-          setRequests((prev) =>
-            prev.map((req) =>
-              ids.has(req.id)
-                ? { ...req, status: 'transferred', txHash: txid || req.txHash, remark: undefined }
-                : req
-            )
-          );
+          console.log("txid", txid);
+          const approvePayload = batch.map(req => ({
+            actionId: req._id,
+            txnHash: txid // Using the transaction ID from the batch transfer
+          }));
+          
+          // Call bulkApproveSellIntents with the properly formatted payload
+          await bulkApproveSellIntents(approvePayload);
+
           totalSuccess += batch.length;
           appToast.success(
             `Completed SUI batch ${i + 1}/${batches.length}${txid ? ` (tx: ${txid.slice(0,8)}...)` : ''}`
@@ -672,6 +678,7 @@ export default function SellIntent() {
         return;
       }
       let activationResults: Array<{ id: string; walletAddress: string; active: boolean; reason?: string }> = [];
+      console.log('pendingFiltered', pendingFiltered);
       try {
         activationResults = await validateAddresses('XRP', pendingFiltered);
         if (activationResults.length) {
@@ -717,25 +724,6 @@ export default function SellIntent() {
           const failed = outcomes.filter((o) => !o.success);
           successIds.forEach((id) => globalSuccess.add(id));
           globalFailures.push(...failed);
-          setRequests((prev) =>
-            prev.map((req) => {
-              const outcome = outcomeMap.get(req.id);
-              if (!outcome) return req;
-              if (outcome.success) {
-                return {
-                  ...req,
-                  status: 'transferred' as const,
-                  txHash: outcome.txHash || req.txHash,
-                  remark: undefined,
-                };
-              }
-              return {
-                ...req,
-                txHash: outcome.txHash ?? req.txHash,
-                remark: outcome.error ? String(outcome.error) : req.remark,
-              };
-            })
-          );
           if (successIds.size) {
             const firstHash = outcomes.find((o) => o.success && o.txHash)?.txHash;
             appToast.success(
@@ -790,13 +778,6 @@ export default function SellIntent() {
           } else if (selectedNetwork === 'XRP') {
             txid = await transferXrpViaXaman(req);
           }
-          setRequests((prev) =>
-            prev.map((x) =>
-              x.id === req.id
-                ? { ...x, status: 'transferred', txHash: txid || x.txHash, remark: undefined }
-                : x
-            )
-          );
           successes.push(`${req.id}${txid ? ` (${txid.slice(0,8)}…)` : ''}`);
         } catch (err: any) {
           console.error('Batch transfer failed', err);
@@ -831,13 +812,6 @@ export default function SellIntent() {
     applyRemarks,
     validateAddresses,
   ]);
-
-  const rejectReq = useCallback((id: string) => {
-    setRequests((prev) =>
-      prev.map((x) => (x.id === id ? { ...x, status: 'rejected', remark: undefined } : x))
-    );
-    appToast.success("Request rejected");
-  }, []);
 
   return (
     <div className="space-y-6">
@@ -948,58 +922,31 @@ export default function SellIntent() {
                 <th className="px-4 py-2">Amount</th>
                 <th className="px-4 py-2">Status</th>
                 <th className="px-4 py-2">Tx Hash</th>
-                <th className="px-4 py-2">Remarks</th>
-                <th className="px-4 py-2 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {selectedNetwork && filteredRequests.map((r) => (
                 <tr key={r.id} className="border-t border-gray-100">
-                  <td className="px-4 py-2 font-mono text-xs">{r.id}</td>
-                  <td className="px-4 py-2">{r.user}</td>
+                  <td className="px-4 py-2 font-mono text-xs">{r._id}</td>
+                  <td className="px-4 py-2">{r.metadata.username}</td>
                   <td className="px-4 py-2">
                     <span className="inline-flex items-center gap-2">
-                      <span className="rounded px-2 py-0.5 bg-gray-100 text-xs">{r.walletName}</span>
+                      <span className="rounded px-2 py-0.5 bg-gray-100 text-xs">{r.metadata.chain}</span>
                     </span>
                   </td>
                   <td className="px-4 py-2 font-mono text-xs">
                     {r.walletAddress.slice(0, 8)}...{r.walletAddress.slice(-6)}
                   </td>
                   <td className="px-4 py-2">
-                    {r.amount} {r.walletName}
+                    {r.metadata.amount} {r.metadata.currency}
                   </td>
                   <td className="px-4 py-2">
-                    {r.status === "pending" && <span className="text-amber-600">Pending</span>}
-                    {r.status === "transferred" && <span className="text-green-600">Transferred</span>}
-                    {r.status === "rejected" && <span className="text-red-600">Rejected</span>}
+                    {r.metadata.status === "PENDING" && <span className="text-amber-600">Pending</span>}
+                    {r.metadata.status === "TRANSFERRED" && <span className="text-green-600">Transferred</span>}
+                    {r.metadata.status === "REJECTED" && <span className="text-red-600">Rejected</span>}
                   </td>
                   <td className="px-4 py-2 font-mono text-xs break-all text-black/80">
-                    {r.txHash ? r.txHash : '—'}
-                  </td>
-                  <td className="px-4 py-2 text-xs text-red-600 max-w-[12rem] break-words">
-                    {r.remark ? r.remark : '—'}
-                  </td>
-                  <td className="px-4 py-2 text-right">
-                    {r.status === "pending" ? (
-                      <div className="inline-flex gap-2">
-                        <button
-                          className="px-3 py-1.5 rounded-md bg-black text-white text-xs disabled:opacity-60"
-                          onClick={() => approveAndTransfer(r)}
-                          disabled={processingId === r.id}
-                        >
-                          {processingId === r.id ? "Transferring…" : "Approve & Transfer"}
-                        </button>
-                        <button
-                          className="px-3 py-1.5 rounded-md bg-gray-200 text-xs hover:bg-gray-300"
-                          onClick={() => rejectReq(r.id)}
-                          disabled={processingId === r.id}
-                        >
-                          Reject
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="text-black/50 text-xs">No actions</span>
-                    )}
+                    {r.metadata.txHash ? r.metadata.txHash : '—'}
                   </td>
                 </tr>
               ))}
