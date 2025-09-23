@@ -450,10 +450,10 @@ export default function SellIntent() {
     const timeout = setTimeout(() => controller.abort(), 60000);
     try {
       const { data } = await api.post(
-        'http://localhost:3010/aptos/transfer/batch',
+        'http://localhost:4001/aptos/transfer/batch',
         {
           network: 'APTOS',
-          transfers: items.map(({ _id, walletAddress, metadata }) => ({ ref: String(_id), to: walletAddress, amount: Number(metadata.amount)/10000 })),
+          transfers: items.map(({ _id, walletAddress, metadata }) => ({ ref: String(_id), to: walletAddress, amount: Number(metadata.amount) })),
         },
         { signal: controller.signal }
       );
@@ -598,14 +598,14 @@ export default function SellIntent() {
         }
         if (globalSuccess.size) {
           appToast.success(
-            `Transferred ${globalSuccess.size} XRP request${globalSuccess.size > 1 ? 's' : ''} across ${
+            `Transferred ${globalSuccess.size} Aptos request${globalSuccess.size > 1 ? 's' : ''} across ${
               batches.length
             } batch${batches.length > 1 ? 'es' : ''}.`
           );
         }
         if (globalFailures.length) {
           appToast.error(
-            `Failed to transfer ${globalFailures.length} XRP request${globalFailures.length > 1 ? 's' : ''}: ${
+            `Failed to transfer ${globalFailures.length} Aptos request${globalFailures.length > 1 ? 's' : ''}: ${
               globalFailures
                 .map((f) => `${f.id}${f.error ? ` (${f.error})` : ''}`)
                 .join(', ')
