@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { ThreeDotMenu } from "@/components/commons/three-dot-menu";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { useApiMutation } from "@/hooks/useApiMutation";
+import { env } from "process";
 
 export const generateStatus = (status: string) => {
   return (
@@ -67,18 +68,14 @@ export default function SellIntent() {
   const currentSui = useCurrentAccount();
   const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
   const suiClient = useSuiClient();
-  const adminSuiAddress = "0x438de5cebd6ad0a6a0d06c91f521a5e7711c9e99a535173e8ef816845d6a8775";
+  const adminSuiAddress = import.meta.env.ADMIN_SUI_ADDRESS;
+  const adminXrpAddress = import.meta.env.ADMIN_XRP_ADDRESS;
+  const adminAptosAddress = import.meta.env.ADMIN_APTOS_ADDRESS;
   // Xaman (XRP) payment modal state
   const [xamanQRModalOpen, setXamanQRModalOpen] = useState(false);
   const [xamanQR, setXamanQR] = useState<string | undefined>(undefined);
   const xummSocketRef = useRef<WebSocket | null>(null);
   const activeUuidRef = useRef<string | null>(null);
-  const adminXrpAddress = "rogve1svqrwm1sFcViAUZAUAtwvTHkgTR";
-  const adminAptosAddress = "0xaea4b50f4223c03e289c2172e470dae408c07e9ee63bf8e524446471bab197f9";
-  const aptosTransferBase = import.meta.env.VITE_APTOS_TRANSFER_URL || 'http://localhost:3000/transferAptos.tsx';
-  const aptosTransferNetwork = import.meta.env.VITE_APTOS_TRANSFER_NETWORK || 'devnet';
-  const aptosTransferFullnode = import.meta.env.VITE_APTOS_TRANSFER_FULLNODE || '';
-  
   const [page ] = useState<number>(1);
   const [pageSize] = useState<number>(DEFAULT_PAGE_SIZE);
   const url = `${endpoints.entities.assetLedger.sellIntentAdmin}?page=${page}&pageSize=${pageSize}&status=PENDING`;
@@ -450,7 +447,7 @@ export default function SellIntent() {
     const timeout = setTimeout(() => controller.abort(), 60000);
     try {
       const { data } = await api.post(
-        'http://localhost:4001/aptos/transfer/batch',
+        `${import.meta.env.VITE_APTOS_TRANSFER_BASE_URL}/aptos/transfer/batch`,
         {
           network: 'APTOS',
           transfers: items.map(({ _id, walletAddress, metadata }) => ({ ref: String(_id), to: walletAddress, amount: Number(metadata.amount) })),
@@ -467,37 +464,6 @@ export default function SellIntent() {
       clearTimeout(timeout);
     }
   }, []);
-
-  const launchAptosTransferWindow = useCallback((items: WithdrawReq[]) => {
-    if (typeof window === 'undefined') return false;
-    if (!items.length) return false;
-    try {
-      const url = new URL(aptosTransferBase);
-      url.searchParams.set('return', window.location.href);
-      url.searchParams.set(
-        'batch',
-        JSON.stringify(
-          items.map(({ _id, walletAddress, metadata }) => ({
-            ref: String(_id),
-            to: walletAddress,
-            amountApt: Number(metadata.amount),
-          }))
-        )
-      );
-      if (aptosTransferNetwork) {
-        url.searchParams.set('network', aptosTransferNetwork);
-      }
-      if (aptosTransferNetwork === 'custom' && aptosTransferFullnode) {
-        url.searchParams.set('fullnode', aptosTransferFullnode);
-      }
-      url.searchParams.set('auto', '1');
-      const opened = window.open(url.toString(), '_blank', 'noopener');
-      return Boolean(opened);
-    } catch (err) {
-      console.error('Failed to open Aptos transfer window', err);
-      throw err;
-    }
-  }, [aptosTransferBase, aptosTransferFullnode, aptosTransferNetwork]);
 
   const { mutateAsync: approveSellIntentMutation } = useApiMutation<{ actionIds: string[] }, { approvedIds: string[] }>({
     route: '/internal/actions/bulk-sell-intent-approve',
@@ -802,7 +768,6 @@ export default function SellIntent() {
     adminXrp,
     currentSui?.address,
     ensureExpectedWallet,
-    launchAptosTransferWindow,
     pendingFiltered,
     selectedNetwork,
     submitXrpBatch,
