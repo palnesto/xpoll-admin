@@ -21,8 +21,9 @@ app.render(
           networks={{
             mainnet: { url: getFullnodeUrl("mainnet") },
             testnet: { url: getFullnodeUrl("testnet") },
+            devnet: { url: getFullnodeUrl("devnet") },
           }}
-          defaultNetwork="testnet"
+          defaultNetwork="devnet"
         >
           <WalletProvider autoConnect>
             <Toaster />
