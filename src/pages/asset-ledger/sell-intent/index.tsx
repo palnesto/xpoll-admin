@@ -39,6 +39,7 @@ type WithdrawReq = {
   user: string;
   walletName: WalletName;
   walletAddress: string;
+  parentAmountVal: string;
   amount: number; // in network unit for simplicity
   status: "pending" | "transferred" | "rejected";
   metadata: {
@@ -68,9 +69,9 @@ export default function SellIntent() {
   const currentSui = useCurrentAccount();
   const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
   const suiClient = useSuiClient();
-  const adminSuiAddress = import.meta.env.ADMIN_SUI_ADDRESS;
-  const adminXrpAddress = import.meta.env.ADMIN_XRP_ADDRESS;
-  const adminAptosAddress = import.meta.env.ADMIN_APTOS_ADDRESS;
+  const adminSuiAddress = import.meta.env.VITE_ADMIN_SUI_ADDRESS;
+  const adminXrpAddress = import.meta.env.VITE_ADMIN_XRP_ADDRESS;
+  const adminAptosAddress = import.meta.env.VITE_ADMIN_APTOS_ADDRESS;
   // Xaman (XRP) payment modal state
   const [xamanQRModalOpen, setXamanQRModalOpen] = useState(false);
   const [xamanQR, setXamanQR] = useState<string | undefined>(undefined);
@@ -328,12 +329,12 @@ export default function SellIntent() {
     ensureExpectedWallet(currentSui.address, adminSuiAddress, 'SUI');
     const tx = new Transaction();
     tx.setSender(currentSui.address);
-    const totalMist = items.reduce((sum, req) => sum + toMist(Number(req.metadata.amount)), 0n);
+    const totalMist = items.reduce((sum, req) => sum + toMist(Number(req.parentAmountVal)), 0n);
     const buffer = baseSuiBuffer + BigInt(items.length) * BigInt(5e7); // extra per transfer
     await ensureSuiFunds(totalMist + buffer);
 
     const coins = items.map((req) => {
-      const mist = toMist(Number(req.metadata.amount));
+      const mist = toMist(Number(req.parentAmountVal));
       const [coin] = tx.splitCoins(tx.gas, [mist]);
       return coin;
     });
@@ -426,7 +427,7 @@ export default function SellIntent() {
         endpoints.web3.createbatchTransfer,
         {
           network: 'XRP',
-          transfers: items.map(({ _id, walletAddress, metadata }) => ({ id: String(_id), walletAddress, amount: Number(metadata.amount) })),
+          transfers: items.map(({ _id, walletAddress, parentAmountVal }) => ({ id: String(_id), walletAddress, amount: Number(parentAmountVal) })),
         },
         { signal: controller.signal }
       );
@@ -450,7 +451,7 @@ export default function SellIntent() {
         `${import.meta.env.VITE_APTOS_TRANSFER_BASE_URL}/aptos/transfer/batch`,
         {
           network: 'APTOS',
-          transfers: items.map(({ _id, walletAddress, metadata }) => ({ ref: String(_id), to: walletAddress, amount: Number(metadata.amount) })),
+          transfers: items.map(({ _id, walletAddress, parentAmountVal }) => ({ ref: String(_id), to: walletAddress, amount: Number(parentAmountVal) })),
         },
         { signal: controller.signal }
       );
@@ -903,7 +904,7 @@ export default function SellIntent() {
                     {r.walletAddress.slice(0, 8)}...{r.walletAddress.slice(-6)}
                   </td>
                   <td className="px-4 py-2">
-                    {r.metadata.amount} {r.metadata.currency}
+                    {r.parentAmountVal} {r.metadata.currency}
                   </td>
                   <td className="px-4 py-2">
                     {r.metadata.status === "PENDING" && <span className="text-amber-600">Pending</span>}

@@ -25,7 +25,8 @@ export default function AptosConnect({ className = '', address, onConnected, onD
   const connectAptos = useCallback(async () => {
     setAptos((s) => ({ ...s, connecting: true, error: undefined }));
     try {
-      const base = (import.meta as any)?.env?.VITE_APTOS_CONNECT_URL || 'http://localhost:3000/walletconnect';
+      console.log(import.meta.env.VITE_APTOS_CONNECT_URL);
+      const base = import.meta.env.VITE_APTOS_CONNECT_URL;
       const returnUrl = window.location.href;
       const url = new URL(base);
       url.searchParams.set('return', returnUrl);
@@ -37,7 +38,7 @@ export default function AptosConnect({ className = '', address, onConnected, onD
 
   const disconnectAptos = useCallback(async () => {
     try {
-      const base = (import.meta as any)?.env?.VITE_APTOS_CONNECT_URL || 'http://localhost:3000/walletconnect';
+      const base = import.meta.env.VITE_APTOS_CONNECT_URL;
       const returnUrl = window.location.href;
       const url = new URL(base);
       url.searchParams.set('return', returnUrl);
