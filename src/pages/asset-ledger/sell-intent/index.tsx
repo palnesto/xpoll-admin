@@ -680,48 +680,10 @@ export default function SellIntent() {
         for (let i = 0; i < pendingFiltered.length; i += BATCH_LIMIT) {
           batches.push(pendingFiltered.slice(i, i + BATCH_LIMIT));
         }
-        const globalSuccess = new Set<string>();
-        const globalFailures: BackendBatchResult[] = [];
         for (let i = 0; i < batches.length; i++) {
           const batch = batches[i];
           appToast.info(`Processing XRP batch ${i + 1}/${batches.length} (${batch.length} transfers)…`);
-          const outcomes = await submitXrpBatch(batch);
-          const outcomeMap = new Map(outcomes.map((o) => [o.id, o]));
-          const successIds = new Set(outcomes.filter((o) => o.success).map((o) => o.id));
-          const failed = outcomes.filter((o) => !o.success);
-          successIds.forEach((id) => globalSuccess.add(id));
-          globalFailures.push(...failed);
-          if (successIds.size) {
-            const firstHash = outcomes.find((o) => o.success && o.txHash)?.txHash;
-            appToast.success(
-              `Completed XRP batch ${i + 1}/${batches.length}${
-                firstHash ? ` (e.g. tx: ${firstHash.slice(0, 8)}...)` : ''
-              }`
-            );
-          }
-          if (failed.length) {
-            appToast.error(
-              `Batch ${i + 1} failed for ${failed.length} request${failed.length > 1 ? 's' : ''}: ${failed
-                .map((f) => `${f.id}${f.error ? ` (${f.error})` : ''}`)
-                .join(', ')}`
-            );
-          }
-        }
-        if (globalSuccess.size) {
-          appToast.success(
-            `Transferred ${globalSuccess.size} XRP request${globalSuccess.size > 1 ? 's' : ''} across ${
-              batches.length
-            } batch${batches.length > 1 ? 'es' : ''}.`
-          );
-        }
-        if (globalFailures.length) {
-          appToast.error(
-            `Failed to transfer ${globalFailures.length} XRP request${globalFailures.length > 1 ? 's' : ''}: ${
-              globalFailures
-                .map((f) => `${f.id}${f.error ? ` (${f.error})` : ''}`)
-                .join(', ')
-            }`
-          );
+          await submitXrpBatch(batch);
         }
       } catch (err: any) {
         console.error('Backend batch failed', err);
