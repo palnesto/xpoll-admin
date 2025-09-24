@@ -16,6 +16,8 @@ import { ThreeDotMenu } from "@/components/commons/three-dot-menu";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { env } from "process";
+import { CustomModal } from "@/components/modals/custom-modal";
+import { Send } from "lucide-react";
 
 export const generateStatus = (status: string) => {
   return (
@@ -63,6 +65,7 @@ export default function SellIntent() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [selectedNetwork, setSelectedNetwork] = useState<WalletName | null>(null);
   const [isBatchProcessing, setIsBatchProcessing] = useState(false);
+  const [confirmTransferOpen, setConfirmTransferOpen] = useState(false);
   const BATCH_LIMIT = 50;
 
   // Sui hooks
@@ -80,7 +83,7 @@ export default function SellIntent() {
   const [page ] = useState<number>(1);
   const [pageSize] = useState<number>(DEFAULT_PAGE_SIZE);
   const url = `${endpoints.entities.assetLedger.sellIntentAdmin}?page=${page}&pageSize=${pageSize}&status=PENDING`;
-  const { data, isFetching } = useApiQuery(url, { keepPreviousData: true });
+  const { data } = useApiQuery(url, { keepPreviousData: true });
 
   const entries = useMemo(() => data?.data?.data?.items ?? [], [data]);
 
@@ -307,8 +310,8 @@ export default function SellIntent() {
 
   const transferSui = useCallback(async (req: WithdrawReq) => {
     if (!currentSui?.address) throw new Error("Connect Sui wallet first");
-    // ensureExpectedWallet(adminSui, adminSuiAddress, 'SUI');
-    // ensureExpectedWallet(currentSui.address, adminSuiAddress, 'SUI');
+    ensureExpectedWallet(adminSui, adminSuiAddress, 'SUI');
+    ensureExpectedWallet(currentSui.address, adminSuiAddress, 'SUI');
     const mist = toMist(req.amount);
     await ensureSuiFunds(mist + baseSuiBuffer);
     console.log("Transferring SUI", mist, "to", req.walletAddress);
@@ -325,8 +328,8 @@ export default function SellIntent() {
   const transferSuiBatch = useCallback(async (items: WithdrawReq[]) => {
     if (!currentSui?.address) throw new Error("Connect Sui wallet first");
     if (!items.length) throw new Error('No SUI requests to transfer');
-    // ensureExpectedWallet(adminSui, adminSuiAddress, 'SUI');
-    // ensureExpectedWallet(currentSui.address, adminSuiAddress, 'SUI');
+    ensureExpectedWallet(adminSui, adminSuiAddress, 'SUI');
+    ensureExpectedWallet(currentSui.address, adminSuiAddress, 'SUI');
     const tx = new Transaction();
     tx.setSender(currentSui.address);
     const totalMist = items.reduce((sum, req) => sum + toMist(Number(req.parentAmountVal)), 0n);
@@ -358,7 +361,7 @@ export default function SellIntent() {
 
   const transferXrpViaXaman = useCallback(async (req: WithdrawReq) => {
     if (!adminXrp) throw new Error("Connect XRP (Xaman) wallet first");
-    // ensureExpectedWallet(adminXrp, adminXrpAddress, 'XRP');
+    ensureExpectedWallet(adminXrp, adminXrpAddress, 'XRP');
     if (!isValidXrplClassic(req.walletAddress)) throw new Error("Invalid XRPL address for destination");
     const drops = String(Math.round(req.amount * 1_000_000));
     const created = await createXamanPayload({
@@ -511,7 +514,7 @@ export default function SellIntent() {
     if (selectedNetwork === 'APTOS') {
       setIsBatchProcessing(true);
       try {
-        // ensureExpectedWallet(adminAptos, adminAptosAddress, 'APTOS');
+        ensureExpectedWallet(adminAptos, adminAptosAddress, 'APTOS');
       } catch (err: any) {
         appToast.error(err?.message || 'Connect APTOS admin wallet first.');
         return;
@@ -590,8 +593,8 @@ export default function SellIntent() {
     }
     if (selectedNetwork === 'SUI') {
       try {
-        // ensureExpectedWallet(adminSui, adminSuiAddress, 'SUI');
-        // ensureExpectedWallet(currentSui?.address, adminSuiAddress, 'SUI');
+        ensureExpectedWallet(adminSui, adminSuiAddress, 'SUI');
+        ensureExpectedWallet(currentSui?.address, adminSuiAddress, 'SUI');
       } catch (err: any) {
         appToast.error(err?.message || 'Connect SUI admin wallet first.');
         return;
@@ -638,8 +641,10 @@ export default function SellIntent() {
       return;
     }
     if (selectedNetwork === 'XRP') {
+
+      setIsBatchProcessing(true);
       try {
-        // ensureExpectedWallet(adminXrp, adminXrpAddress, 'XRP');
+        ensureExpectedWallet(adminXrp, adminXrpAddress, 'XRP');
       } catch (err: any) {
         appToast.error(err?.message || 'Connect XRP admin wallet first.');
         return;
@@ -674,7 +679,6 @@ export default function SellIntent() {
         return;
       }
 
-      setIsBatchProcessing(true);
       try {
         const batches: WithdrawReq[][] = [];
         for (let i = 0; i < pendingFiltered.length; i += BATCH_LIMIT) {
@@ -683,7 +687,7 @@ export default function SellIntent() {
         for (let i = 0; i < batches.length; i++) {
           const batch = batches[i];
           appToast.info(`Processing XRP batch ${i + 1}/${batches.length} (${batch.length} transfers)…`);
-          await submitXrpBatch(batch);
+          // await submitXrpBatch(batch);
         }
       } catch (err: any) {
         console.error('Backend batch failed', err);
@@ -740,6 +744,11 @@ export default function SellIntent() {
     applyRemarks,
     validateAddresses,
   ]);
+
+  const handleConfirmTransfer = useCallback(async () => {
+    setConfirmTransferOpen(false);
+    await batchTransfer();
+  }, [batchTransfer]);
 
   return (
     <div className="space-y-6">
@@ -820,24 +829,30 @@ export default function SellIntent() {
 
       {/* Dummy requests table */}
       <div className="rounded-xl border border-black/10 overflow-hidden">
-        <div className="p-4 bg-white/60 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-4 bg-white/70 px-6 py-5 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="font-medium">Pending Withdrawals</h2>
-            <p className="text-sm text-black/60">
+            <h2 className="text-2xl font-semibold text-black">Pending Withdrawals</h2>
+            <p className="mt-1 text-base text-black/70 max-w-2xl">
               {selectedNetwork
-                ? `Approve to transfer ${selectedNetwork} funds from the connected admin wallet.`
-                : "Choose a network filter to see requests."}
+                ? `Approve transfers for ${selectedNetwork} sell intents using the connected admin wallet.`
+                : "Select a network to review pending sell intent requests."}
             </p>
           </div>
-          {selectedNetwork && pendingFiltered.length > 0 && (
-            <button
-              onClick={batchTransfer}
-              className="px-4 py-2 rounded-md bg-black text-white text-sm disabled:opacity-60"
-              disabled={isBatchProcessing || !!processingId}
-            >
-              {isBatchProcessing ? 'Processing…' : `Transfer all ${selectedNetwork}`}
-            </button>
-          )}
+          <div className="flex items-center gap-4 text-base text-black/70">
+            <span className="rounded-full bg-black/5 px-4 py-1.5">
+              {anyPending ? `${pendingFiltered.length} pending` : 'All processed'}
+            </span>
+            {selectedNetwork && pendingFiltered.length > 0 && (
+              <button
+                onClick={() => setConfirmTransferOpen(true)}
+                className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-black px-5 py-2.5 text-base font-medium text-white shadow-sm transition hover:bg-black/90 disabled:cursor-not-allowed disabled:border-black/5 disabled:bg-black/30"
+                disabled={isBatchProcessing || !!processingId}
+              >
+                <Send className="h-4 w-4" />
+                {isBatchProcessing ? 'Processing…' : `Transfer all ${selectedNetwork}`}
+              </button>
+            )}
+          </div>
         </div>
         <div className="overflow-x-auto bg-white/40">
           <table className="min-w-full text-sm">
@@ -951,6 +966,57 @@ export default function SellIntent() {
           </section>
         </div>
       )}
+      <CustomModal
+        isOpen={confirmTransferOpen}
+        onClose={() => setConfirmTransferOpen(false)}
+        title="Confirm batch transfer"
+        onSubmit={handleConfirmTransfer}
+        submitButtonText={isBatchProcessing ? 'Processing…' : 'Confirm transfer'}
+        submitButtonClass="bg-black text-white"
+        isSubmitting={isBatchProcessing}
+        needX
+      >
+        <div className="space-y-6">
+          <div className="rounded-2xl bg-gradient-to-br from-black via-black/95 to-black px-6 py-7 text-white shadow-lg">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10">
+                <Send className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-white/50">Batch transfer</p>
+                <p className="text-xl font-semibold">{selectedNetwork ?? 'Select a network'} payout</p>
+              </div>
+            </div>
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-base">
+                <p className="text-white/50 text-xs uppercase tracking-wider">Pending requests</p>
+                <p className="text-2xl font-semibold text-white">{pendingFiltered.length}</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-base">
+                <p className="text-white/50 text-xs uppercase tracking-wider">Admin wallet</p>
+                <p className="text-white truncate font-semibold">{selectedNetwork ? `${selectedNetwork} wallet` : '—'}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-base text-amber-900">
+            <p className="text-lg font-semibold">Review before you send</p>
+            <p className="mt-1 text-amber-800/80">
+              Ensure sufficient balance is available in the connected admin wallet and double-check all wallet addresses.
+              This action will initiate on-chain transfers for every pending request.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-black/10 bg-white px-5 py-4 text-sm text-black/70">
+            <p className="text-lg font-semibold text-black">What happens next?</p>
+            <ul className="mt-2 space-y-1.5">
+              <li>• Each request is processed sequentially with the configured delays.</li>
+              <li>• Successes are marked automatically on completion.</li>
+              <li>• Any failures will surface in the activity feed for review.</li>
+            </ul>
+          </div>
+        </div>
+      </CustomModal>
     </div>
   );
 }
