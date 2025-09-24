@@ -423,12 +423,11 @@ export default function SellIntent() {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 60000);
     try {
-      const items_10 = items.slice(0, 5);
       const { data } = await api.post(
         endpoints.web3.createbatchTransfer,
         {
           network: 'XRP',
-          transfers: items_10.map(({ _id, walletAddress, parentAmountVal }) => ({ id: String(_id), walletAddress, amount: Number(parentAmountVal) })),
+          transfers: items.map(({ _id, walletAddress, parentAmountVal }) => ({ id: String(_id), walletAddress, amount: Number(parentAmountVal) })),
         },
         { signal: controller.signal }
       );
