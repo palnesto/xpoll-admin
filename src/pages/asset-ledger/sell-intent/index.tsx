@@ -512,13 +512,13 @@ export default function SellIntent() {
     }
 
     if (selectedNetwork === 'APTOS') {
-      setIsBatchProcessing(true);
       try {
         ensureExpectedWallet(adminAptos, adminAptosAddress, 'APTOS');
       } catch (err: any) {
         appToast.error(err?.message || 'Connect APTOS admin wallet first.');
         return;
       }
+      setIsBatchProcessing(true);
       const invalid = pendingFiltered.filter((req) => !isValidAptosAddress(req.walletAddress));
       if (invalid.length) {
         appToast.error(`Invalid Aptos address${invalid.length > 1 ? 'es' : ''}: ${invalid.map((r) => r.id).join(', ')}`);
@@ -642,13 +642,13 @@ export default function SellIntent() {
     }
     if (selectedNetwork === 'XRP') {
 
-      setIsBatchProcessing(true);
       try {
         ensureExpectedWallet(adminXrp, adminXrpAddress, 'XRP');
       } catch (err: any) {
         appToast.error(err?.message || 'Connect XRP admin wallet first.');
         return;
       }
+      setIsBatchProcessing(true);
       let activationResults: Array<{ id: string; walletAddress: string; active: boolean; reason?: string }> = [];
       console.log('pendingFiltered', pendingFiltered);
       try {
