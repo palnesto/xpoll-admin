@@ -307,8 +307,8 @@ export default function SellIntent() {
 
   const transferSui = useCallback(async (req: WithdrawReq) => {
     if (!currentSui?.address) throw new Error("Connect Sui wallet first");
-    // ensureExpectedWallet(adminSui, adminSuiAddress, 'SUI');
-    // ensureExpectedWallet(currentSui.address, adminSuiAddress, 'SUI');
+    ensureExpectedWallet(adminSui, adminSuiAddress, 'SUI');
+    ensureExpectedWallet(currentSui.address, adminSuiAddress, 'SUI');
     const mist = toMist(req.amount);
     await ensureSuiFunds(mist + baseSuiBuffer);
     console.log("Transferring SUI", mist, "to", req.walletAddress);
@@ -325,8 +325,8 @@ export default function SellIntent() {
   const transferSuiBatch = useCallback(async (items: WithdrawReq[]) => {
     if (!currentSui?.address) throw new Error("Connect Sui wallet first");
     if (!items.length) throw new Error('No SUI requests to transfer');
-    // ensureExpectedWallet(adminSui, adminSuiAddress, 'SUI');
-    // ensureExpectedWallet(currentSui.address, adminSuiAddress, 'SUI');
+    ensureExpectedWallet(adminSui, adminSuiAddress, 'SUI');
+    ensureExpectedWallet(currentSui.address, adminSuiAddress, 'SUI');
     const tx = new Transaction();
     tx.setSender(currentSui.address);
     const totalMist = items.reduce((sum, req) => sum + toMist(Number(req.parentAmountVal)), 0n);
@@ -358,7 +358,7 @@ export default function SellIntent() {
 
   const transferXrpViaXaman = useCallback(async (req: WithdrawReq) => {
     if (!adminXrp) throw new Error("Connect XRP (Xaman) wallet first");
-    // ensureExpectedWallet(adminXrp, adminXrpAddress, 'XRP');
+    ensureExpectedWallet(adminXrp, adminXrpAddress, 'XRP');
     if (!isValidXrplClassic(req.walletAddress)) throw new Error("Invalid XRPL address for destination");
     const drops = String(Math.round(req.amount * 1_000_000));
     const created = await createXamanPayload({
@@ -511,7 +511,7 @@ export default function SellIntent() {
     if (selectedNetwork === 'APTOS') {
       setIsBatchProcessing(true);
       try {
-        // ensureExpectedWallet(adminAptos, adminAptosAddress, 'APTOS');
+        ensureExpectedWallet(adminAptos, adminAptosAddress, 'APTOS');
       } catch (err: any) {
         appToast.error(err?.message || 'Connect APTOS admin wallet first.');
         return;
@@ -590,8 +590,8 @@ export default function SellIntent() {
     }
     if (selectedNetwork === 'SUI') {
       try {
-        // ensureExpectedWallet(adminSui, adminSuiAddress, 'SUI');
-        // ensureExpectedWallet(currentSui?.address, adminSuiAddress, 'SUI');
+        ensureExpectedWallet(adminSui, adminSuiAddress, 'SUI');
+        ensureExpectedWallet(currentSui?.address, adminSuiAddress, 'SUI');
       } catch (err: any) {
         appToast.error(err?.message || 'Connect SUI admin wallet first.');
         return;
@@ -639,7 +639,7 @@ export default function SellIntent() {
     }
     if (selectedNetwork === 'XRP') {
       try {
-        // ensureExpectedWallet(adminXrp, adminXrpAddress, 'XRP');
+        ensureExpectedWallet(adminXrp, adminXrpAddress, 'XRP');
       } catch (err: any) {
         appToast.error(err?.message || 'Connect XRP admin wallet first.');
         return;
