@@ -10,7 +10,6 @@ import { SuiClientProvider, WalletProvider } from "@mysten/dapp-kit";
 import { getFullnodeUrl } from "@mysten/sui/client";
 import "@mysten/dapp-kit/dist/index.css";
 
-
 const app = createRoot(document.getElementById("root")!);
 
 app.render(
@@ -23,7 +22,7 @@ app.render(
             testnet: { url: getFullnodeUrl("testnet") },
             devnet: { url: getFullnodeUrl("devnet") },
           }}
-          defaultNetwork="devnet"
+          defaultNetwork={import.meta.env.VITE_SUI_NETWORK}
         >
           <WalletProvider autoConnect>
             <Toaster />
