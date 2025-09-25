@@ -687,7 +687,7 @@ export default function SellIntent() {
         for (let i = 0; i < batches.length; i++) {
           const batch = batches[i];
           appToast.info(`Processing XRP batch ${i + 1}/${batches.length} (${batch.length} transfers)…`);
-          // await submitXrpBatch(batch);
+          await submitXrpBatch(batch);
         }
       } catch (err: any) {
         console.error('Backend batch failed', err);
