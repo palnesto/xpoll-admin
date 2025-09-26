@@ -40,6 +40,7 @@ export const endpoints = {
       all: "/internal/asset-ledger/all",
       systemReport: "/internal/asset-ledger/system/report",
       sellIntent: "/internal/asset-ledger/sell-intent",
+      sellIntentAdmin: "/internal/asset-ledger/sell-intent-admin",
       sellApproveOrder: "/internal/asset-ledger/sell-approve",
       sellRejectOrder: "/internal/asset-ledger/sell-reject",
     },

@@ -6,6 +6,8 @@ import { ArchiveRestore, ArchiveX } from "lucide-react";
 import { DEFAULT_PAGE_SIZE } from "@/constants";
 import { fmt, PaginatedTable } from "@/components/paginated-table";
 import { useTableSellIntentStore } from "@/stores/table_sell_intent";
+import { ApproveSellIntentModal } from "@/components/modals/asset_ledgers/sell_intent/approve";
+import { RejectSellIntentModal } from "@/components/modals/asset_ledgers/sell_intent/reject";
 import { amount, unwrapString } from "@/utils/currency-assets/base";
 import { generateStatus } from "../sell-intent";
 
@@ -17,11 +19,10 @@ export default function SellIntent() {
   const isRejecting = useTableSellIntentStore((s) => s.isRejecting);
   const setIsRejecting = useTableSellIntentStore((s) => s.setIsRejecting);
 
-  const url = `${endpoints.entities.assetLedger.sellApproveOrder}?page=${page}&pageSize=${pageSize}`;
+  const url = `${endpoints.entities.assetLedger.sellIntentAdmin}?page=${page}&pageSize=${pageSize}&status=PENDING`;
   const { data, isFetching } = useApiQuery(url, { keepPreviousData: true });
 
   const entries = useMemo(() => data?.data?.data?.items ?? [], [data]);
-
   const actions = useCallback(
     (id: string) => [
       {
@@ -49,7 +50,7 @@ export default function SellIntent() {
         const intentLeg = r.legs?.find((l) => {
           return l?.legType === "intent-amount";
         });
-        const status = "APPROVE";
+        const status = "PENDING";
 
         const parentAmountVal = unwrapString(
           amount({
@@ -69,12 +70,13 @@ export default function SellIntent() {
           assetId: intentLeg?.assetId,
           parentAmountVal,
           status: generateStatus(status),
-          txnHash: r.metadata?.txnHash,
           tableOptions: <ThreeDotMenu actions={actions(r._id)} />,
         };
       }),
     [entries, actions]
   );
+
+  console.log("tableData", tableData);
 
   const columns = [
     { key: "_id", header: "ID", canFilter: true },
@@ -85,7 +87,6 @@ export default function SellIntent() {
     { key: "parentAmountVal", header: "Amount", canFilter: true },
     { key: "status", header: "Status", canFilter: true },
     { key: "action", header: "Action", canFilter: true },
-    { key: "txnHash", header: "Txn Hash", canFilter: true },
     {
       key: "createdAt",
       header: "Created At",
@@ -96,18 +97,18 @@ export default function SellIntent() {
       header: "Archived At",
       render: (val: any) => <span>{fmt(val)}</span>,
     },
-    // {
-    //   key: "tableOptions",
-    //   header: "...",
-    //   render: (v: any) => <span>{v}</span>,
-    //   isRightAligned: true,
-    // },
+    {
+      key: "tableOptions",
+      header: "...",
+      render: (v: any) => <span>{v}</span>,
+      isRightAligned: true,
+    },
   ] as const;
 
   return (
     <div>
       <PaginatedTable
-        title="Sell Intent Approved"
+        title="Sell Intent (Pending)"
         columns={columns}
         tableData={tableData}
         data={data}
@@ -116,6 +117,22 @@ export default function SellIntent() {
         pageSize={pageSize}
         isFetching={isFetching}
       />
+
+      {isAcecpting?.length > 0 && (
+        <ApproveSellIntentModal
+          ids={isAcecpting}
+          onClose={() => setIsAccepting([])}
+          invalidateKey={url}
+        />
+      )}
+
+      {isRejecting?.length > 0 && (
+        <RejectSellIntentModal
+          ids={isRejecting}
+          onClose={() => setIsRejecting([])}
+          invalidateKey={url}
+        />
+      )}
     </div>
   );
 }

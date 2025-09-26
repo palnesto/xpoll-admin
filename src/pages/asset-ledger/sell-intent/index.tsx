@@ -8,7 +8,24 @@ import { fmt, PaginatedTable } from "@/components/paginated-table";
 import { useTableSellIntentStore } from "@/stores/table_sell_intent";
 import { ApproveSellIntentModal } from "@/components/modals/asset_ledgers/sell_intent/approve";
 import { RejectSellIntentModal } from "@/components/modals/asset_ledgers/sell_intent/reject";
+import { amount, unwrapString } from "@/utils/currency-assets/base";
+import { cn } from "@/lib/utils";
 
+export const generateStatus = (status: string) => {
+  return (
+    <p
+      className={cn({
+        "text-red-500": status === "REJECT",
+        "text-green-500": status === "APPROVE",
+        "text-yellow-500": status === "PENDING",
+      })}
+    >
+      {status === "REJECT" && "REJECTED"}
+      {status === "APPROVE" && "APPROVED"}
+      {status === "PENDING" && "PENDING"}
+    </p>
+  );
+};
 export default function SellIntent() {
   const [page, setPage] = useState<number>(1);
   const [pageSize] = useState<number>(DEFAULT_PAGE_SIZE);
@@ -17,7 +34,7 @@ export default function SellIntent() {
   const isRejecting = useTableSellIntentStore((s) => s.isRejecting);
   const setIsRejecting = useTableSellIntentStore((s) => s.setIsRejecting);
 
-  const url = `${endpoints.entities.assetLedger.sellIntent}?page=${page}&pageSize=${pageSize}`;
+  const url = `${endpoints.entities.assetLedger.sellIntent}?page=${page}&pageSize=${pageSize}&status=PENDING`;
   const { data, isFetching } = useApiQuery(url, { keepPreviousData: true });
 
   const entries = useMemo(() => data?.data?.data?.items ?? [], [data]);
@@ -45,15 +62,49 @@ export default function SellIntent() {
 
   const tableData = useMemo(
     () =>
-      entries.map((r: any) => ({
-        ...r,
-        tableOptions: <ThreeDotMenu actions={actions(r._id)} />,
-      })),
+      entries.map((r: any) => {
+        const intentLeg = r.legs?.find((l) => {
+          return l?.legType === "intent-amount";
+        });
+
+        const status = r.metadata?.status;
+        const parentAmountVal = unwrapString(
+          amount({
+            op: "toParent",
+            assetId: intentLeg?.assetId,
+            value: intentLeg?.amount,
+            output: "string",
+            trim: true,
+            group: false,
+          })
+        );
+        return {
+          ...r,
+          username: r.metadata?.username,
+          walletAddress: r.metadata?.walletAddress,
+          chain: r.metadata?.chain,
+          assetId: intentLeg?.assetId,
+          parentAmountVal,
+          status: generateStatus(status),
+          tableOptions:
+            status === "PENDING" ? (
+              <ThreeDotMenu actions={actions(r._id)} />
+            ) : null,
+        };
+      }),
     [entries, actions]
   );
 
+  console.log("tableData", tableData);
+
   const columns = [
     { key: "_id", header: "ID", canFilter: true },
+    { key: "username", header: "Username", canFilter: true },
+    { key: "walletAddress", header: "Wallet Address", canFilter: true },
+    { key: "chain", header: "Chain", canFilter: true },
+    { key: "assetId", header: "Asset ID", canFilter: true },
+    { key: "parentAmountVal", header: "Amount", canFilter: true },
+    { key: "status", header: "Status", canFilter: true },
     { key: "action", header: "Action", canFilter: true },
     {
       key: "createdAt",
@@ -76,7 +127,7 @@ export default function SellIntent() {
   return (
     <div>
       <PaginatedTable
-        title="Sell Intent"
+        title="Sell Intent (All)"
         columns={columns}
         tableData={tableData}
         data={data}
@@ -85,7 +136,6 @@ export default function SellIntent() {
         pageSize={pageSize}
         isFetching={isFetching}
       />
-
       {isAcecpting?.length > 0 && (
         <ApproveSellIntentModal
           ids={isAcecpting}

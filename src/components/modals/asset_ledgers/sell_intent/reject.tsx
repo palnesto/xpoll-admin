@@ -19,7 +19,7 @@ export function RejectSellIntentModal({ ids, onClose, invalidateKey }: Props) {
       appToast.success(
         ids.length === 1 ? "Sell intent rejected" : "Sell intents rejected"
       );
-      queryClient.invalidateQueries({ queryKey: [invalidateKey] });
+      queryClient.invalidateQueries();
       onClose();
     },
     onError: (err: any) => {

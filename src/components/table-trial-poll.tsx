@@ -18,7 +18,8 @@ export default function TrialPollTable({ trialId }: { trialId: string }) {
   const setIsDeleting = useTablePollsStore((s) => s.setIsDeleting);
 
   const base = endpoints.entities.polls.getPollsByTrialId(trialId);
-  const url = `${base}?page=${page}&pageSize=${pageSize}`;
+  // const url = `${base}?page=${page}&pageSize=${pageSize}`;
+  const url = `${base}`;
   const { data, isFetching } = useApiQuery(url, { keepPreviousData: true });
 
   const entries = useMemo(() => data?.data?.data?.entries ?? [], [data]);

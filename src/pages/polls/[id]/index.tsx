@@ -155,17 +155,23 @@ const rewardRowZ = z
     path: ["rewardAmountCap"],
   });
 
-const editSchema = z
+const baseSchema = {
+  title: z.string().min(3, "Min 3 chars").trim(),
+  description: z.string().min(3, "Min 3 chars").trim(),
+  resourceAssets: z.array(resourceAssetZ).default([]),
+  targetGeo: z.object({
+    countries: z.array(z.string()).default([]),
+    states: z.array(z.string()).default([]),
+    cities: z.array(z.string()).default([]),
+  }),
+};
+
+const trialEditSchema = z.object(baseSchema); // no rewards, no expireRewardAt
+
+const normalEditSchema = z
   .object({
-    title: z.string().min(3, "Min 3 chars").trim(),
-    description: z.string().min(3, "Min 3 chars").trim(),
-    resourceAssets: z.array(resourceAssetZ).default([]),
+    ...baseSchema,
     rewards: z.array(rewardRowZ).min(1, "At least one reward is required"),
-    targetGeo: z.object({
-      countries: z.array(z.string()).default([]),
-      states: z.array(z.string()).default([]),
-      cities: z.array(z.string()).default([]),
-    }),
     expireRewardAt: z
       .string()
       .datetime()
@@ -184,7 +190,7 @@ const editSchema = z
       });
   });
 
-type EditValues = z.infer<typeof editSchema>;
+type EditValues = z.infer<typeof normalEditSchema>;
 type OutputResourceAsset = { type: "image" | "youtube"; value: string };
 
 /* ---------- assets helpers ---------- */
@@ -209,13 +215,13 @@ export default function PollShowPage() {
   const poll: Poll | null = useMemo(() => {
     return data?.data?.data ?? data?.data ?? null;
   }, [data]);
-
+  console.log("poll", poll);
   const isTrialPoll = !!(poll?.trialId || poll?.trial?._id);
 
   const [isEditing, setIsEditing] = useState(false);
 
   const form = useForm<EditValues>({
-    resolver: zodResolver(editSchema),
+    resolver: zodResolver(isTrialPoll ? trialEditSchema : normalEditSchema),
     defaultValues: {
       title: "",
       description: "",
@@ -223,8 +229,8 @@ export default function PollShowPage() {
       rewards: [
         {
           assetId: ASSET_OPTIONS[0].value as any,
-          amount: 1,
-          rewardAmountCap: 1,
+          amount: "",
+          rewardAmountCap: "",
           rewardType: "max",
         },
       ],
@@ -411,22 +417,25 @@ export default function PollShowPage() {
     }
 
     // rewards diffs
-    const prevRewards = (poll.rewards ?? []) as RewardRow[];
-    const nowRewards = (v.rewards ?? []) as RewardRow[];
-    if (!cmpRewards(prevRewards, nowRewards)) {
-      payload.rewards = nowRewards.map((r) => ({
-        assetId: r.assetId,
-        amount: r.amount,
-        rewardAmountCap: r.rewardAmountCap,
-        rewardType: r.rewardType,
-      }));
-    }
+    // rewards diffs
+    if (!isTrialPoll) {
+      const prevRewards = (poll.rewards ?? []) as RewardRow[];
+      const nowRewards = (v.rewards ?? []) as RewardRow[];
+      if (!cmpRewards(prevRewards, nowRewards)) {
+        payload.rewards = nowRewards.map((r) => ({
+          assetId: r.assetId,
+          amount: r.amount,
+          rewardAmountCap: r.rewardAmountCap,
+          rewardType: r.rewardType,
+        }));
+      }
 
-    // expireRewardAt diff (treat "" and undefined as unset)
-    const prevExpire = (poll.expireRewardAt ?? "").trim();
-    const nowExpire = (v.expireRewardAt ?? "").trim();
-    if (prevExpire !== nowExpire) {
-      payload.expireRewardAt = nowExpire ? nowExpire : undefined;
+      // expireRewardAt diff
+      const prevExpire = (poll.expireRewardAt ?? "").trim();
+      const nowExpire = (v.expireRewardAt ?? "").trim();
+      if (prevExpire !== nowExpire) {
+        payload.expireRewardAt = nowExpire ? nowExpire : undefined;
+      }
     }
 
     if (Object.keys(payload).length <= 1) {
@@ -450,7 +459,6 @@ export default function PollShowPage() {
     (s) => s.isArchiveToggleOption
   );
 
-  console.log("isArchiveToggleOption", isArchiveToggleOption);
   const setIsArchiveToggleOption = usePollViewStore(
     (s) => s.setIsArchiveToggleOption
   );
@@ -561,18 +569,25 @@ export default function PollShowPage() {
                 />
 
                 {/* Rewards (same as create) */}
-                <RewardsEditor
-                  control={control}
-                  name="rewards"
-                  assetOptions={ASSET_OPTIONS}
-                  includeRewardType
-                  showCurvePreview
-                  totalLevelsForPreview={TOTAL_LEVELS}
-                  label="Rewards"
-                />
+                {!isTrialPoll && (
+                  <RewardsEditor
+                    control={control}
+                    name="rewards"
+                    assetOptions={ASSET_OPTIONS}
+                    includeRewardType
+                    showCurvePreview
+                    totalLevelsForPreview={TOTAL_LEVELS}
+                    label="Rewards"
+                  />
+                )}
 
                 {/* Expire Reward At (same as create) */}
-                <ExpireRewardAtPicker control={control} name="expireRewardAt" />
+                {!isTrialPoll && (
+                  <ExpireRewardAtPicker
+                    control={control}
+                    name="expireRewardAt"
+                  />
+                )}
 
                 {/* Target Geo (hidden for trial polls) */}
                 {!isTrialPoll && (
@@ -610,7 +625,12 @@ export default function PollShowPage() {
 
                       const initialRewards: EditValues["rewards"] =
                         Array.isArray(poll.rewards) && poll.rewards.length > 0
-                          ? poll.rewards
+                          ? poll.rewards.map((r) => ({
+                              assetId: r.assetId as any,
+                              amount: Number(r.amount), // convert
+                              rewardAmountCap: Number(r.rewardAmountCap), // convert
+                              rewardType: r.rewardType as "max" | "min",
+                            }))
                           : [
                               {
                                 assetId: ASSET_OPTIONS[0].value as any,
@@ -624,7 +644,7 @@ export default function PollShowPage() {
                         title: poll.title ?? "",
                         description: poll.description ?? "",
                         resourceAssets: initialAssets,
-                        rewards: initialRewards,
+                        rewards: isTrialPoll ? [] : initialRewards,
                         targetGeo: {
                           countries: Array.isArray(poll.targetGeo?.countries)
                             ? poll.targetGeo!.countries
@@ -636,7 +656,9 @@ export default function PollShowPage() {
                             ? poll.targetGeo!.cities
                             : [],
                         },
-                        expireRewardAt: poll.expireRewardAt ?? "",
+                        expireRewardAt: isTrialPoll
+                          ? ""
+                          : poll.expireRewardAt ?? "",
                       });
                       setIsEditing(false);
                     }}
@@ -715,7 +737,6 @@ export default function PollShowPage() {
                         className="flex items-center justify-between gap-3 rounded-md border p-3"
                       >
                         <div className="flex items-center gap-3">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={a.value}
                             alt="image"

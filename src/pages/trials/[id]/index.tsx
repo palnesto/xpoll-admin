@@ -39,7 +39,6 @@ import RewardsEditor, {
 } from "@/components/polling/editors/RewardsEditor";
 import ExpireRewardAtPicker from "@/components/polling/editors/ExpireRewardAtPicker";
 import TargetGeoEditor from "@/components/polling/editors/TargetGeoEditor";
-import OptionsEditor from "@/components/polling/editors/OptionsEditor";
 import { useImageUpload } from "@/hooks/upload/useAssetUpload";
 import { extractYouTubeId } from "@/utils/youtube";
 
@@ -55,18 +54,6 @@ const ASSET_OPTIONS: AssetOption[] = [
 ];
 
 type OutputResourceAsset = { type: "image" | "youtube"; value: string };
-
-function patchShowCache(showKey: string, updater: (curr: any) => any) {
-  const prev = queryClient.getQueryData<any>([showKey]);
-  if (!prev) return;
-  const lvl1 = prev?.data ?? {};
-  const curr = lvl1?.data && typeof lvl1.data === "object" ? lvl1.data : lvl1;
-  const nextCurr = updater(curr);
-  const next = lvl1?.data
-    ? { ...prev, data: { ...lvl1, data: nextCurr } }
-    : { ...prev, data: nextCurr };
-  queryClient.setQueryData([showKey], next);
-}
 
 const arrEqUnordered = (a: string[], b: string[]) => {
   if (!Array.isArray(a) || !Array.isArray(b)) return false;
@@ -189,90 +176,6 @@ const addPollsSchema = z.object({
 });
 type AddPollsValues = z.infer<typeof addPollsSchema>;
 
-/* =========================
-   InlinePollCard for the Add-Polls form
-   ========================= */
-function InlinePollCard({
-  index,
-  control,
-  base = "newPolls",
-  onRemove,
-  disableRemove,
-}: {
-  index: number;
-  control: any;
-  base?: string; // default "newPolls"
-  onRemove: () => void;
-  disableRemove?: boolean;
-}) {
-  const path = `${base}.${index}`;
-
-  return (
-    <div className="rounded-lg border p-4 space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="text-base font-medium">Poll #{index + 1}</div>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onRemove}
-          disabled={!!disableRemove}
-        >
-          Remove Poll
-        </Button>
-      </div>
-
-      {/* Title */}
-      <FormField
-        control={control}
-        name={`${path}.title`}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Title</FormLabel>
-            <FormControl>
-              <Input placeholder="Poll title" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      {/* Description */}
-      <FormField
-        control={control}
-        name={`${path}.description`}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Description</FormLabel>
-            <FormControl>
-              <Input placeholder="Short description" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      {/* Media */}
-      <ResourceAssetsEditor
-        control={control}
-        name={`${path}.resourceAssets`}
-        label="Media (Images / YouTube)"
-      />
-
-      {/* Options */}
-      <OptionsEditor
-        control={control}
-        name={`${path}.options`}
-        label="Options (2–4)"
-        min={2}
-        max={4}
-      />
-    </div>
-  );
-}
-
-/* =========================
-   Page
-   ========================= */
 export default function TrialShowPage() {
   const navigate = useNavigate();
   const { id = "" } = useParams<{ id: string }>();
@@ -299,21 +202,8 @@ export default function TrialShowPage() {
     },
     mode: "onChange",
   });
-  const { control, handleSubmit, reset, setValue, watch, getValues } = form;
+  const { control, handleSubmit, reset, setValue, watch } = form;
 
-  /* ===== Separate Add-Polls form ===== */
-  const pollsForm = useForm<AddPollsValues>({
-    resolver: zodResolver(addPollsSchema),
-    defaultValues: { newPolls: [] },
-    mode: "onChange",
-  });
-  const { control: pollsControl, handleSubmit: handleSubmitPolls } = pollsForm;
-  const newPollsArray = useFieldArray({
-    control: pollsControl,
-    name: "newPolls",
-  });
-
-  /* ===== image upload ===== */
   const { uploadImage, loading: isUploading } = useImageUpload();
 
   /* ===== hydrate Trial edit form from server ===== */
@@ -379,25 +269,6 @@ export default function TrialShowPage() {
   /* ===== Helpers ===== */
   const normalizeAssetsForSave = async (
     arr?: EditValues["resourceAssets"]
-  ): Promise<OutputResourceAsset[]> => {
-    const items = arr ?? [];
-    return Promise.all(
-      items.map(async (a) => {
-        if (a.type === "youtube") {
-          return { type: "youtube", value: extractYouTubeId(String(a.value)) };
-        }
-        const list = (a.value ?? []) as (File | string)[];
-        let first = list[0];
-        if (first instanceof File) {
-          first = await uploadImage(first);
-        }
-        return { type: "image", value: typeof first === "string" ? first : "" };
-      })
-    );
-  };
-
-  const normalizeAssetsForPolls = async (
-    arr?: AddPollsValues["newPolls"][number]["resourceAssets"]
   ): Promise<OutputResourceAsset[]> => {
     const items = arr ?? [];
     return Promise.all(
@@ -752,7 +623,6 @@ export default function TrialShowPage() {
                           key={`img-${i}`}
                           className="flex items-center justify-between gap-3 rounded-md border p-3"
                         >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={a.value}
                             alt="image"

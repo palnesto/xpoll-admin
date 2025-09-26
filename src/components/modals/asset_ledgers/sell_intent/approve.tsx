@@ -4,6 +4,8 @@ import { useApiMutation } from "@/hooks/useApiMutation";
 import { queryClient } from "@/api/queryClient";
 import { appToast } from "@/utils/toast";
 import { endpoints } from "@/api/endpoints";
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
 
 type Props = {
   ids: string[];
@@ -12,6 +14,7 @@ type Props = {
 };
 
 export function ApproveSellIntentModal({ ids, onClose, invalidateKey }: Props) {
+  const [txnHash, setTxnHash] = useState<string>("");
   const { mutate, isPending } = useApiMutation<any, any>({
     route: endpoints.entities.actions.createSellApprove,
     method: "POST",
@@ -19,7 +22,7 @@ export function ApproveSellIntentModal({ ids, onClose, invalidateKey }: Props) {
       appToast.success(
         ids.length === 1 ? "Sell intent approved" : "Sell intents approved"
       );
-      queryClient.invalidateQueries({ queryKey: [invalidateKey] });
+      queryClient.invalidateQueries();
       onClose();
     },
     onError: (err: any) => {
@@ -39,7 +42,15 @@ export function ApproveSellIntentModal({ ids, onClose, invalidateKey }: Props) {
             Cancel
           </Button>
           <Button
-            onClick={() => mutate({ actionIds: ids })}
+            onClick={() => {
+              if (!txnHash) return;
+              else if (txnHash.length < 25) {
+                appToast.error("Invalid transaction hash");
+                console.log("invalid txnHash", txnHash);
+                return;
+              }
+              mutate({ actionIds: ids, txnHash: txnHash.trim() });
+            }}
             disabled={isPending}
           >
             {isPending ? "Approving…" : "Approve"}
@@ -50,10 +61,19 @@ export function ApproveSellIntentModal({ ids, onClose, invalidateKey }: Props) {
       <p className="mb-2">
         Approve {ids.length} sell intent{ids.length > 1 ? "s" : ""}?
       </p>
+
+      <Input
+        placeholder="Transaction hash"
+        value={txnHash}
+        onChange={(e) => {
+          setTxnHash(e.target.value);
+        }}
+        // disabled={isPending}
+      />
       <div className="max-h-40 overflow-auto rounded border p-2 text-xs">
         {ids.map((id) => (
           <div key={id} className="font-mono">
-            {id}
+            {`Order Id: ${id}`}
           </div>
         ))}
       </div>
