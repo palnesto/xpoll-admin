@@ -1,9 +1,9 @@
 import * as React from "react";
 import {
+  Brain,
   Frame,
   GalleryVerticalEnd,
   GraduationCap,
-  House,
   Map,
   PieChart,
   ReceiptText,
@@ -37,23 +37,27 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     ],
     navMain: [
       {
-        title: "Polls",
+        title: "XP Intelligence",
         url: "#",
-        icon: Settings,
+        icon: Brain,
         isActive: true,
         items: [
           {
-            title: "Polls",
-            url: "/polls",
+            title: "Overall Poll Stats",
+            url: "/",
           },
         ],
       },
       {
-        title: "Trial Polls",
+        title: "All Polls",
         url: "#",
-        icon: House,
+        icon: ReceiptText,
         isActive: true,
         items: [
+          {
+            title: "Admin and Users Polls",
+            url: "/polls",
+          },
           {
             title: "Trial Polls",
             url: "/trials",
@@ -63,7 +67,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       {
         title: "Actions",
         url: "#",
-        icon: ReceiptText,
+        icon: Settings,
         isActive: true,
         items: [
           {
@@ -102,10 +106,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             title: "Sell Intent Rejection",
             url: "/asset-ledger/sell-intent-rejection",
           },
-          {
-            title: "Slugs",
-            url: "/slugs",
-          },
+          // {
+          //   title: "Slugs",
+          //   url: "/slugs",
+          // },
         ],
       },
       {

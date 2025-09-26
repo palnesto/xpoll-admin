@@ -1,96 +1,828 @@
-import { memo, useState } from "react";
+// import { memo, useEffect, useMemo } from "react";
+// import { Button } from "@/components/ui/button";
+// import { Input } from "@/components/ui/input";
+// import {
+//   Select,
+//   SelectTrigger,
+//   SelectValue,
+//   SelectContent,
+//   SelectItem,
+// } from "@/components/ui/select";
+// import {
+//   Card,
+//   CardDescription,
+//   CardFooter,
+//   CardHeader,
+//   CardTitle,
+// } from "@/components/ui/card";
+// import {
+//   Pagination,
+//   PaginationContent,
+//   PaginationEllipsis,
+//   PaginationItem,
+//   PaginationLink,
+//   PaginationNext,
+//   PaginationPrevious,
+// } from "@/components/ui/pagination";
+// import { useNavigate } from "react-router-dom";
+// import { useApiQuery } from "@/hooks/useApiQuery";
+// import { endpoints } from "@/api/endpoints";
+// import { usePollFilters, Tri } from "@/stores/usePollFilters";
+
+// // Infinite selects you provided
+// import CountrySelect from "@/components/commons/selects/country-select";
+// import StateSelect from "@/components/commons/selects/state-select";
+// import { CitySelect } from "@/components/commons/selects/city-select";
+
+// const PAGE_SIZE = 10;
+
+// // If you have more assets on backend, add them here easily.
+// const ASSET_OPTIONS = ["xDrop", "xOcta", "xPoll", "xMYST"] as const;
+
+// const MemoPolls = () => {
+//   const navigate = useNavigate();
+
+//   const {
+//     search,
+//     assetId, // single selected asset from dropdown
+//     countryId,
+//     stateId,
+//     cityId,
+//     expired,
+//     exhausted,
+//     page,
+//     uiNonce,
+//     patch,
+//     reset,
+//   } = usePollFilters();
+
+//   // ---- Build params (ALWAYS pageSize=10) ----
+//   const params = useMemo(() => {
+//     const p: Record<string, any> = { page, pageSize: PAGE_SIZE };
+
+//     // Title-only search (backend rejects 'search')
+//     if (search.trim()) p.title = search.trim();
+//     if (countryId) p.countryId = countryId;
+//     if (stateId) p.stateId = stateId;
+//     if (cityId) p.cityId = cityId;
+//     if (assetId) p.assetId = assetId;
+//     if (expired !== "all") p.expired = expired === "true";
+//     if (exhausted !== "all") p.exhausted = exhausted === "true";
+
+//     return p;
+//   }, [page, search, countryId, stateId, cityId, assetId, expired, exhausted]);
+
+//   const urlWithQuery = useMemo(() => {
+//     const usp = new URLSearchParams();
+//     Object.entries(params).forEach(([k, v]) => {
+//       if (v !== undefined && v !== null && v !== "") usp.set(k, String(v));
+//     });
+//     const base = endpoints.entities.polls.advancedListing; // "/internal/poll/advanced-listing"
+//     const qs = usp.toString();
+//     return qs ? `${base}?${qs}` : base;
+//   }, [params]);
+
+//   // ---- Query (include URL in key so filters/pagination refetch) ----
+//   const { data, isLoading, isFetching, error, refetch } = useApiQuery(
+//     urlWithQuery,
+//     { key: ["polls-advanced", urlWithQuery] } as any
+//   );
+
+//   // Safety net: if your hook ignores the key, still refetch on URL change
+//   useEffect(() => {
+//     try {
+//       (refetch as any)?.();
+//     } catch {}
+//   }, [urlWithQuery]);
+
+//   const payload = data?.data?.data ?? {};
+//   const meta = payload?.meta ?? {};
+//   const entries: any[] = Array.isArray(payload.entries) ? payload.entries : [];
+
+//   const total: number =
+//     typeof meta.total === "number" ? meta.total : entries.length ?? 0;
+
+//   const totalPages: number =
+//     typeof meta.totalPages === "number" && meta.totalPages > 0
+//       ? meta.totalPages
+//       : Math.max(1, Math.ceil((total || 1) / PAGE_SIZE));
+
+//   const currentPage: number =
+//     typeof meta.page === "number" && meta.page > 0 ? meta.page : page;
+
+//   const handleViewMore = (id: string, title: string) => {
+//     navigate(`/analytics/polls/${id}`, { state: { title } });
+//   };
+
+//   // Build page list with ellipses: Prev 1 2 3 … Next
+//   const buildPages = (): (number | "...")[] => {
+//     const maxPagesToShow = 9;
+//     const pages: (number | "...")[] = [];
+
+//     if (totalPages <= maxPagesToShow) {
+//       for (let i = 1; i <= totalPages; i++) pages.push(i);
+//       return pages;
+//     }
+
+//     const window = 2;
+//     const start = Math.max(2, currentPage - window);
+//     const end = Math.min(totalPages - 1, currentPage + window);
+
+//     pages.push(1);
+//     if (start > 2) pages.push("...");
+//     for (let i = start; i <= end; i++) pages.push(i);
+//     if (end < totalPages - 1) pages.push("...");
+//     pages.push(totalPages);
+
+//     return pages;
+//   };
+
+//   const handleResetAll = () => {
+//     usePollFilters.persist?.clearStorage?.();
+//     reset();
+//   };
+
+//   return (
+//     <div className="flex flex-col gap-6 md:px-4 h-full">
+//       {/* Header */}
+//       <section className="flex flex-col gap-4">
+//         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+//           <div className="flex flex-col gap-1">
+//             <h1 className="text-3xl font-bold">Stats</h1>
+//             <p className="text-muted-foreground">
+//               View detailed analytics of all the polls
+//             </p>
+//           </div>
+
+//           <div className="flex w-full md:w-[40dvw] gap-2">
+//             <Input
+//               placeholder="Search by title…"
+//               value={search}
+//               onChange={(e) => patch({ page: 1, search: e.target.value })}
+//               autoComplete="off"
+//             />
+//             <Button variant="secondary" onClick={handleResetAll}>
+//               Reset
+//             </Button>
+//           </div>
+//         </div>
+
+//         {/* Filters row */}
+//         <section className="grid grid-cols-2 xl:grid-cols-3 gap-3">
+//           <section className="flex flex-col gap-1">
+//             <label className="text-sm text-muted-foreground">Country</label>
+//             <CountrySelect
+//               key={`country-${uiNonce}`}
+//               onChange={(opt) =>
+//                 patch({ page: 1, countryId: opt?.value || "" })
+//               }
+//               selectProps={{ menuPortalTarget: document.body }}
+//             />
+//           </section>
+
+//           <section className="flex flex-col gap-1">
+//             <label className="text-sm text-muted-foreground">State</label>
+//             <StateSelect
+//               key={`state-${uiNonce}`}
+//               onChange={(opt) => patch({ page: 1, stateId: opt?.value || "" })}
+//               selectProps={{ menuPortalTarget: document.body }}
+//             />
+//           </section>
+
+//           <section className="flex flex-col gap-1">
+//             <label className="text-sm text-muted-foreground">City</label>
+//             <CitySelect
+//               key={`city-${uiNonce}`}
+//               onChange={(opt) => patch({ page: 1, cityId: opt?.value || "" })}
+//               selectProps={{ menuPortalTarget: document.body }}
+//             />
+//           </section>
+
+//           {/* Asset dropdown (single) */}
+//           <section className="flex flex-col gap-1">
+//             <label className="text-sm text-muted-foreground">Asset</label>
+//             <Select
+//               value={assetId || "all"}
+//               onValueChange={(v) =>
+//                 patch({ page: 1, assetId: v === "all" ? "" : v })
+//               }
+//             >
+//               <SelectTrigger>
+//                 <SelectValue placeholder="All" />
+//               </SelectTrigger>
+//               <SelectContent>
+//                 <SelectItem value="all">All</SelectItem>
+//                 {ASSET_OPTIONS.map((a) => (
+//                   <SelectItem key={a} value={a}>
+//                     {a}
+//                   </SelectItem>
+//                 ))}
+//               </SelectContent>
+//             </Select>
+//           </section>
+
+//           {/* Tri-state selects */}
+//           <section className="flex flex-col gap-1">
+//             <label className="text-sm text-muted-foreground">Expired</label>
+//             <Select
+//               value={expired}
+//               onValueChange={(v: Tri) => patch({ page: 1, expired: v })}
+//             >
+//               <SelectTrigger>
+//                 <SelectValue placeholder="All" />
+//               </SelectTrigger>
+//               <SelectContent>
+//                 <SelectItem value="all">All</SelectItem>
+//                 <SelectItem value="true">True</SelectItem>
+//                 <SelectItem value="false">False</SelectItem>
+//               </SelectContent>
+//             </Select>
+//           </section>
+
+//           <section className="flex flex-col gap-1">
+//             <label className="text-sm text-muted-foreground">Exhausted</label>
+//             <Select
+//               value={exhausted}
+//               onValueChange={(v: Tri) => patch({ page: 1, exhausted: v })}
+//             >
+//               <SelectTrigger>
+//                 <SelectValue placeholder="All" />
+//               </SelectTrigger>
+//               <SelectContent>
+//                 <SelectItem value="all">All</SelectItem>
+//                 <SelectItem value="true">True</SelectItem>
+//                 <SelectItem value="false">False</SelectItem>
+//               </SelectContent>
+//             </Select>
+//           </section>
+//         </section>
+//       </section>
+
+//       {error ? (
+//         <div className="text-red-500 text-sm">Failed to load polls.</div>
+//       ) : null}
+
+//       <div className="flex items-center gap-2">
+//         {isLoading || isFetching ? (
+//           <span className="text-sm text-muted-foreground">Loading…</span>
+//         ) : (
+//           <></>
+//         )}
+//       </div>
+
+//       <div className="flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
+//         {entries.map((poll: any) => (
+//           <Card
+//             key={poll._id}
+//             className="@container/card bg-primary/5 rounded-3xl flex flex-row justify-between"
+//           >
+//             <CardHeader className="w-full">
+//               <CardTitle className="text- font-semibold @[250px]/card:text-xl">
+//                 {poll.title}
+//               </CardTitle>
+//               <CardDescription className="text-muted-foreground ">
+//                 {poll.viewCount ?? 0} views • {poll.voteCount ?? 0} votes
+//               </CardDescription>
+//             </CardHeader>
+//             <CardFooter className="md:w-48">
+//               <Button
+//                 onClick={() => handleViewMore(poll._id, poll.title)}
+//                 variant="outline"
+//                 className="w-full md:h-12 rounded-2xl"
+//               >
+//                 View More
+//               </Button>
+//             </CardFooter>
+//           </Card>
+//         ))}
+//       </div>
+
+//       <section className="sticky bottom-0 left-0 bg-background flex justify-center py-4 shadow-md w-fit mx-auto rounded-2xl">
+//         <Pagination>
+//           <PaginationContent>
+//             <PaginationItem>
+//               <PaginationPrevious
+//                 href="#"
+//                 aria-disabled={currentPage <= 1}
+//                 className={
+//                   currentPage <= 1 ? "pointer-events-none opacity-50" : ""
+//                 }
+//                 onClick={(e) => {
+//                   e.preventDefault();
+//                   if (currentPage > 1) patch({ page: currentPage - 1 });
+//                 }}
+//               />
+//             </PaginationItem>
+
+//             {buildPages().map((p, idx) =>
+//               p === "..." ? (
+//                 <PaginationItem key={`ellipsis-${idx}`}>
+//                   <PaginationEllipsis />
+//                 </PaginationItem>
+//               ) : (
+//                 <PaginationItem key={p}>
+//                   <PaginationLink
+//                     href="#"
+//                     isActive={p === currentPage}
+//                     onClick={(e) => {
+//                       e.preventDefault();
+//                       if (p !== currentPage) patch({ page: p as number });
+//                     }}
+//                   >
+//                     {p}
+//                   </PaginationLink>
+//                 </PaginationItem>
+//               )
+//             )}
+
+//             <PaginationItem>
+//               <PaginationNext
+//                 href="#"
+//                 aria-disabled={currentPage >= totalPages}
+//                 className={
+//                   currentPage >= totalPages
+//                     ? "pointer-events-none opacity-50"
+//                     : ""
+//                 }
+//                 onClick={(e) => {
+//                   e.preventDefault();
+//                   if (currentPage < totalPages)
+//                     patch({ page: currentPage + 1 });
+//                 }}
+//               />
+//             </PaginationItem>
+//           </PaginationContent>
+//         </Pagination>
+//       </section>
+//     </div>
+//   );
+// };
+
+// const Polls = memo(MemoPolls);
+// export default Polls;
+import { memo, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Pagination, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+import {
+  Card,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { useNavigate } from "react-router-dom";
+import { useApiQuery } from "@/hooks/useApiQuery";
+import { endpoints } from "@/api/endpoints";
+import { usePollFilters, Tri, Opt } from "@/stores/usePollFilters";
+
+import AssetMultiSelect from "@/components/commons/selects/asset-multi-select";
+
+import { X } from "lucide-react";
+import CountrySelect from "@/components/commons/selects/country-select";
+import StateSelect from "@/components/commons/selects/state-select";
+import CitySelect from "@/components/commons/selects/city-select";
+
+const PAGE_SIZE = 10;
 
 const MemoPolls = () => {
-    const navigate = useNavigate();
-    const mapData = [
-        { id:'1', title: "What about Donald Trump", views: "1475 views", polls: '3212 Polls' },
-        { id:'2', title: "What about Narendra Modi", views: "1475 views", polls: '3212 Polls' },
-        { id:'3', title: "What about Donald Trump", views: "1475 views", polls: '3212 Polls' },
-        { id:'4', title: "What about Donald Trump", views: "1475 views", polls: '3212 Polls' },
-        { id:'5', title: "What about Donald Trump", views: "1475 views", polls: '3212 Polls' },
-        { id:'6', title: "What about Donald Trump", views: "1475 views", polls: '3212 Polls' },
-    ];
+  const navigate = useNavigate();
 
-    const [search, setSearch] = useState("");
-    const [filter, setFilter] = useState("All");
+  const {
+    search,
+    countryOpts,
+    stateOpts,
+    cityOpts,
+    assetOpts,
+    expired,
+    exhausted,
+    page,
+    uiNonce,
+    patch,
+    reset,
+  } = usePollFilters();
 
-    const filteredData = mapData.filter(item =>
-        item.title.toLowerCase().includes(search.toLowerCase()) &&
-        (filter === "All" || item.views === filter)
-    );
+  // ---- Build params (ALWAYS pageSize=10) ----
+  const params = useMemo(() => {
+    const p: Record<string, any> = { page, pageSize: PAGE_SIZE };
 
-    const handleViewMore = (id: string, title: string) => {
-        navigate(`/analytics/polls/${id}`, { state: { title } });
+    // Title-only search (backend rejects 'search')
+    if (search.trim()) p.title = search.trim();
+
+    const csv = (arr: Opt[]) =>
+      arr.length ? arr.map((o) => o.value).join(",") : "";
+
+    const countryId = csv(countryOpts);
+    const stateId = csv(stateOpts);
+    const cityId = csv(cityOpts);
+    const assetId = csv(assetOpts);
+
+    if (countryId) p.countryId = countryId;
+    if (stateId) p.stateId = stateId;
+    if (cityId) p.cityId = cityId;
+    if (assetId) p.assetId = assetId;
+
+    if (expired !== "all") p.expired = expired === "true";
+    if (exhausted !== "all") p.exhausted = exhausted === "true";
+
+    return p;
+  }, [
+    page,
+    search,
+    countryOpts,
+    stateOpts,
+    cityOpts,
+    assetOpts,
+    expired,
+    exhausted,
+  ]);
+
+  const urlWithQuery = useMemo(() => {
+    const usp = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== "") usp.set(k, String(v));
+    });
+    const base = endpoints.entities.polls.advancedListing; // "/internal/poll/advanced-listing"
+    const qs = usp.toString();
+    return qs ? `${base}?${qs}` : base;
+  }, [params]);
+
+  const { data, isLoading, isFetching, error, refetch } = useApiQuery(
+    urlWithQuery,
+    { key: ["polls-advanced", urlWithQuery] } as any
+  );
+
+  useEffect(() => {
+    try {
+      (refetch as any)?.();
+    } catch {}
+  }, [urlWithQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const payload = data?.data?.data ?? {};
+  const meta = payload?.meta ?? {};
+  const entries: any[] = Array.isArray(payload.entries) ? payload.entries : [];
+
+  const total: number =
+    typeof meta.total === "number" ? meta.total : entries.length ?? 0;
+
+  const totalPages: number =
+    typeof meta.totalPages === "number" && meta.totalPages > 0
+      ? meta.totalPages
+      : Math.max(1, Math.ceil((total || 1) / PAGE_SIZE));
+
+  const currentPage: number =
+    typeof meta.page === "number" && meta.page > 0 ? meta.page : page;
+
+  const handleViewMore = (id: string, title: string) => {
+    navigate(`/analytics/polls/${id}`, { state: { title } });
+  };
+
+  // Build page list with ellipses: Prev 1 2 3 … Next
+  const buildPages = (): (number | "...")[] => {
+    const maxPagesToShow = 9;
+    const pages: (number | "...")[] = [];
+
+    if (totalPages <= maxPagesToShow) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+      return pages;
     }
 
-    const Header = () => (
+    const window = 2;
+    const start = Math.max(2, currentPage - window);
+    const end = Math.min(totalPages - 1, currentPage + window);
+
+    pages.push(1);
+    if (start > 2) pages.push("...");
+    for (let i = start; i <= end; i++) pages.push(i);
+    if (end < totalPages - 1) pages.push("...");
+    pages.push(totalPages);
+
+    return pages;
+  };
+
+  const handleResetAll = () => {
+    // Clear persisted storage entry
+    usePollFilters.persist?.clearStorage?.();
+    // Reset store & bump uiNonce so selects fully clear
+    reset();
+  };
+
+  // ---- Chips (active filters) ----
+  const Chip = ({
+    label,
+    onRemove,
+  }: {
+    label: string;
+    onRemove: () => void;
+  }) => (
+    <span className="inline-flex items-center gap-1 text-xs bg-muted px-2 py-1 rounded-full border">
+      {label}
+      <button
+        type="button"
+        onClick={onRemove}
+        className="hover:opacity-80 transition"
+        aria-label="Remove filter"
+      >
+        <X className="w-3 h-3" />
+      </button>
+    </span>
+  );
+
+  const chipBar = (
+    <div className="flex flex-wrap gap-2">
+      {/* Countries */}
+      {countryOpts.map((o, idx) => (
+        <Chip
+          key={`c-${o.value}-${idx}`}
+          label={`Country: ${o.label}`}
+          onRemove={() =>
+            patch({
+              page: 1,
+              countryOpts: countryOpts.filter((x) => x.value !== o.value),
+            })
+          }
+        />
+      ))}
+      {/* States */}
+      {stateOpts.map((o, idx) => (
+        <Chip
+          key={`s-${o.value}-${idx}`}
+          label={`State: ${o.label}`}
+          onRemove={() =>
+            patch({
+              page: 1,
+              stateOpts: stateOpts.filter((x) => x.value !== o.value),
+            })
+          }
+        />
+      ))}
+      {/* Cities */}
+      {cityOpts.map((o, idx) => (
+        <Chip
+          key={`ci-${o.value}-${idx}`}
+          label={`City: ${o.label}`}
+          onRemove={() =>
+            patch({
+              page: 1,
+              cityOpts: cityOpts.filter((x) => x.value !== o.value),
+            })
+          }
+        />
+      ))}
+      {/* Assets */}
+      {assetOpts.map((o, idx) => (
+        <Chip
+          key={`a-${o.value}-${idx}`}
+          label={`Asset: ${o.label}`}
+          onRemove={() =>
+            patch({
+              page: 1,
+              assetOpts: assetOpts.filter((x) => x.value !== o.value),
+            })
+          }
+        />
+      ))}
+      {/* Expired / Exhausted */}
+      {expired !== "all" && (
+        <Chip
+          label={expired === "true" ? "Expired" : "Non-expired"}
+          onRemove={() => patch({ page: 1, expired: "all" })}
+        />
+      )}
+      {exhausted !== "all" && (
+        <Chip
+          label={exhausted === "true" ? "Exhausted" : "Non-exhausted"}
+          onRemove={() => patch({ page: 1, exhausted: "all" })}
+        />
+      )}
+      {/* Title search */}
+      {search.trim() && (
+        <Chip
+          label={`Title: "${search.trim()}"`}
+          onRemove={() => patch({ page: 1, search: "" })}
+        />
+      )}
+    </div>
+  );
+
+  return (
+    <div className="flex flex-col gap-6 md:px-4 h-full">
+      {/* Header */}
+      <section className="flex flex-col gap-4">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex flex-col gap-1">
-                <h1 className="text-3xl font-bold">Statics</h1>
-                <p className="text-muted-foreground">View detailed analytics of all the polls</p>
-            </div>
-            <div className="flex flex-col md:flex-row gap-2 md:gap-4">
-                <Input
-                    className="w-full md:w-[40dvw]"
-                    placeholder="Search Polls..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                />
-                <Select value={filter} onValueChange={setFilter}>
-                    <SelectTrigger className="w-48">
-                        <SelectValue placeholder="Filter by Views" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="All">All</SelectItem>
-                        <SelectItem value="Total Polls">Total Polls</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
-                    </SelectContent>
-                </Select>
-            </div>
-        </div>
-    );
+          <div className="flex flex-col gap-1">
+            <h1 className="text-3xl font-bold">Stats</h1>
+            <p className="text-muted-foreground">
+              View detailed analytics of all the polls
+            </p>
+          </div>
 
-    return (
-        <div className="flex flex-col gap-6 md:p-6 h-full">
-            <Header />
-            <div className="flex flex-col gap-4 max-h-[65vh] overflow-y-auto">
-                {filteredData.map((data, idx) => (
-                    <Card
-                        key={idx}
-                        className="@container/card bg-primary/5 rounded-3xl flex flex-row justify-between"
-                    >
-                        <CardHeader className="w-full">
-                            <CardTitle className="text-xl font-semibold @[250px]/card:text-3xl">{data.title}</CardTitle>
-                            <CardDescription className="text-muted-foreground text-lg">{data.views} | {data.polls}</CardDescription>
-                        </CardHeader>
-                        <CardFooter className="md:w-48">
-                            <Button onClick={() => handleViewMore(data.id, data.title)} variant="outline" className="w-full md:h-12 rounded-2xl">
-                                View More
-                            </Button>
-                        </CardFooter>
-                    </Card>
-                ))}
-            </div>
-
-            {/* Pagination Footer */}
-            <div className="fixed bottom-0 left-0 w-full bg-background flex justify-center py-4 shadow-md">
-                <Pagination>
-                    <PaginationPrevious>Prev</PaginationPrevious>
-                    <PaginationLink href="#">1</PaginationLink>
-                    <PaginationLink href="#">2</PaginationLink>
-                    <PaginationLink href="#">3</PaginationLink>
-                    <PaginationNext>Next</PaginationNext>
-                </Pagination>
-            </div>
+          <div className="flex w-full md:w-[40dvw] gap-2">
+            <Input
+              placeholder="Search by title…"
+              value={search}
+              onChange={(e) => patch({ page: 1, search: e.target.value })}
+              autoComplete="off"
+            />
+            <Button variant="secondary" onClick={handleResetAll}>
+              Reset
+            </Button>
+          </div>
         </div>
-    );
+
+        {/* Filters row */}
+        <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          <section className="flex flex-col gap-1">
+            <label className="text-sm text-muted-foreground">Countries</label>
+            <CountrySelect
+              key={`country-${uiNonce}`}
+              value={countryOpts}
+              onChange={(opts) => patch({ page: 1, countryOpts: opts })}
+              selectProps={{ menuPortalTarget: document.body }}
+            />
+          </section>
+
+          <section className="flex flex-col gap-1">
+            <label className="text-sm text-muted-foreground">States</label>
+            <StateSelect
+              key={`state-${uiNonce}`}
+              value={stateOpts}
+              onChange={(opts) => patch({ page: 1, stateOpts: opts })}
+              selectProps={{ menuPortalTarget: document.body }}
+            />
+          </section>
+
+          <section className="flex flex-col gap-1">
+            <label className="text-sm text-muted-foreground">Cities</label>
+            <CitySelect
+              key={`city-${uiNonce}`}
+              value={cityOpts}
+              onChange={(opts) => patch({ page: 1, cityOpts: opts })}
+              selectProps={{ menuPortalTarget: document.body }}
+            />
+          </section>
+
+          <section className="flex flex-col gap-1">
+            <label className="text-sm text-muted-foreground">Assets</label>
+            <AssetMultiSelect
+              value={assetOpts}
+              onChange={(opts) => patch({ page: 1, assetOpts: opts })}
+              selectProps={{ menuPortalTarget: document.body }}
+            />
+          </section>
+
+          <section className="flex flex-col gap-1">
+            <label className="text-sm text-muted-foreground">Expired</label>
+            <Select
+              value={expired}
+              onValueChange={(v: Tri) => patch({ page: 1, expired: v })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="true">True</SelectItem>
+                <SelectItem value="false">False</SelectItem>
+              </SelectContent>
+            </Select>
+          </section>
+
+          <section className="flex flex-col gap-1">
+            <label className="text-sm text-muted-foreground">Exhausted</label>
+            <Select
+              value={exhausted}
+              onValueChange={(v: Tri) => patch({ page: 1, exhausted: v })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="true">True</SelectItem>
+                <SelectItem value="false">False</SelectItem>
+              </SelectContent>
+            </Select>
+          </section>
+        </section>
+
+        {/* Active filter chips */}
+        {chipBar}
+      </section>
+
+      {error ? (
+        <div className="text-red-500 text-sm">Failed to load polls.</div>
+      ) : null}
+
+      <div className="flex items-center gap-2">
+        {isLoading || isFetching ? (
+          <span className="text-sm text-muted-foreground">Loading…</span>
+        ) : null}
+      </div>
+
+      <div className="flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
+        {entries.map((poll: any) => (
+          <Card
+            key={poll._id}
+            className="@container/card bg-primary/5 rounded-3xl flex flex-row justify-between"
+          >
+            <CardHeader className="w-full">
+              <CardTitle className="text-lg font-semibold @[250px]/card:text-xl">
+                {poll.title}
+              </CardTitle>
+              <CardDescription className="text-muted-foreground">
+                {poll.viewCount ?? 0} views • {poll.voteCount ?? 0} votes
+              </CardDescription>
+            </CardHeader>
+            <CardFooter className="md:w-48">
+              <Button
+                onClick={() => handleViewMore(poll._id, poll.title)}
+                variant="outline"
+                className="w-full md:h-12 rounded-2xl"
+              >
+                View More
+              </Button>
+            </CardFooter>
+          </Card>
+        ))}
+      </div>
+
+      {/* Pagination Footer */}
+      <section className="sticky bottom-0 left-0 bg-background flex justify-center py-4 shadow-md w-fit mx-auto rounded-2xl">
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                href="#"
+                aria-disabled={currentPage <= 1}
+                className={
+                  currentPage <= 1 ? "pointer-events-none opacity-50" : ""
+                }
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (currentPage > 1) patch({ page: currentPage - 1 });
+                }}
+              />
+            </PaginationItem>
+
+            {buildPages().map((p, idx) =>
+              p === "..." ? (
+                <PaginationItem key={`ellipsis-${idx}`}>
+                  <PaginationEllipsis />
+                </PaginationItem>
+              ) : (
+                <PaginationItem key={p}>
+                  <PaginationLink
+                    href="#"
+                    isActive={p === currentPage}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (p !== currentPage) patch({ page: p as number });
+                    }}
+                  >
+                    {p}
+                  </PaginationLink>
+                </PaginationItem>
+              )
+            )}
+
+            <PaginationItem>
+              <PaginationNext
+                href="#"
+                aria-disabled={currentPage >= totalPages}
+                className={
+                  currentPage >= totalPages
+                    ? "pointer-events-none opacity-50"
+                    : ""
+                }
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (currentPage < totalPages)
+                    patch({ page: currentPage + 1 });
+                }}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      </section>
+    </div>
+  );
 };
 
-const Polls = memo(MemoPolls)
+const Polls = memo(MemoPolls);
 export default Polls;

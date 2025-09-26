@@ -16,6 +16,9 @@ export const endpoints = {
         toggleArchiveOption: `/internal/poll/options/archive`,
       },
       getPollsByTrialId: (id: string) => `/internal/poll/trial/${id}`,
+      overallPollStats: "/internal/overall-poll-stats",
+      advancedListing: "/internal/poll/advanced-listing",
+      getdetailsById: (id: string) => `/internal/poll/analytics/${id}`,
     },
     trials: {
       all: "/internal/trial/list",
