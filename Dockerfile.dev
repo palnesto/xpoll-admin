@@ -26,7 +26,7 @@ FROM base AS client-xpoll-admin-dev-build
 RUN pnpm run build:development
 
 # Final production image with Nginx
-FROM nginx:alpine AS client-react-xpoll-admin-dev
+FROM nginx:1.26.2-alpine AS client-react-xpoll-admin-dev
 
 # Copy the built files from the client-admin-build stage
 COPY --from=client-xpoll-admin-dev-build /app/dist /usr/share/nginx/html
