@@ -18,7 +18,7 @@ export default defineConfig(({ mode }: ConfigEnv) => {
             proxy: {
               "/api": env.VITE_BACKEND_URL,
             },
-            port: env.VITE_CLIENT_URL.split(":")[2],
+            port: 5174,
           }
         : undefined,
   };
