@@ -12,12 +12,16 @@ import { Transaction } from "@mysten/sui/transactions";
 import { endpoints } from "@/api/endpoints";
 import { amount, unwrapString } from "@/utils/currency-assets/base";
 import { cn } from "@/lib/utils";
+<<<<<<< HEAD
 import { ThreeDotMenu } from "@/components/commons/three-dot-menu";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { env } from "process";
 import { CustomModal } from "@/components/modals/custom-modal";
 import { Send } from "lucide-react";
+=======
+import { assetSpecs } from "@/utils/asset";
+>>>>>>> vamsi
 
 export const generateStatus = (status: string) => {
   return (
@@ -132,7 +136,8 @@ export default function SellIntent() {
           username: r.metadata?.username,
           walletAddress: r.metadata?.walletAddress,
           chain: r.metadata?.chain,
-          assetId: intentLeg?.assetId,
+          assetId:
+            assetSpecs[intentLeg?.assetId]?.parentSymbol ?? intentLeg?.assetId,
           parentAmountVal,
           status: generateStatus(status),
           tableOptions:

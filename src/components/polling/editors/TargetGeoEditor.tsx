@@ -1,6 +1,6 @@
+import CitySelect from "@/components/commons/selects/city-select";
 import CountrySelect from "@/components/commons/selects/country-select";
 import StateSelect from "@/components/commons/selects/state-select";
-import { CitySelect } from "@/components/commons/selects/city-select";
 import { X } from "lucide-react";
 import type { Control, UseFormSetValue, UseFormWatch } from "react-hook-form";
 
