@@ -10,6 +10,7 @@ WORKDIR /app
 # Install pnpm globally
 RUN npm install -g pnpm@9
 
+
 # Copy only package.json and lockfile
 COPY package.json pnpm-lock.yaml* ./
 
