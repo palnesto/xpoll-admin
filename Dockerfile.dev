@@ -11,6 +11,9 @@ RUN npm install -g pnpm@9
 # Copy only the package.json and lock file to leverage Docker's cache
 COPY package.json ./
 
+# Remove old node_modules and dist (if exist) before installing
+RUN rm -rf node_modules dist
+
 # Install dependencies
 RUN pnpm install
 
@@ -18,22 +21,25 @@ RUN pnpm install
 COPY . .
 
 # Build the client admin app
-FROM base AS client-xpoll-admin-prod-build
+FROM base AS client-xpoll-admin-dev-build
 
 # Run the build script
-RUN pnpm run build:production
+RUN pnpm run build:development
 
 # Final production image with Nginx
-FROM nginx:alpine AS client-react-xpoll-admin-prod
+FROM nginx:alpine AS client-react-xpoll-admin-dev
 
 # Copy the built files from the client-admin-build stage
-COPY --from=client-xpoll-admin-prod-build /app/dist /usr/share/nginx/html
+COPY --from=client-xpoll-admin-dev-build /app/dist /usr/share/nginx/html
 
 # Copy the nginx configuration file
-COPY --from=client-xpoll-admin-prod-build /app/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=client-xpoll-admin-dev-build /app/nginx.conf /etc/nginx/conf.d/default.conf
 
 # Expose port 80
 EXPOSE 80
 
 # Start Nginx in the foreground
 CMD ["nginx", "-g", "daemon off;"]
+
+
+
