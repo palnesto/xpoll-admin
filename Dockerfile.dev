@@ -12,10 +12,11 @@ RUN npm install -g pnpm@9
 COPY package.json ./
 
 # Remove old node_modules and dist (if exist) before installing
-RUN rm -rf node_modules dist
+
 
 # Install dependencies
-RUN pnpm install
+RUN pnpm install --frozen-lockfile --ignore-scripts
+
 
 # Copy the rest of the application code
 COPY . .
