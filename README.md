@@ -26,6 +26,7 @@ export default tseslint.config({
     },
   },
 })
+// test
 ```//
 
 - Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
