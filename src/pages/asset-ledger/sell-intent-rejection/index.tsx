@@ -8,7 +8,7 @@ import { fmt, PaginatedTable } from "@/components/paginated-table";
 import { useTableSellIntentStore } from "@/stores/table_sell_intent";
 import { amount, unwrapString } from "@/utils/currency-assets/base";
 import { generateStatus } from "../sell-intent";
-import { assetSpecs } from "@/utils/asset";
+import { assetSpecs } from "@/utils/currency-assets/asset";
 
 export default function SellIntent() {
   const [page, setPage] = useState<number>(1);

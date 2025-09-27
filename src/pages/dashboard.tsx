@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardDescription,
@@ -20,12 +19,13 @@ import toast from "react-hot-toast";
 import { memo } from "react";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { endpoints } from "@/api/endpoints";
-import { ASSETS, assetSpecs, AssetType } from "@/utils/asset";
-import { amount, unwrapString } from "@/utils/base";
 import { cn } from "@/lib/utils";
+import { ASSETS, assetSpecs, AssetType } from "@/utils/currency-assets/asset";
+import { amount, unwrapString } from "@/utils/currency-assets/base";
+import SystemReportSkeleton from "@/utils/SystemReportSkeleton";
 
 export const Dashboard = memo(function Dashboard() {
-  const { data: stats } = useApiQuery(
+  const { data: stats, isLoading } = useApiQuery(
     endpoints.entities.polls.overallPollStats
   );
   const filteredStats = stats?.data?.data;
@@ -133,6 +133,7 @@ export const Dashboard = memo(function Dashboard() {
     toast("Feature coming soon!");
   };
 
+  if (isLoading) return <SystemReportSkeleton />;
   return (
     <section className="p-4 space-y-4 @container/main flex flex-1 flex-col">
       <h1 className="text-2xl font-semibold">XP Intelligence</h1>

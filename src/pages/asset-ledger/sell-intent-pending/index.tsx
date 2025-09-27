@@ -10,7 +10,7 @@ import { ApproveSellIntentModal } from "@/components/modals/asset_ledgers/sell_i
 import { RejectSellIntentModal } from "@/components/modals/asset_ledgers/sell_intent/reject";
 import { amount, unwrapString } from "@/utils/currency-assets/base";
 import { generateStatus } from "../sell-intent";
-import { assetSpecs } from "@/utils/asset";
+import { assetSpecs } from "@/utils/currency-assets/asset";
 
 export default function SellIntent() {
   const [page, setPage] = useState<number>(1);

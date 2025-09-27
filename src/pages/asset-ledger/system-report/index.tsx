@@ -4,6 +4,9 @@ import { endpoints } from "@/api/endpoints";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { amount, unwrapString } from "@/utils/currency-assets/base";
+import { assetSpecs, AssetType } from "@/utils/currency-assets/asset";
+import SystemReportSkeleton from "@/utils/SystemReportSkeleton";
 
 type RoleKey = "treasury" | "exchange" | "poll-funds";
 
@@ -13,6 +16,7 @@ type AssetMeta = {
   decimal: number;
   leastCountOf: string;
   img: string;
+  parent: string;
 };
 
 type RoleBalanceBlock = {
@@ -78,40 +82,49 @@ function TinyId({ id }: { id: string }) {
 
 function AssetRow({
   id,
-  amount,
+  amountBase,
   meta,
 }: {
   id: string;
-  amount: number;
+  amountBase: number;
   meta?: AssetMeta;
 }) {
+  // format from base → parent
+  const valueStr = unwrapString(
+    amount({
+      op: "toParent",
+      assetId: id as AssetType,
+      value: amountBase,
+      output: "string",
+      trim: true,
+      group: true,
+    }),
+    "0"
+  );
+
   return (
     <div className="flex items-center justify-between py-1.5">
       <div className="flex items-center gap-2 min-w-0">
         {meta?.img ? (
-          <img
-            src={meta.img}
-            alt={meta?.symbol ?? id}
-            className="h-5 w-5 rounded"
-          />
+          <img src={meta.img} alt={meta?.symbol ?? id} className="h-5" />
         ) : (
           <div className="h-5 w-5 rounded bg-muted" />
         )}
         <div className="truncate">
-          <div className="text-sm font-medium truncate">
-            {meta?.name ?? id}{" "}
+          <div className="text-sm font-medium truncate uppercase">
+            {meta?.parent ?? id}{" "}
             <span className="text-muted-foreground">
               ({meta?.symbol ?? id})
             </span>
           </div>
-          <div className="text-xs text-muted-foreground">
+          {/* <div className="text-xs text-muted-foreground">
             {meta?.leastCountOf
               ? `Least count of ${meta.leastCountOf}`
               : "\u00A0"}
-          </div>
+          </div> */}
         </div>
       </div>
-      <div className="text-sm font-semibold tabular-nums">{amount}</div>
+      <div className="text-sm font-semibold tabular-nums">{valueStr}</div>
     </div>
   );
 }
@@ -130,14 +143,17 @@ function RoleCard({ block }: { block: RoleBalanceBlock }) {
         {entries.length === 0 ? (
           <div className="text-sm text-muted-foreground">No balances</div>
         ) : (
-          entries.map(([assetId, amt]) => (
-            <AssetRow
-              key={assetId}
-              id={assetId}
-              amount={amt}
-              meta={block.meta?.[assetId]}
-            />
-          ))
+          entries.map(([assetId, amt]) => {
+            const meta = assetSpecs[assetId as AssetType];
+            return (
+              <AssetRow
+                key={assetId}
+                id={assetId}
+                amountBase={amt}
+                meta={meta}
+              />
+            );
+          })
         )}
       </CardContent>
     </Card>
@@ -153,21 +169,40 @@ function SummaryCard({
 }) {
   const rows = Object.entries(byAsset ?? {});
   if (!rows.length) return null;
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
-        {rows.map(([assetId, amt]) => (
-          <div
-            key={assetId}
-            className="flex items-center justify-between py-1.5"
-          >
-            <div className="text-sm font-medium">{assetId}</div>
-            <div className="text-sm font-semibold tabular-nums">{amt}</div>
-          </div>
-        ))}
+        {rows.map(([assetId, amt]) => {
+          const valueStr = unwrapString(
+            amount({
+              op: "toParent",
+              assetId: assetId as AssetType,
+              value: amt,
+              output: "string",
+              trim: true,
+              group: true,
+            }),
+            "0"
+          );
+          const meta = assetSpecs[assetId as AssetType];
+          return (
+            <div
+              key={assetId}
+              className="flex items-center justify-between py-1.5"
+            >
+              <div className="text-sm font-medium uppercase">
+                {meta?.parent ?? assetId} ({meta?.symbol ?? assetId})
+              </div>
+              <div className="text-sm font-semibold tabular-nums">
+                {valueStr}
+              </div>
+            </div>
+          );
+        })}
       </CardContent>
     </Card>
   );
@@ -179,9 +214,7 @@ function FundingNeedsCard({
   needs?: SystemReport["pollFundingNeeds"];
 }) {
   if (!needs) return null;
-
   const rows = Object.entries(needs.byAsset ?? {});
-
   return (
     <Card>
       <CardHeader>
@@ -190,32 +223,82 @@ function FundingNeedsCard({
       <CardContent className="space-y-3">
         {rows.length ? (
           <div className="space-y-2">
-            {rows.map(([assetId, v]) => (
-              <div key={assetId} className="py-1.5">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm font-medium">{assetId}</div>
-                  <div className="text-xs text-muted-foreground">
-                    outstanding:{" "}
-                    <span className="font-medium">{v.outstanding}</span> ·
-                    balance: <span className="font-medium">{v.balance}</span>
+            {rows.map(([assetId, v]) => {
+              const balanceStr = unwrapString(
+                amount({
+                  op: "toParent",
+                  assetId: assetId as AssetType,
+                  value: v.balance,
+                  output: "string",
+                  trim: true,
+                  group: true,
+                }),
+                "0"
+              );
+              const outstandingStr = unwrapString(
+                amount({
+                  op: "toParent",
+                  assetId: assetId as AssetType,
+                  value: v.outstanding,
+                  output: "string",
+                  trim: true,
+                  group: true,
+                }),
+                "0"
+              );
+              const shortfallStr = unwrapString(
+                amount({
+                  op: "toParent",
+                  assetId: assetId as AssetType,
+                  value: v.shortfall,
+                  output: "string",
+                  trim: true,
+                  group: true,
+                }),
+                "0"
+              );
+              const surplusStr = unwrapString(
+                amount({
+                  op: "toParent",
+                  assetId: assetId as AssetType,
+                  value: v.surplus,
+                  output: "string",
+                  trim: true,
+                  group: true,
+                }),
+                "0"
+              );
+              const meta = assetSpecs[assetId as AssetType];
+
+              return (
+                <div key={assetId} className="py-1.5">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-medium uppercase">
+                      {meta?.parent ?? assetId} ({meta?.symbol ?? assetId})
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      outstanding:{" "}
+                      <span className="font-medium">{outstandingStr}</span> ·
+                      balance: <span className="font-medium">{balanceStr}</span>
+                    </div>
+                  </div>
+                  <div className="text-xs">
+                    shortfall:{" "}
+                    <span className="font-semibold text-red-600">
+                      {shortfallStr}
+                    </span>{" "}
+                    {v.surplus > 0 ? (
+                      <>
+                        · surplus:{" "}
+                        <span className="font-semibold text-green-600">
+                          {surplusStr}
+                        </span>
+                      </>
+                    ) : null}
                   </div>
                 </div>
-                <div className="text-xs">
-                  shortfall:{" "}
-                  <span className="font-semibold text-red-600">
-                    {v.shortfall}
-                  </span>{" "}
-                  {v.surplus > 0 ? (
-                    <>
-                      · surplus:{" "}
-                      <span className="font-semibold text-green-600">
-                        {v.surplus}
-                      </span>
-                    </>
-                  ) : null}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="text-sm text-muted-foreground">No funding needs.</div>
@@ -227,15 +310,28 @@ function FundingNeedsCard({
           <div className="text-sm font-semibold">Mint Plan</div>
           {needs.mintPlan?.length ? (
             <ul className="space-y-1">
-              {needs.mintPlan.map((m, i) => (
-                <li
-                  key={`${m.assetId}-${i}`}
-                  className="flex justify-between text-sm"
-                >
-                  <span>{m.assetId}</span>
-                  <span className="font-semibold tabular-nums">{m.amount}</span>
-                </li>
-              ))}
+              {needs.mintPlan.map((m, i) => {
+                const amtStr = unwrapString(
+                  amount({
+                    op: "toParent",
+                    assetId: m.assetId as AssetType,
+                    value: m.amount,
+                    output: "string",
+                    trim: true,
+                    group: true,
+                  }),
+                  "0"
+                );
+                return (
+                  <li
+                    key={`${m.assetId}-${i}`}
+                    className="flex justify-between text-sm"
+                  >
+                    <span>{m.assetId}</span>
+                    <span className="font-semibold tabular-nums">{amtStr}</span>
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <div className="text-sm text-muted-foreground">
@@ -244,23 +340,72 @@ function FundingNeedsCard({
           )}
         </div>
 
-        <Separator />
+        {/* <Separator /> */}
 
-        <div className="text-xs text-muted-foreground">
+        {/* <div className="text-xs text-muted-foreground">
           Totals — outstanding:{" "}
-          <span className="font-medium">{needs.totals.outstanding}</span> ·
-          balance: <span className="font-medium">{needs.totals.balance}</span> ·
-          shortfall:{" "}
-          <span className="font-medium">{needs.totals.shortfall}</span> ·
-          surplus: <span className="font-medium">{needs.totals.surplus}</span>
-        </div>
+          <span className="font-medium">
+            {unwrapString(
+              amount({
+                op: "toParent",
+                assetId: ASSETS.X_POLL, // or choose dynamically if mixed
+                value: needs.totals.outstanding,
+                output: "string",
+                trim: true,
+                group: true,
+              }),
+              "0"
+            )}
+          </span>{" "}
+          · balance:{" "}
+          <span className="font-medium">
+            {unwrapString(
+              amount({
+                op: "toParent",
+                assetId: ASSETS.X_POLL,
+                value: needs.totals.balance,
+                output: "string",
+                trim: true,
+                group: true,
+              }),
+              "0"
+            )}
+          </span>{" "}
+          · shortfall:{" "}
+          <span className="font-medium">
+            {unwrapString(
+              amount({
+                op: "toParent",
+                assetId: ASSETS.X_POLL,
+                value: needs.totals.shortfall,
+                output: "string",
+                trim: true,
+                group: true,
+              }),
+              "0"
+            )}
+          </span>{" "}
+          · surplus:{" "}
+          <span className="font-medium">
+            {unwrapString(
+              amount({
+                op: "toParent",
+                assetId: ASSETS.X_POLL,
+                value: needs.totals.surplus,
+                output: "string",
+                trim: true,
+                group: true,
+              }),
+              "0"
+            )}
+          </span>
+        </div> */}
       </CardContent>
     </Card>
   );
 }
 
 export default function SystemReportPage() {
-  // Prefer your endpoints constant; fallback to a sensible default path
   const route =
     (endpoints as any)?.entities?.assetLedger?.systemReport ??
     "/internal/asset-ledger/system-report";
@@ -269,7 +414,6 @@ export default function SystemReportPage() {
     keepPreviousData: true,
   });
 
-  // ApiResponse compatibility: { statusCode, data, success }
   const report: SystemReport | undefined = useMemo(() => {
     const payload = (data as any)?.data ?? data;
     return payload?.data ?? payload;
@@ -285,7 +429,7 @@ export default function SystemReportPage() {
   }, [report]);
 
   const summary = report?.balances?.summary?.byAsset;
-
+  if (isFetching) return <SystemReportSkeleton />;
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between">
