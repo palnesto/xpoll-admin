@@ -21,6 +21,8 @@ COPY . .
 
 # Build the client admin app
 FROM base AS client-xpoll-admin-dev-build
+
+# Run the build script
 RUN pnpm run build:development
 
 # Final production image with Nginx
