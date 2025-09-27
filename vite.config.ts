@@ -12,13 +12,16 @@ export default defineConfig(({ mode }: ConfigEnv) => {
         "@": path.resolve(__dirname, "./src"),
       },
     },
+    build: {
+      outDir: "dist", // or set to "/app/dist"
+    },
     server:
       env.VITE_MODE === "development" || env.VITE_MODE === "local"
         ? {
             proxy: {
               "/api": env.VITE_BACKEND_URL,
             },
-            port: env.VITE_CLIENT_URL.split(":")[2],
+            port: 5174,
           }
         : undefined,
   };

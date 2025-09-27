@@ -1,10 +1,62 @@
-import InfiniteSelect from "./base/infinite-select";
+// import InfiniteSelect from "./base/infinite-select";
+
+// type StateItem = {
+//   _id: string;
+//   name: string;
+//   country: { _id: string; name: string };
+//   label?: string;
+// };
+
+// type Option = {
+//   value: string;
+//   label: string;
+//   data?: StateItem;
+// };
+
+// type Props = {
+//   onChange?: (option: Option | null) => void;
+//   pageSize?: number;
+//   placeholder?: string;
+//   selectProps?: Parameters<typeof InfiniteSelect<StateItem>>[0]["selectProps"];
+// };
+
+// export default function StateSelect({
+//   onChange,
+//   pageSize = 50,
+//   placeholder = "Search state...",
+//   selectProps,
+// }: Props) {
+//   return (
+//     <InfiniteSelect<StateItem>
+//       route="/common/location/states"
+//       pageSize={pageSize}
+//       getFilters={(search) => ({ q: search })}
+//       mapItemToOption={(item) => ({
+//         value: item._id,
+//         label: `${item.name}, ${item.country.name}`,
+//         data: item,
+//       })}
+//       onChange={(opt) => {
+//         if (opt?.data) {
+//           console.log("Selected state:", {
+//             stateId: opt.data._id,
+//             state: opt.data.name,
+//             country: opt.data.country,
+//           });
+//         }
+//         onChange?.(opt as Option | null);
+//       }}
+//       placeholder={placeholder}
+//       selectProps={selectProps}
+//     />
+//   );
+// }
+import MultiInfiniteSelect from "./base/multi-infinite-select";
 
 type StateItem = {
   _id: string;
   name: string;
   country: { _id: string; name: string };
-  label?: string;
 };
 
 type Option = {
@@ -14,20 +66,24 @@ type Option = {
 };
 
 type Props = {
-  onChange?: (option: Option | null) => void;
+  value?: Option[];
+  onChange?: (options: Option[]) => void;
   pageSize?: number;
   placeholder?: string;
-  selectProps?: Parameters<typeof InfiniteSelect<StateItem>>[0]["selectProps"];
+  selectProps?: Parameters<
+    typeof MultiInfiniteSelect<StateItem>
+  >[0]["selectProps"];
 };
 
 export default function StateSelect({
+  value,
   onChange,
   pageSize = 50,
-  placeholder = "Search state...",
+  placeholder = "Search states...",
   selectProps,
 }: Props) {
   return (
-    <InfiniteSelect<StateItem>
+    <MultiInfiniteSelect<StateItem>
       route="/common/location/states"
       pageSize={pageSize}
       getFilters={(search) => ({ q: search })}
@@ -36,16 +92,8 @@ export default function StateSelect({
         label: `${item.name}, ${item.country.name}`,
         data: item,
       })}
-      onChange={(opt) => {
-        if (opt?.data) {
-          console.log("Selected state:", {
-            stateId: opt.data._id,
-            state: opt.data.name,
-            country: opt.data.country,
-          });
-        }
-        onChange?.(opt as Option | null);
-      }}
+      value={value}
+      onChange={onChange as any}
       placeholder={placeholder}
       selectProps={selectProps}
     />

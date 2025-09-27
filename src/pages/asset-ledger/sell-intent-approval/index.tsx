@@ -8,6 +8,7 @@ import { fmt, PaginatedTable } from "@/components/paginated-table";
 import { useTableSellIntentStore } from "@/stores/table_sell_intent";
 import { amount, unwrapString } from "@/utils/currency-assets/base";
 import { generateStatus } from "../sell-intent";
+import { assetSpecs } from "@/utils/currency-assets/asset";
 
 export default function SellIntent() {
   const [page, setPage] = useState<number>(1);
@@ -66,7 +67,8 @@ export default function SellIntent() {
           username: r.metadata?.username,
           walletAddress: r.metadata?.walletAddress,
           chain: r.metadata?.chain,
-          assetId: intentLeg?.assetId,
+          assetId:
+            assetSpecs[intentLeg?.assetId]?.parentSymbol ?? intentLeg?.assetId,
           parentAmountVal,
           status: generateStatus(status),
           txnHash: r.metadata?.txnHash,

@@ -1,17 +1,20 @@
 # Use the official Node.js image.
 FROM node:20-alpine3.20 AS base
 
+# Install system deps for swc/esbuild/node-gyp
+RUN apk add --no-cache libc6-compat python3 make g++ bash
+
 # Set working directory
 WORKDIR /app
 
 # Install pnpm globally
-RUN npm install -g pnpm
+RUN npm install -g pnpm@9
 
-# Copy only the package.json and lock file to leverage Docker's cache
-COPY package.json ./
+# Copy only package.json and lockfile
+COPY package.json pnpm-lock.yaml* ./
 
 # Install dependencies
-RUN pnpm install
+RUN pnpm install --frozen-lockfile
 
 # Copy the rest of the application code
 COPY . .

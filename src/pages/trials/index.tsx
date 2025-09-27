@@ -52,7 +52,7 @@ export default function Trials() {
   );
 
   const columns = [
-    { key: "_id", header: "ID", canFilter: true },
+    // { key: "_id", header: "ID", canFilter: true },
     { key: "title", header: "Title", canFilter: true },
     {
       key: "createdAt",
