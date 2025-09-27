@@ -12,6 +12,9 @@ export default defineConfig(({ mode }: ConfigEnv) => {
         "@": path.resolve(__dirname, "./src"),
       },
     },
+    build: {
+      outDir: "dist", // or set to "/app/dist"
+    },
     server:
       env.VITE_MODE === "development" || env.VITE_MODE === "local"
         ? {
