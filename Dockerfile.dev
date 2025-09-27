@@ -5,7 +5,8 @@ FROM node:20-alpine3.20 AS base
 WORKDIR /app
 
 # Install pnpm globally
-RUN npm install -g pnpm
+RUN npm install -g pnpm@9
+
 
 # Copy only the package.json and lock file to leverage Docker's cache
 COPY package.json ./
