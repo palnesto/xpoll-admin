@@ -10,6 +10,7 @@ import { ApproveSellIntentModal } from "@/components/modals/asset_ledgers/sell_i
 import { RejectSellIntentModal } from "@/components/modals/asset_ledgers/sell_intent/reject";
 import { amount, unwrapString } from "@/utils/currency-assets/base";
 import { cn } from "@/lib/utils";
+import { assetSpecs } from "@/utils/asset";
 
 export const generateStatus = (status: string) => {
   return (
@@ -83,7 +84,8 @@ export default function SellIntent() {
           username: r.metadata?.username,
           walletAddress: r.metadata?.walletAddress,
           chain: r.metadata?.chain,
-          assetId: intentLeg?.assetId,
+          assetId:
+            assetSpecs[intentLeg?.assetId]?.parentSymbol ?? intentLeg?.assetId,
           parentAmountVal,
           status: generateStatus(status),
           tableOptions:

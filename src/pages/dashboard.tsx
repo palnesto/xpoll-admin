@@ -126,7 +126,7 @@ export const Dashboard = memo(function Dashboard() {
           <CryptoStatCircle key={`asset-${index}`} {...stat} />
         ))}
       </div>
-      <Card className="p-6 mb-8 bg-primary/5 rounded-3xl">
+      {/* <Card className="p-6 mb-8 bg-primary/5 rounded-3xl">
         <div className="flex justify-between items-center">
           <div>
             <h4 className="font-semibold text-lg">Exchange Request</h4>
@@ -138,7 +138,7 @@ export const Dashboard = memo(function Dashboard() {
             View now
           </Button>
         </div>
-      </Card>
+      </Card> */}
     </section>
   );
 });

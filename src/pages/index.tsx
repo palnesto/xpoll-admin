@@ -7,7 +7,7 @@ const Dashboard = lazy(() =>
 import { Navigate } from "react-router-dom";
 
 const IndexPage = () => {
-  return <Navigate to="/actions" />;
+  // return <Navigate to="/actions" />;
   return <Dashboard />;
 };
 
