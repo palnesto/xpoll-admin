@@ -86,12 +86,12 @@ export const Dashboard = memo(function Dashboard() {
   };
 
   // Optional color per asset (tweak freely)
-  const colorMap: Record<AssetType, string> = {
-    [ASSETS.X_POLL]: "bg-indigo-300",
-    [ASSETS.X_OCTA]: "bg-[#6C31EA]",
-    [ASSETS.X_MYST]: "bg-[#31CAEA]",
-    [ASSETS.X_DROP]: "bg-[#EA3131]",
-  };
+  // const colorMap: Record<AssetType, string> = {
+  //   [ASSETS.X_POLL]: "bg-indigo-300",
+  //   [ASSETS.X_OCTA]: "bg-[#6C31EA]",
+  //   [ASSETS.X_MYST]: "bg-[#31CAEA]",
+  //   [ASSETS.X_DROP]: "bg-[#EA3131]",
+  // };
 
   const cryptoStats =
     (
@@ -118,9 +118,9 @@ export const Dashboard = memo(function Dashboard() {
         "0"
       );
       return {
-        name: `Total ${meta?.parentSymbol ?? assetId}`,
+        name: `Total ${meta?.parent ?? assetId}`,
         value: `${valueStr} `,
-        color: colorMap[assetId] ?? "bg-rose-300",
+        // color: colorMap[assetId] ?? "bg-rose-300",
         img: iconMap[assetId] ?? xpoll,
       };
     }) ?? [];
@@ -184,7 +184,7 @@ export function SectionCards({ data }) {
           {value}
         </CardTitle>
       </CardHeader>
-      <CardFooter className="w-48">
+      {/* <CardFooter className="w-48">
         {filter && (
           <Select>
             <SelectTrigger>
@@ -193,22 +193,22 @@ export function SectionCards({ data }) {
             <SelectContent>All</SelectContent>
           </Select>
         )}
-      </CardFooter>
+      </CardFooter> */}
     </Card>
   );
 }
 
-export const CryptoStatCircle = ({ name, value, color, img }) => {
-  console.log({ name, value, color, img });
+export const CryptoStatCircle = ({ name, value, img }) => {
+  console.log({ name, value, img });
   return (
     <section className="flex flex-col items-center text-center">
       <article
-        className={`w-32 h-32 rounded-full flex items-center justify-center ${color} mb-4 shadow-inner`}
+        className={`w-32 h-32 rounded-full flex items-center justify-center mb-4`}
       >
-        <picture className="w-24 h-24 bg-white rounded-full">
+        <picture className="w-24 h-24  ">
           <img
             className={cn({
-              "-translate-y-5": "Total XSUI" === name,
+              "-translate-y-5 w-28 h-36": "Total xSUI" === name,
             })}
             src={img}
             alt="test"
