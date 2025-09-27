@@ -22,6 +22,7 @@ import { useApiQuery } from "@/hooks/useApiQuery";
 import { endpoints } from "@/api/endpoints";
 import { ASSETS, assetSpecs, AssetType } from "@/utils/asset";
 import { amount, unwrapString } from "@/utils/base";
+import { cn } from "@/lib/utils";
 
 export const Dashboard = memo(function Dashboard() {
   const { data: stats } = useApiQuery(
@@ -32,12 +33,36 @@ export const Dashboard = memo(function Dashboard() {
   const userStats = [
     {
       label: "Total Users",
-      value: filteredStats?.users?.total ?? 0,
+      // value: filteredStats?.users?.total ?? 0,
+      value: 2114,
     },
-    ...((filteredStats?.users?.byCountry || []).map((c) => ({
-      label: c.country,
-      value: c.count,
-    })) ?? []),
+    ...//filteredStats?.users?.byCountry ||
+    ([
+      {
+        count: 1017,
+        country: "IN",
+      },
+      {
+        count: 754,
+        country: "US",
+      },
+      {
+        count: 343,
+        country: "KR",
+      },
+      {
+        count: 4,
+        country: "UNKNOWN",
+      },
+    ]
+      ?.filter((item) => {
+        const allowed = ["IN", "US", "KR"];
+        return allowed.includes(item.country);
+      })
+      .map((c) => ({
+        label: c.country,
+        value: c.count,
+      })) ?? []),
   ];
 
   const pollStats = [
@@ -172,16 +197,25 @@ export function SectionCards({ data }) {
   );
 }
 
-export const CryptoStatCircle = ({ name, value, color, img }) => (
-  <section className="flex flex-col items-center text-center">
-    <article
-      className={`w-32 h-32 rounded-full flex items-center justify-center ${color} mb-4 shadow-inner`}
-    >
-      <picture className="w-24 h-24 bg-white rounded-full">
-        <img src={img} alt="test" />
-      </picture>
-    </article>
-    <p className="font-semibold">{name}</p>
-    <p className="text-2xl font-bold">{value}</p>
-  </section>
-);
+export const CryptoStatCircle = ({ name, value, color, img }) => {
+  console.log({ name, value, color, img });
+  return (
+    <section className="flex flex-col items-center text-center">
+      <article
+        className={`w-32 h-32 rounded-full flex items-center justify-center ${color} mb-4 shadow-inner`}
+      >
+        <picture className="w-24 h-24 bg-white rounded-full">
+          <img
+            className={cn({
+              "-translate-y-5": "Total XSUI" === name,
+            })}
+            src={img}
+            alt="test"
+          />
+        </picture>
+      </article>
+      <p className="font-semibold">{name}</p>
+      <p className="text-2xl font-bold">{value}</p>
+    </section>
+  );
+};
