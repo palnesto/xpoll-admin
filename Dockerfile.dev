@@ -1,5 +1,5 @@
 # Use the official Node.js image.
-FROM node:20-alpine3.21 AS base
+FROM node:20-alpine3.20 AS base
 
 # Set working directory
 WORKDIR /app
@@ -9,6 +9,9 @@ RUN npm install -g pnpm
 
 # Copy only the package.json and lock file to leverage Docker's cache
 COPY package.json ./
+
+# Remove old node_modules and dist (if exist) before installing
+RUN rm -rf node_modules dist
 
 # Install dependencies
 RUN pnpm install
