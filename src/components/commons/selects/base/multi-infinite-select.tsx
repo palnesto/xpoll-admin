@@ -142,6 +142,25 @@ export default function MultiInfiniteSelect<
       menuPortalTarget={selectProps?.menuPortalTarget}
       menuShouldScrollIntoView={false}
       components={{ MenuList, ...(selectProps?.components || {}) }}
+      styles={{
+        option: (provided, state) => ({
+          ...provided,
+          color: "black",
+          backgroundColor: state.isFocused
+            ? "#f0f0f0" // hover effect
+            : state.isSelected
+            ? "#e6e6e6" // selected option
+            : "white",
+        }),
+        singleValue: (provided) => ({
+          ...provided,
+          color: "black",
+        }),
+        multiValueLabel: (provided) => ({
+          ...provided,
+          color: "black",
+        }),
+      }}
       {...selectProps}
     />
   );
