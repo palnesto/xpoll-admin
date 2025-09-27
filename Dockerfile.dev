@@ -1,5 +1,8 @@
-# Use the official Node.js image.
+# Use the official Node.js image
 FROM node:20-alpine3.20 AS base
+
+# Install system deps for swc/esbuild/node-gyp
+RUN apk add --no-cache libc6-compat python3 make g++ bash
 
 # Set working directory
 WORKDIR /app
@@ -7,40 +10,27 @@ WORKDIR /app
 # Install pnpm globally
 RUN npm install -g pnpm@9
 
-
-# Copy only the package.json and lock file to leverage Docker's cache
-COPY package.json ./
-
-# Remove old node_modules and dist (if exist) before installing
-
+# Copy only package.json and lockfile
+COPY package.json pnpm-lock.yaml* ./
 
 # Install dependencies
-RUN pnpm install --frozen-lockfile --ignore-scripts
-
+RUN pnpm install --frozen-lockfile
 
 # Copy the rest of the application code
 COPY . .
 
 # Build the client admin app
 FROM base AS client-xpoll-admin-dev-build
-
-# Run the build script
 RUN pnpm run build:development
 
 # Final production image with Nginx
 FROM nginx:alpine AS client-react-xpoll-admin-dev
 
-# Copy the built files from the client-admin-build stage
+# Copy built files
 COPY --from=client-xpoll-admin-dev-build /app/dist /usr/share/nginx/html
 
-# Copy the nginx configuration file
+# Copy nginx config
 COPY --from=client-xpoll-admin-dev-build /app/nginx.conf /etc/nginx/conf.d/default.conf
 
-# Expose port 80
 EXPOSE 80
-
-# Start Nginx in the foreground
 CMD ["nginx", "-g", "daemon off;"]
-
-
-
