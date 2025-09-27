@@ -1,10 +1,6 @@
 import { SlugCreatableSelect } from "@/components/commons/selects/slug-creatable-select";
 import { useState } from "react";
-import { lazy } from "react";
-const Dashboard = lazy(() =>
-  import("./dashboard").then((mod) => ({ default: mod.Dashboard }))
-);
-import { Navigate } from "react-router-dom";
+import { Dashboard } from "./dashboard";
 
 const IndexPage = () => {
   // return <Navigate to="/actions" />;
