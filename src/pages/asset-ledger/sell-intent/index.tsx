@@ -1019,7 +1019,7 @@ export default function SellIntent() {
           <table className="min-w-full text-sm">
             <thead className="bg-gray-50 text-left text-black/70">
               <tr>
-                <th className="px-4 py-2">ID</th>
+                {/* <th className="px-4 py-2">ID</th> */}
                 <th className="px-4 py-2">User</th>
                 <th className="px-4 py-2">Wallet</th>
                 <th className="px-4 py-2">Address</th>
@@ -1032,7 +1032,7 @@ export default function SellIntent() {
               {selectedNetwork &&
                 filteredRequests.map((r) => (
                   <tr key={r.id} className="border-t border-gray-100">
-                    <td className="px-4 py-2 font-mono text-xs">{r._id}</td>
+                    {/* <td className="px-4 py-2 font-mono text-xs">{r._id}</td> */}
                     <td className="px-4 py-2">{r.metadata.username}</td>
                     <td className="px-4 py-2">
                       <span className="inline-flex items-center gap-2">
