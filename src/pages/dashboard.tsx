@@ -34,20 +34,20 @@ export const Dashboard = memo(function Dashboard() {
     {
       label: "Total Users",
       // value: filteredStats?.users?.total ?? 0,
-      value: 2114,
+      value: 2614,
     },
     ...//filteredStats?.users?.byCountry ||
     ([
       {
-        count: 1017,
+        count: 1265,
         country: "IN",
       },
       {
-        count: 754,
+        count: 906,
         country: "US",
       },
       {
-        count: 343,
+        count: 443,
         country: "KR",
       },
       {
