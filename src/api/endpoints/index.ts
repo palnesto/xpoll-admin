@@ -4,6 +4,10 @@ export const endpoints = {
   adminLogout: "/public/admin/logout",
   adminMe: "/internal/auth/me",
   entities: {
+    llm: {
+      pollQueryResult: (llmQueryId: string) =>
+        `/internal/llm/poll-query-result/${llmQueryId}`,
+    },
     polls: {
       all: "/internal/poll/list",
       create: "/internal/poll",

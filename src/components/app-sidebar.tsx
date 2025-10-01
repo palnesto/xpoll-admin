@@ -124,6 +124,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           },
         ],
       },
+      {
+        title: "LLM",
+        url: "#",
+        icon: Settings,
+        isActive: true,
+        items: [
+          {
+            title: "Queries",
+            url: "/llm/queries",
+          },
+        ],
+      },
       // {
       //   title: "Academics Page",
       //   url: "#",
