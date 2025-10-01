@@ -1,0 +1,91 @@
+{
+  "meta": {
+    "query": "What are the top issues of US?",
+    "generatedAt": "2025-09-30T17:55:54.843Z",
+    "confidence": {
+      "score": 10,
+      "level": "Low"
+    },
+    "coverage": {
+      "pollsConsidered": 3,
+      "totalVotes": 92
+    },
+    "tags": ["Immigration", "USA", "India", "South Korea", "Hate Speech"]
+  },
+  "layout": [
+    {
+      "type": "text",
+      "variant": "heading",
+      "content": "Polling Analysis: What are the top issues of US?"
+    },
+    {
+      "type": "text",
+      "variant": "body",
+      "content": "**Key Insights:** Immigration leads, followed by Economy."
+    },
+    {
+      "type": "stat-cards",
+      "cards": [
+        {
+          "label": "Confidence",
+          "value": 10,
+          "unit": "/100"
+        },
+        {
+          "label": "Polls considered",
+          "value": 3
+        },
+        {
+          "label": "Total votes",
+          "value": 92
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Top Entities",
+      "columns": ["Entity", "Total votes"],
+      "rows": [
+        ["Unsure about top issues", 53],
+        ["Immigration is top issue", 39]
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Top Insights",
+      "columns": ["Insight", "Support votes", "Evidence polls"],
+      "rows": [
+        [
+          "In the US (n=26), 46% supported 'Immigration is top issue' (n=8) compared to 0% in India (n=4) and South Korea (n=1).",
+          8,
+          2
+        ],
+        [
+          "In the US (n=25), 100% expressed uncertainty about top issues (n=30) in the 'Hate speech crackdown controversies' poll, while in India (n=4) and South Korea (n=1) the same view was also dominant.",
+          30,
+          1
+        ],
+        [
+          "Across all polls, there is a consistent trend where 100% of respondents from the US (n=26) and India (n=4) support 'Immigration is top issue' (n=31) in the 'Immigrant neighborhoods on alert' poll.",
+          31,
+          1
+        ]
+      ]
+    },
+    {
+      "type": "chart",
+      "chartType": "bar",
+      "title": "Support by Entities",
+      "data": [
+        {
+          "label": "Unsure about top issues",
+          "value": 53
+        },
+        {
+          "label": "Immigration is top issue",
+          "value": 39
+        }
+      ]
+    }
+  ]
+}

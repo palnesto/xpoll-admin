@@ -79,11 +79,11 @@ export default function SellIntent() {
   );
 
   const columns = [
-    { key: "_id", header: "ID", canFilter: true },
+    // { key: "_id", header: "ID", canFilter: true },
     { key: "username", header: "Username", canFilter: true },
     { key: "walletAddress", header: "Wallet Address", canFilter: true },
     { key: "chain", header: "Chain", canFilter: true },
-    { key: "assetId", header: "Asset ID", canFilter: true },
+    // { key: "assetId", header: "Asset ID", canFilter: true },
     { key: "parentAmountVal", header: "Amount", canFilter: true },
     { key: "status", header: "Status", canFilter: true },
     { key: "action", header: "Action", canFilter: true },
@@ -93,11 +93,11 @@ export default function SellIntent() {
       header: "Created At",
       render: (val: any) => <span>{fmt(val)}</span>,
     },
-    {
-      key: "archivedAt",
-      header: "Archived At",
-      render: (val: any) => <span>{fmt(val)}</span>,
-    },
+    // {
+    //   key: "archivedAt",
+    //   header: "Archived At",
+    //   render: (val: any) => <span>{fmt(val)}</span>,
+    // },
     // {
     //   key: "tableOptions",
     //   header: "...",

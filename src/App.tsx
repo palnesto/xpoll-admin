@@ -10,7 +10,7 @@ export function App() {
   const location = useLocation();
   const appRoutes = useRoutes(routes);
 
-  const publicPaths = useMemo(() => ["/login"], []);
+  const publicPaths = useMemo(() => ["/login", "/test"], []);
   const isPublic = publicPaths.includes(location.pathname);
 
   return (

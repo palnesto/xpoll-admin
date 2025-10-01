@@ -20,9 +20,8 @@ export default function Polls() {
 
   const url = `${endpoints.entities.polls.all}?page=${page}&pageSize=${pageSize}`;
   const { data, isFetching } = useApiQuery(url, { keepPreviousData: true });
-  console.log("data", data);
   const entries = useMemo(() => data?.data?.data?.entries ?? [], [data]);
-
+  console.log("entries", entries);
   const actions = useCallback(
     (id: string) => [
       {
@@ -44,16 +43,43 @@ export default function Polls() {
 
   const tableData = useMemo(
     () =>
-      entries.map((r: any) => ({
-        ...r,
-        tableOptions: <ThreeDotMenu actions={actions(r._id)} />,
-      })),
+      entries.map((r: any) => {
+        const createdBy =
+          r.externalAuthor == null && r.internalAuthor != null
+            ? "Admin"
+            : r.internalAuthor == null && r.externalAuthor != null
+            ? "User"
+            : "—";
+
+        return {
+          ...r,
+          createdBy,
+          tableOptions: <ThreeDotMenu actions={actions(r._id)} />,
+        };
+      }),
     [entries, actions]
   );
 
   const columns = [
-    { key: "_id", header: "ID", canFilter: true },
     { key: "title", header: "Title", canFilter: true },
+    {
+      key: "createdBy",
+      header: "Created By",
+      canFilter: true,
+      render: (val: any) => (
+        <span
+          className={
+            val === "Admin"
+              ? "inline-flex rounded-full px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700"
+              : val === "User"
+              ? "inline-flex rounded-full px-2 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-700"
+              : "text-muted-foreground"
+          }
+        >
+          {val}
+        </span>
+      ),
+    },
     {
       key: "createdAt",
       header: "Created At",
