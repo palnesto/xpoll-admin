@@ -79,7 +79,7 @@ export default function SellIntent() {
   );
 
   const columns = [
-    { key: "_id", header: "ID", canFilter: true },
+    // { key: "_id", header: "ID", canFilter: true },
     { key: "username", header: "Username", canFilter: true },
     { key: "walletAddress", header: "Wallet Address", canFilter: true },
     { key: "chain", header: "Chain", canFilter: true },
