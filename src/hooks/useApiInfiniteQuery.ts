@@ -46,7 +46,9 @@ export function useApiInfiniteQuery<
       return res.data.data;
     },
     getNextPageParam: (last) =>
-      last.meta.page < last.meta.totalPages ? last.meta.page + 1 : undefined,
+      last?.meta?.page < last?.meta?.totalPages
+        ? last?.meta?.page + 1
+        : undefined,
     initialPageParam: 1,
     ...options,
   });

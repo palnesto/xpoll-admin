@@ -7,6 +7,7 @@ export const endpoints = {
     llm: {
       pollQueryResult: (llmQueryId: string) =>
         `/internal/llm/poll-query-result/${llmQueryId}`,
+      generate: "/internal/llm/generate",
     },
     polls: {
       all: "/internal/poll/list",
