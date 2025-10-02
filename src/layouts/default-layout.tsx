@@ -18,9 +18,9 @@ export default function DefaultLayout({ children }: { children: ReactNode }) {
             <div className="flex items-center gap-2 px-4 w-full">
               <SidebarTrigger className="-ml-1" />
 
-              <div className="ml-auto">
+              {/* <div className="ml-auto">
                 <ModeToggle />
-              </div>
+              </div> */}
             </div>
           </header>
           <div className="p-4 pt-0">{children}</div>

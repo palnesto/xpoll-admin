@@ -19,9 +19,9 @@ export const DevStrip = () => {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <div className="shrink-0">
+          {/* <div className="shrink-0">
             <ModeToggle />
-          </div>
+          </div> */}
           <Button
             size={"sm"}
             onClick={() => {
