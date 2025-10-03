@@ -8,6 +8,9 @@ dependencies:
   '@aws-sdk/client-s3':
     specifier: 3.717.0
     version: 3.717.0
+  '@emotion/react':
+    specifier: ^11.14.0
+    version: 11.14.0(@types/react@18.3.23)(react@18.3.1)
   '@hookform/resolvers':
     specifier: ^3.9.1
     version: 3.10.0(react-hook-form@7.62.0)
@@ -182,6 +185,9 @@ dependencies:
   react:
     specifier: ^18.3.1
     version: 18.3.1
+  react-awesome-reveal:
+    specifier: ^4.3.1
+    version: 4.3.1(@emotion/react@11.14.0)(react-dom@18.3.1)(react@18.3.1)
   react-beautiful-dnd:
     specifier: ^13.1.1
     version: 13.1.1(react-dom@18.3.1)(react@18.3.1)
@@ -7741,6 +7747,20 @@ packages:
       unpipe: 1.0.0
     dev: false
 
+  /react-awesome-reveal@4.3.1(@emotion/react@11.14.0)(react-dom@18.3.1)(react@18.3.1):
+    resolution: {integrity: sha512-eMQqjNbk979ltKK/VUjw6+pGNa0Zg08ikCo7xCsi3BBX9sQSc2eVJMHXspEA/dS/1UiqFiZwgz19wlCL19+/qA==}
+    peerDependencies:
+      '@emotion/react': ^11.0.0
+      react: '>=16.14.0'
+    dependencies:
+      '@emotion/react': 11.14.0(@types/react@18.3.23)(react@18.3.1)
+      react: 18.3.1
+      react-intersection-observer: 9.16.0(react-dom@18.3.1)(react@18.3.1)
+      react-is: 18.3.1
+    transitivePeerDependencies:
+      - react-dom
+    dev: false
+
   /react-beautiful-dnd@13.1.1(react-dom@18.3.1)(react@18.3.1):
     resolution: {integrity: sha512-0Lvs4tq2VcrEjEgDXHjT98r+63drkKEgqyxdA7qD3mvKwga6a5SscbdLPO2IExotU1jW8L0Ksdl0Cj2AF67nPQ==}
     deprecated: 'react-beautiful-dnd is now deprecated. Context and options: https://github.com/atlassian/react-beautiful-dnd/issues/2672'
@@ -7860,12 +7880,29 @@ packages:
       react-dom: 18.3.1(react@18.3.1)
     dev: false
 
+  /react-intersection-observer@9.16.0(react-dom@18.3.1)(react@18.3.1):
+    resolution: {integrity: sha512-w9nJSEp+DrW9KmQmeWHQyfaP6b03v+TdXynaoA964Wxt7mdR3An11z4NNCQgL4gKSK7y1ver2Fq+JKH6CWEzUA==}
+    peerDependencies:
+      react: ^17.0.0 || ^18.0.0 || ^19.0.0
+      react-dom: ^17.0.0 || ^18.0.0 || ^19.0.0
+    peerDependenciesMeta:
+      react-dom:
+        optional: true
+    dependencies:
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+    dev: false
+
   /react-is@16.13.1:
     resolution: {integrity: sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==}
     dev: false
 
   /react-is@17.0.2:
     resolution: {integrity: sha512-w2GsyukL62IJnlaff/nRegPQR94C/XXamvMWmSHRJ4y7Ts/4ocGRmTHvOs8PSE6pB3dWOrD/nueuU5sduBsQ4w==}
+    dev: false
+
+  /react-is@18.3.1:
+    resolution: {integrity: sha512-/LLMVyas0ljjAtoYiPqYiL8VWXzUUdThrmU5+n20DZv+a+ClRoevUzw5JxU+Ieh5/c87ytoTBV9G1FiKfNJdmg==}
     dev: false
 
   /react-redux@7.2.9(react-dom@18.3.1)(react@18.3.1):

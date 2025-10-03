@@ -17,6 +17,7 @@ import { ASSETS, assetSpecs, AssetType } from "@/utils/currency-assets/asset";
 import { amount, unwrapString } from "@/utils/currency-assets/base";
 import SystemReportSkeleton from "@/utils/SystemReportSkeleton";
 import SpotlightCard from "@/components/SpotlightCard";
+import { Slide } from "react-awesome-reveal";
 
 export const Dashboard = memo(function Dashboard() {
   const { data: stats, isLoading } = useApiQuery(
@@ -143,7 +144,9 @@ export const Dashboard = memo(function Dashboard() {
       </div>
       <div className="flex justify-around items-center gap-6 py-6 overflow-x-auto">
         {cryptoStats.map((stat, index) => (
-          <CryptoStatCircle key={`asset-${index}`} {...stat} />
+          <Slide direction="up" cascade triggerOnce delay={index * 50}>
+            <CryptoStatCircle key={`asset-${index}`} {...stat} />
+          </Slide>
         ))}
       </div>
       {/* <Card className="p-6 mb-8 bg-primary/5 rounded-3xl">
