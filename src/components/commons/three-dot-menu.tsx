@@ -33,7 +33,7 @@ export function ThreeDotMenu({
           <MoreVertical className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align="end" className="bg-sidebar">
         <DropdownMenuLabel>{label}</DropdownMenuLabel>
         {actions.map((action, index) => (
           <div key={index}>

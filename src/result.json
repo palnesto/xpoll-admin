@@ -1,91 +1,197 @@
 {
   "meta": {
-    "query": "What are the top issues of US?",
-    "generatedAt": "2025-09-30T17:55:54.843Z",
+    "query": "Comprehensive Data Dashboard (Populated)",
+    "generatedAt": "2025-10-03T12:30:00.000Z",
     "confidence": {
-      "score": 10,
-      "level": "Low"
+      "score": 95,
+      "level": "High"
     },
     "coverage": {
-      "pollsConsidered": 3,
-      "totalVotes": 92
+      "pollsConsidered": 30,
+      "totalVotes": 20000
     },
-    "tags": ["Immigration", "USA", "India", "South Korea", "Hate Speech"]
+    "tags": ["analytics", "dashboard", "charts", "detailed"]
   },
   "layout": [
     {
       "type": "text",
       "variant": "heading",
-      "content": "Polling Analysis: What are the top issues of US?"
+      "content": "Business Intelligence Report"
     },
     {
-      "type": "text",
-      "variant": "body",
-      "content": "**Key Insights:** Immigration leads, followed by Economy."
+      "type": "tags",
+      "title": "Focus Areas",
+      "tags": [
+        { "label": "Revenue", "color": "#2563eb" },
+        { "label": "Engagement", "color": "#16a34a" },
+        { "label": "Retention", "color": "#dc2626" },
+        { "label": "Conversion", "color": "#f59e0b" }
+      ]
     },
     {
       "type": "stat-cards",
       "cards": [
         {
-          "label": "Confidence",
-          "value": 10,
-          "unit": "/100"
+          "label": "Total Revenue",
+          "value": 250000,
+          "unit": "$",
+          "change": 8,
+          "trend": "up"
         },
         {
-          "label": "Polls considered",
-          "value": 3
+          "label": "Monthly Active Users",
+          "value": 12500,
+          "change": 4,
+          "trend": "up"
         },
         {
-          "label": "Total votes",
-          "value": 92
+          "label": "Churn Rate",
+          "value": 2.5,
+          "unit": "%",
+          "change": -0.3,
+          "trend": "down"
         }
       ]
     },
     {
       "type": "table",
-      "title": "Top Entities",
-      "columns": ["Entity", "Total votes"],
+      "title": "Revenue by Region",
+      "columns": ["Region", "Q1", "Q2", "Q3", "Q4"],
       "rows": [
-        ["Unsure about top issues", 53],
-        ["Immigration is top issue", 39]
-      ]
-    },
-    {
-      "type": "table",
-      "title": "Top Insights",
-      "columns": ["Insight", "Support votes", "Evidence polls"],
-      "rows": [
-        [
-          "In the US (n=26), 46% supported 'Immigration is top issue' (n=8) compared to 0% in India (n=4) and South Korea (n=1).",
-          8,
-          2
-        ],
-        [
-          "In the US (n=25), 100% expressed uncertainty about top issues (n=30) in the 'Hate speech crackdown controversies' poll, while in India (n=4) and South Korea (n=1) the same view was also dominant.",
-          30,
-          1
-        ],
-        [
-          "Across all polls, there is a consistent trend where 100% of respondents from the US (n=26) and India (n=4) support 'Immigration is top issue' (n=31) in the 'Immigrant neighborhoods on alert' poll.",
-          31,
-          1
-        ]
+        ["North America", "$60,000", "$75,000", "$90,000", "$95,000"],
+        ["Europe", "$45,000", "$50,000", "$55,000", "$60,000"],
+        ["Asia", "$30,000", "$35,000", "$40,000", "$42,000"],
+        ["South America", "$15,000", "$20,000", "$22,000", "$25,000"]
       ]
     },
     {
       "type": "chart",
       "chartType": "bar",
-      "title": "Support by Entities",
+      "title": "Monthly Sales by Product",
+      "legend": true,
       "data": [
-        {
-          "label": "Unsure about top issues",
-          "value": 53
-        },
-        {
-          "label": "Immigration is top issue",
-          "value": 39
-        }
+        { "label": "Jan", "group": "Product A", "value": 120 },
+        { "label": "Feb", "group": "Product A", "value": 150 },
+        { "label": "Mar", "group": "Product A", "value": 180 },
+        { "label": "Apr", "group": "Product A", "value": 200 },
+        { "label": "May", "group": "Product A", "value": 220 },
+        { "label": "Jan", "group": "Product B", "value": 100 },
+        { "label": "Feb", "group": "Product B", "value": 130 },
+        { "label": "Mar", "group": "Product B", "value": 140 },
+        { "label": "Apr", "group": "Product B", "value": 160 },
+        { "label": "May", "group": "Product B", "value": 180 }
       ]
+    },
+    {
+      "type": "chart",
+      "chartType": "horizontal-bar",
+      "title": "Department Budget Allocation",
+      "legend": true,
+      "data": [
+        { "label": "Engineering", "value": 250000 },
+        { "label": "Marketing", "value": 180000 },
+        { "label": "Sales", "value": 150000 },
+        { "label": "Support", "value": 90000 },
+        { "label": "HR", "value": 60000 }
+      ]
+    },
+    {
+      "type": "chart",
+      "chartType": "stacked-bar",
+      "title": "Quarterly Expenses by Category",
+      "legend": true,
+      "data": [
+        { "label": "Q1", "group": "Salaries", "value": 50000 },
+        { "label": "Q1", "group": "Operations", "value": 30000 },
+        { "label": "Q1", "group": "Marketing", "value": 20000 },
+        { "label": "Q2", "group": "Salaries", "value": 55000 },
+        { "label": "Q2", "group": "Operations", "value": 35000 },
+        { "label": "Q2", "group": "Marketing", "value": 25000 },
+        { "label": "Q3", "group": "Salaries", "value": 60000 },
+        { "label": "Q3", "group": "Operations", "value": 37000 },
+        { "label": "Q3", "group": "Marketing", "value": 27000 }
+      ]
+    },
+    {
+      "type": "chart",
+      "chartType": "pie",
+      "title": "Market Share Distribution",
+      "legend": true,
+      "data": [
+        { "label": "Company A", "value": 45 },
+        { "label": "Company B", "value": 30 },
+        { "label": "Company C", "value": 15 },
+        { "label": "Company D", "value": 10 }
+      ]
+    },
+    {
+      "type": "chart",
+      "chartType": "doughnut",
+      "title": "User Device Usage",
+      "legend": true,
+      "data": [
+        { "label": "Mobile", "value": 55 },
+        { "label": "Desktop", "value": 35 },
+        { "label": "Tablet", "value": 10 }
+      ]
+    },
+    {
+      "type": "chart",
+      "chartType": "line",
+      "title": "Monthly Growth Trend",
+      "legend": true,
+      "data": [
+        { "label": "Jan", "value": 5 },
+        { "label": "Feb", "value": 12 },
+        { "label": "Mar", "value": 20 },
+        { "label": "Apr", "value": 25 },
+        { "label": "May", "value": 40 },
+        { "label": "Jun", "value": 50 },
+        { "label": "Jul", "value": 60 },
+        { "label": "Aug", "value": 70 },
+        { "label": "Sep", "value": 65 },
+        { "label": "Oct", "value": 80 },
+        { "label": "Nov", "value": 85 },
+        { "label": "Dec", "value": 95 }
+      ]
+    },
+    {
+      "type": "chart",
+      "chartType": "radar",
+      "title": "Feature Usage Intensity",
+      "legend": true,
+      "data": [
+        { "label": "Search", "value": 95 },
+        { "label": "Login", "value": 85 },
+        { "label": "Checkout", "value": 75 },
+        { "label": "Reviews", "value": 65 },
+        { "label": "Support", "value": 50 },
+        { "label": "Notifications", "value": 40 }
+      ]
+    },
+    {
+      "type": "chart",
+      "chartType": "scatter",
+      "title": "User Engagement vs Spending",
+      "legend": true,
+      "data": [
+        { "label": "User1", "value": 5 },
+        { "label": "User2", "value": 15 },
+        { "label": "User3", "value": 25 },
+        { "label": "User4", "value": 35 },
+        { "label": "User5", "value": 45 },
+        { "label": "User6", "value": 55 },
+        { "label": "User7", "value": 65 },
+        { "label": "User8", "value": 75 }
+      ]
+    },
+    {
+      "type": "custom",
+      "component": "CustomWidget",
+      "props": {
+        "message": "Custom visualization placeholder with more data",
+        "items": [10, 20, 30, 40, 50]
+      }
     }
   ]
 }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
-import { PanelRight, Plus } from "lucide-react";
-
+import { PanelRight, Plus, X } from "lucide-react";
+import { MultiStepLoader } from "@/components/ui/multi-step-loader";
 import { endpoints } from "@/api/endpoints";
 import {
   QueryUIResponse,
@@ -19,8 +19,9 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { useApiInfiniteQuery } from "@/hooks/useApiInfiniteQuery";
+import LetterGlitch from "@/components/LetterGlitch";
+import TextType from "@/components/TextType";
 
-// -------------------- Skeleton Loader --------------------
 export function SkeletonCard() {
   return (
     <div className="flex flex-col space-y-3">
@@ -33,9 +34,9 @@ export function SkeletonCard() {
   );
 }
 
-// -------------------- Main Page --------------------
 const SpecificLLMQueryPage = () => {
   const [queryResultState, setQueryResultState] = useState<any>(null);
+  const [steps, setSteps] = useState<string[]>([]);
   const { llmQueryId = "" } = useParams<{ llmQueryId: string }>();
 
   const url = endpoints.entities.llm.pollQueryResult(llmQueryId);
@@ -43,7 +44,6 @@ const SpecificLLMQueryPage = () => {
   const shouldPollFurther = (data: any) => {
     const filteredData = data?.data?.data;
     if (!filteredData) return true;
-
     setQueryResultState(filteredData);
     const isEnded = ["complete", "failed"].includes(filteredData?.status);
     return !isEnded;
@@ -55,17 +55,18 @@ const SpecificLLMQueryPage = () => {
       if (query.state.data && !shouldPollFurther(query.state.data)) {
         return false;
       }
-      return 5000; // poll every 5s until done
+      return 3000;
     },
     refetchOnWindowFocus: false,
   });
 
-  const { ui, status, llmResponse, queryText } = useMemo(() => {
+  const { ui, status, llmResponse, queryText, llmSteps } = useMemo(() => {
     return {
       queryText: queryResultState?.input?.prompt,
       ui: queryResultState?.structuredResult?.ui,
       status: queryResultState?.status,
       llmResponse: queryResultState?.llmResponse,
+      llmSteps: queryResultState?.steps,
     };
   }, [queryResultState]);
 
@@ -79,12 +80,12 @@ const SpecificLLMQueryPage = () => {
         isLoading={isLoading}
         status={status}
         llmResponse={llmResponse}
+        steps={llmSteps && llmSteps.length > 0 ? llmSteps : steps}
       />
     </div>
   );
 };
 
-// -------------------- Types --------------------
 type LLMQuery = {
   _id: string;
   input?: {
@@ -94,7 +95,6 @@ type LLMQuery = {
 
 const PAGE_SIZE = 20;
 
-// -------------------- Side Sheet --------------------
 export const LLMSideSheet = ({ llmQueryId }: { llmQueryId?: string }) => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -111,16 +111,13 @@ export const LLMSideSheet = ({ llmQueryId }: { llmQueryId?: string }) => {
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-
     const handleScroll = () => {
       if (!hasNextPage || isFetchingNextPage) return;
-
       const { scrollTop, scrollHeight, clientHeight } = el;
       if (scrollTop + clientHeight >= scrollHeight - 50) {
         fetchNextPage();
       }
     };
-
     el.addEventListener("scroll", handleScroll);
     return () => el.removeEventListener("scroll", handleScroll);
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
@@ -129,12 +126,11 @@ export const LLMSideSheet = ({ llmQueryId }: { llmQueryId?: string }) => {
     <Sheet open={open} onOpenChange={setOpen}>
       <div className="w-full flex justify-end">
         <SheetTrigger asChild>
-          <Button variant="ghost" size="icon">
+          <Button className="z-50" variant="ghost" size="icon">
             <PanelRight />
           </Button>
         </SheetTrigger>
       </div>
-
       <SheetContent>
         <SheetHeader>
           <SheetTitle>Last Queries</SheetTitle>
@@ -144,7 +140,6 @@ export const LLMSideSheet = ({ llmQueryId }: { llmQueryId?: string }) => {
               ref={containerRef}
               className="flex flex-col gap-2 w-full max-h-[calc(100dvh-5rem)] overflow-y-auto"
             >
-              {/* New Query Button */}
               <Button
                 key="new-query"
                 variant={!llmQueryId ? "default" : "secondary"}
@@ -160,9 +155,6 @@ export const LLMSideSheet = ({ llmQueryId }: { llmQueryId?: string }) => {
                   <Plus /> New Query
                 </span>
               </Button>
-
-              {console.log("queries", queries)}
-              {/* Query List */}
               {queries?.map((q) => (
                 <Button
                   key={q?._id}
@@ -180,7 +172,6 @@ export const LLMSideSheet = ({ llmQueryId }: { llmQueryId?: string }) => {
                   </span>
                 </Button>
               ))}
-
               {isFetchingNextPage && (
                 <div className="py-3 text-center text-sm text-gray-500">
                   Loading more...
@@ -194,7 +185,6 @@ export const LLMSideSheet = ({ llmQueryId }: { llmQueryId?: string }) => {
   );
 };
 
-// -------------------- Content Display --------------------
 const DisplayContent = ({
   llmQueryId,
   ui,
@@ -202,6 +192,7 @@ const DisplayContent = ({
   status,
   llmResponse,
   queryText,
+  steps = [],
 }: {
   llmQueryId?: string;
   ui?: QueryUIResponse;
@@ -209,26 +200,52 @@ const DisplayContent = ({
   status?: string;
   llmResponse?: string;
   queryText?: string;
+  steps?: string[];
 }) => {
   if (isLoading) {
     return <div>Loading...</div>;
   }
 
-  console.log({
-    llmQueryId,
-    ui,
-    status,
-  });
   if (!llmQueryId || !status) {
     return <div>No data</div>;
   }
 
   if (!["complete", "failed"].includes(status)) {
     return (
-      <div>
-        <h1>Query: {queryText}</h1>
-        <h2>Status: {status}</h2>
-        <SkeletonCard />
+      <div className="h-[95dvh] flex flex-col justify-start w-full items-center">
+        <div
+          style={{ filter: "grayscale(100%)" }}
+          className="absolute inset-0 opacity-10"
+        >
+          <LetterGlitch
+            glitchSpeed={100}
+            centerVignette={true}
+            outerVignette={false}
+            smooth={true}
+          />
+        </div>
+        <div className="max-w-4xl z-50 flex flex-col items-center gap-3 w-full">
+          <div className="flex flex-col gap-4 items-center col-span-2">
+            <p className="text-3xl tracking-wide">Your Query</p>
+            <p className="bg-[#18181a] py-5 px-10 rounded-xl text-center w-full">
+              <p className="opacity-20 font-thin tracking-wide ">
+                <TextType
+                  text={[queryText]}
+                  typingSpeed={10}
+                  pauseDuration={1500}
+                  showCursor={true}
+                  cursorCharacter="|"
+                />
+              </p>
+            </p>
+          </div>
+          <div className="ml-5">
+            <MultiStepLoader
+              steps={steps}
+              loading={!["complete", "failed"].includes(status)}
+            />
+          </div>
+        </div>
       </div>
     );
   }
