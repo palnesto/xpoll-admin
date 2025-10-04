@@ -175,7 +175,7 @@ export function SectionCards({ data }) {
       spotlightColor="rgba(245, 244, 207, 0.1)"
     >
       <Card
-        className={`@container/card border border-[rgba(148,68,255,0.2)] bg-[#180d28] rounded-3xl flex flex-row items-start justify-between ${cardClass}`}
+        className={`@container/card border border-zinc-700/50 bg-sidebar rounded-3xl flex flex-row items-start justify-between ${cardClass}`}
       >
         <CardHeader>
           <CardDescription className="text-muted-foreground text-lg w-64 tracking-wide">

@@ -93,7 +93,7 @@ export default function RewardCurveTable({
             ) : null}
           </div>
 
-          <div className="max-h-48 overflow-auto rounded border">
+          <div className="max-h-96 overflow-auto rounded border">
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-background">
                 <tr>

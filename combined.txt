@@ -1,69 +1,637 @@
 
-src/hooks/useApiQuery.ts
-------------------------
-import { useQuery, UseQueryOptions } from "@tanstack/react-query";
-import apiInstance, { BASE_URL } from "../api/queryClient";
-import { trimUrl } from "@/utils/formatter";
+src/layouts/TwoPane.tsx
+-----------------------
+import { ReactNode, useRef, useState, useEffect } from "react";
 
-export const useApiQuery = (
-  route: string,
-  options?: UseQueryOptions<any, any>
-) => {
-  console.log("registering query", trimUrl(route));
-  return useQuery({
-    queryKey: [trimUrl(route)],
-    queryFn: async () => {
-      const response = await apiInstance.get(`${BASE_URL}${route}`);
-      return response;
-    },
-    ...options,
-  });
+type TwoPaneProps = {
+  left: ReactNode;
+  right?: ReactNode;
+  isRightOpen: boolean;
+  rightWidth?: string;
+  className?: string;
+  leftClassName?: string;
+  rightClassName?: string;
 };
 
+export default function TwoPane({
+  left,
+  right,
+  isRightOpen,
+  rightWidth = "33.3333%",
+  className = "",
+  leftClassName = "",
+  rightClassName = "",
+}: TwoPaneProps) {
+  const rightRef = useRef<HTMLDivElement | null>(null);
+  const [rightDivWidth, setRightDivWidth] = useState<number>(0);
 
-src/hooks/useApiMutation.ts
----------------------------
-import { useMutation, UseMutationOptions } from "@tanstack/react-query";
-import apiInstance from "../api/queryClient";
-import { appToast } from "@/utils/toast";
+  useEffect(() => {
+    if (!rightRef.current) return;
 
-export const useApiMutation = <TData, TResponse>({
-  route,
-  method = "POST",
-  onSuccess,
-  onError,
-}: {
-  route: string;
-  method: "POST" | "PATCH" | "DELETE" | "PUT"; // Restrict method to specific HTTP verbs
-  options?: UseMutationOptions<TResponse, Error, TData>;
-  onSuccess?: (data: TResponse) => void;
-  onError?: (error: Error) => void;
-}) => {
-  return useMutation({
-    mutationFn: async (newData) => {
-      if (method === "POST") {
-        const response = await apiInstance.post(route, newData);
-        return response.data;
-      } else if (method === "PATCH") {
-        const response = await apiInstance.patch(route, newData);
-        return response.data;
-      } else if (method === "PUT") {
-        const response = await apiInstance.put(route, newData);
-        return response.data;
-      } else if (method === "DELETE") {
-        const response = await apiInstance.delete(route, { data: newData }); // Fixed DELETE syntax for sending body
-        return response.data;
+    const updateWidth = () => {
+      if (rightRef.current) {
+        setRightDivWidth(rightRef.current.offsetWidth);
       }
-    },
-    onSuccess: (data) => {
-      onSuccess?.(data);
-    },
-    onError: (error: any) => {
-      // Extract error message
-      const errorMessage =
-        error?.response?.data?.message || "An unexpected error occurred";
-      appToast.error(errorMessage); // Show error toast
-      onError?.(error);
+    };
+
+    updateWidth(); // initial measure
+
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(rightRef.current);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  return (
+    <div
+      className={`flex w-full gap-5 transition-all duration-500 ${className}`}
+    >
+      {/* Left: auto expands when right is closed */}
+      <div className={`flex-1 transition-all duration-500 ${leftClassName}`}>
+        {left}
+      </div>
+
+      {/* Right wrapper (always mounted, animates width) */}
+      <div
+        ref={rightRef}
+        className={`relative overflow-hidden transition-all duration-500 ${rightClassName}`}
+        style={{
+          flex: isRightOpen ? `0 0 ${rightWidth}` : "0 0 0px",
+        }}
+      >
+        <div
+          style={{
+            width: isRightOpen ? rightDivWidth : 0,
+            transition: "width",
+            transitionDuration: isRightOpen ? "0s" : "0.5s",
+          }}
+          className="fixed top-[14dvh] right-[4dvw] h-[84dvh] max-w-[84dvh] overflow-y-auto rounded-xl bg-zinc-900 py-4"
+        >
+          {isRightOpen && right}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+src/pages/polls/create.tsx
+--------------------------
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm, useFieldArray } from "react-hook-form";
+import { Button } from "@/components/ui/button";
+import { Form, FormField } from "@/components/ui/form";
+import { useApiMutation } from "@/hooks/useApiMutation";
+import { endpoints } from "@/api/endpoints";
+import { queryClient } from "@/api/queryClient";
+import { appToast } from "@/utils/toast";
+import { Loader2 } from "lucide-react";
+import { useImageUpload } from "@/hooks/upload/useAssetUpload";
+import ExpireRewardAtPicker from "@/components/polling/editors/ExpireRewardAtPicker";
+import ResourceAssetsEditor from "@/components/polling/editors/ResourceAssetsEditor";
+import TargetGeoEditor from "@/components/polling/editors/TargetGeoEditor";
+import OptionsEditor from "@/components/polling/editors/OptionsEditor";
+import { extractYouTubeId } from "@/utils/youtube";
+import { FormInput } from "@/components/form/input";
+import { FormTextarea } from "@/components/form/textarea";
+import { FormCard } from "@/components/form/form-card";
+import RewardsList from "@/components/polling/editors/RewardsList";
+import RewardDetailPanel from "@/components/polling/editors/RewardDetailPanel";
+import TwoPane from "@/layouts/TwoPane";
+
+/* =========================================================
+   Constants
+   ========================================================= */
+const TOTAL_LEVELS = 10 as const;
+const ASSET_OPTIONS = [
+  { label: "OCTA", value: "xOcta" },
+  { label: "MYST", value: "xMYST" },
+  { label: "DROP", value: "xDrop" },
+  { label: "XPOLL", value: "xPoll" },
+] as const;
+
+/* =========================================================
+   Zod Schema
+   ========================================================= */
+const optionZ = z.object({ text: z.string().min(3).trim() });
+const rewardRowZ = z
+  .object({
+    assetId: z.enum(["xOcta", "xMYST", "xDrop", "xPoll"]),
+    amount: z.coerce.number().int().min(1),
+    rewardAmountCap: z.coerce.number().int().min(1),
+    rewardType: z.enum(["max", "min"]).default("max"),
+  })
+  .refine((r) => r.rewardAmountCap >= r.amount, {
+    message: "Cap must be ≥ amount",
+    path: ["rewardAmountCap"],
+  });
+
+const resourceAssetFormZ = z.union([
+  z.object({ type: z.literal("youtube"), value: z.string().min(11) }),
+  z.object({
+    type: z.literal("image"),
+    value: z.array(z.union([z.instanceof(File), z.string()])).nullable(),
+  }),
+]);
+
+const formSchema = z
+  .object({
+    title: z.string().min(3).trim(),
+    description: z.string().min(3).trim(),
+    options: z.array(optionZ).min(2).max(4),
+    rewards: z.array(rewardRowZ).default([]),
+    targetGeo: z.object({
+      countries: z.array(z.string()).default([]),
+      states: z.array(z.string()).default([]),
+      cities: z.array(z.string()).default([]),
+    }),
+    resourceAssets: z.array(resourceAssetFormZ).default([]),
+    expireRewardAt: z
+      .string()
+      .datetime()
+      .optional()
+      .or(z.literal("").optional())
+      .optional(),
+  })
+  .superRefine((v, ctx) => {
+    const ids = v.rewards.map((r) => r.assetId);
+    const dup = ids.find((a, i) => ids.indexOf(a) !== i);
+    if (dup) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["rewards"],
+        message: `Duplicate reward assetId: ${dup}`,
+      });
+    }
+  });
+
+type FormValues = z.infer<typeof formSchema>;
+type OutputResourceAsset =
+  | { type: "youtube"; value: string }
+  | { type: "image"; value: string };
+
+export default function PollCreatePage() {
+  const navigate = useNavigate();
+  const [activeRewardIndex, setActiveRewardIndex] = useState<number | null>(
+    null
+  );
+
+  const defaultValues: FormValues = useMemo(
+    () => ({
+      title: "",
+      description: "",
+      options: [{ text: "" }, { text: "" }],
+      rewards: [],
+      targetGeo: { countries: [], states: [], cities: [] },
+      resourceAssets: [],
+      expireRewardAt: "",
+    }),
+    []
+  );
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues,
+    mode: "onChange",
+  });
+
+  const { control, handleSubmit, watch, setValue } = form;
+
+  // Centralized rewards field array
+  const { fields, append, remove, update } = useFieldArray({
+    control,
+    name: "rewards",
+  });
+
+  const { mutate, isPending } = useApiMutation<any, any>({
+    route: endpoints.entities.polls.create,
+    method: "POST",
+    onSuccess: () => {
+      appToast.success("Poll created");
+      queryClient.invalidateQueries({
+        queryKey: [endpoints.entities.polls.create],
+      });
+      navigate("/polls");
     },
   });
+
+  const { uploadImage, loading: imageUploading } = useImageUpload();
+  const isBusy = isPending || imageUploading;
+
+  const onSubmit = async (v: FormValues) => {
+    const normalizedResources: OutputResourceAsset[] = await Promise.all(
+      (v.resourceAssets ?? []).map(async (a) => {
+        if (a.type === "youtube") {
+          return { type: "youtube", value: extractYouTubeId(a.value) };
+        }
+        const arr = a.value ?? [];
+        let first = arr[0];
+        if (first instanceof File) {
+          first = await uploadImage(first);
+        }
+        return { type: "image", value: typeof first === "string" ? first : "" };
+      })
+    );
+
+    const payload = {
+      title: v.title.trim(),
+      description: v.description.trim(),
+      resourceAssets: normalizedResources,
+      options: v.options.map((o) => ({
+        text: o.text.trim(),
+        archivedAt: null,
+      })),
+      rewards: v.rewards.map((r) => ({
+        assetId: r.assetId,
+        amount: r.amount,
+        rewardAmountCap: r.rewardAmountCap,
+        currentDistribution: 0,
+        rewardType: r.rewardType,
+      })),
+      targetGeo: v.targetGeo,
+      expireRewardAt: v.expireRewardAt?.trim() ? v.expireRewardAt : undefined,
+    };
+
+    mutate(payload as any);
+  };
+
+  return (
+    <div className="p-6 space-y-8 w-full">
+      {/* Header */}
+      <div className="flex justify-between items-center w-full">
+        <h1 className="text-2xl tracking-wider">Create Poll</h1>
+        <Button
+          type="submit"
+          form="poll-form"
+          disabled={isBusy}
+          className="text-base font-light tracking-wide"
+        >
+          {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Create Poll
+        </Button>
+      </div>
+
+      <Form {...form}>
+        <form
+          id="poll-form"
+          onSubmit={handleSubmit(onSubmit)}
+          className="space-y-10"
+        >
+          <TwoPane
+            isRightOpen={activeRewardIndex !== null}
+            right={
+              activeRewardIndex !== null && (
+                <RewardDetailPanel
+                  index={activeRewardIndex}
+                  assetOptions={ASSET_OPTIONS as any}
+                  totalLevels={TOTAL_LEVELS}
+                  onClose={() => setActiveRewardIndex(null)}
+                  rewards={fields}
+                  append={append}
+                  update={update}
+                />
+              )
+            }
+            left={
+              <div className="flex flex-col gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormCard title="Basic Info">
+                    <FormField
+                      control={control}
+                      name="title"
+                      render={({ field }) => (
+                        <FormInput
+                          label="Poll Title"
+                          placeholder="Enter poll title"
+                          {...field}
+                        />
+                      )}
+                    />
+                    <FormField
+                      control={control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormTextarea
+                          label="Description"
+                          placeholder="Write description"
+                          {...field}
+                        />
+                      )}
+                    />
+                  </FormCard>
+
+                  <FormCard title="Resource Assets" subtitle="Max.: 3">
+                    <ResourceAssetsEditor
+                      control={control}
+                      name="resourceAssets"
+                      maxAssets={3}
+                    />
+                  </FormCard>
+                </div>
+
+                <FormCard title="Add Options">
+                  <OptionsEditor
+                    control={control}
+                    name="options"
+                    label="Options"
+                    min={2}
+                    max={4}
+                  />
+                </FormCard>
+
+                <FormCard title="Rewards">
+                  <RewardsList
+                    fields={fields}
+                    assetOptions={ASSET_OPTIONS as any}
+                    onEdit={setActiveRewardIndex}
+                    onAdd={() => setActiveRewardIndex(-1)}
+                    remove={remove}
+                    allAssets={ASSET_OPTIONS.map((a) => a.value)}
+                  />
+                </FormCard>
+
+                <ExpireRewardAtPicker control={control} name="expireRewardAt" />
+
+                <TargetGeoEditor
+                  control={control}
+                  watch={watch}
+                  setValue={setValue}
+                  basePath="targetGeo"
+                />
+              </div>
+            }
+          />
+        </form>
+      </Form>
+    </div>
+  );
+}
+
+
+src/components/polling/editors/RewardDetailPanel.tsx
+----------------------------------------------------
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import RewardCurveTable from "@/components/commons/reward-curve-table";
+
+type RewardType = "max" | "min";
+
+type Reward = {
+  id?: string;
+  assetId: string;
+  amount: number;
+  rewardAmountCap: number;
+  rewardType: RewardType;
 };
+
+type DraftReward = {
+  assetId: string;
+  amount: string;
+  rewardAmountCap: string;
+  rewardType: RewardType;
+};
+
+type Props = {
+  index: number; // -1 = add mode
+  assetOptions: { label: string; value: string }[];
+  totalLevels: number;
+  onClose: () => void;
+  rewards: Reward[];
+  append: (reward: Omit<Reward, "id">) => void;
+  update: (index: number, reward: Omit<Reward, "id">) => void;
+};
+
+export default function RewardDetailPanel({
+  index,
+  assetOptions,
+  totalLevels,
+  onClose,
+  rewards,
+  append,
+  update,
+}: Props) {
+  const isAddMode = index === -1;
+
+  const existing = !isAddMode ? rewards[index] : null;
+  const [draft, setDraft] = useState<DraftReward>({
+    assetId: existing?.assetId ?? assetOptions[0].value,
+    amount: existing?.amount?.toString() ?? "",
+    rewardAmountCap: existing?.rewardAmountCap?.toString() ?? "",
+    rewardType: existing?.rewardType ?? "max",
+  });
+
+  const takenAssets = rewards.map((r) => r.assetId);
+  const availableAssetOptions = assetOptions.filter(
+    (a) => !takenAssets.includes(a.value) || a.value === draft.assetId
+  );
+
+  const handleAdd = () => {
+    if (!draft.amount || !draft.rewardAmountCap) return;
+    append({
+      assetId: draft.assetId,
+      amount: Number(draft.amount),
+      rewardAmountCap: Number(draft.rewardAmountCap),
+      rewardType: draft.rewardType,
+    });
+    onClose();
+  };
+
+  const handleSave = () => {
+    if (!draft.amount || !draft.rewardAmountCap) return;
+    update(index, {
+      assetId: draft.assetId,
+      amount: Number(draft.amount),
+      rewardAmountCap: Number(draft.rewardAmountCap),
+      rewardType: draft.rewardType,
+    });
+    onClose();
+  };
+
+  return (
+    <div className="p-4 h-full bg-zinc-900 rounded-none md:rounded-l-lg flex flex-col gap-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-lg font-semibold">
+          {isAddMode ? "Add Reward" : `Edit Reward #${index + 1}`}
+        </h2>
+        <Button variant="ghost" size="sm" onClick={onClose}>
+          Close
+        </Button>
+      </div>
+
+      {/* Asset */}
+      <select
+        value={draft.assetId}
+        onChange={(e) => setDraft((d) => ({ ...d, assetId: e.target.value }))}
+        className="w-full rounded-md bg-zinc-800 p-2"
+      >
+        {availableAssetOptions.map((a) => (
+          <option key={a.value} value={a.value}>
+            {a.label}
+          </option>
+        ))}
+      </select>
+
+      {/* Amount */}
+      <Input
+        type="number"
+        min={1}
+        value={draft.amount}
+        onChange={(e) => setDraft((d) => ({ ...d, amount: e.target.value }))}
+        placeholder="Amount per user"
+      />
+
+      {/* Cap */}
+      <Input
+        type="number"
+        min={1}
+        value={draft.rewardAmountCap}
+        onChange={(e) =>
+          setDraft((d) => ({ ...d, rewardAmountCap: e.target.value }))
+        }
+        placeholder="Reward cap"
+      />
+
+      {/* Type */}
+      <select
+        value={draft.rewardType}
+        onChange={(e) =>
+          setDraft((d) => ({ ...d, rewardType: e.target.value as RewardType }))
+        }
+        className="w-full rounded-md bg-zinc-800 p-2"
+      >
+        <option value="max">Max</option>
+        <option value="min">Min</option>
+      </select>
+
+      {/* Preview */}
+      <RewardCurveTable
+        perUserReward={Number(draft.amount || 0)}
+        rewardAmountCap={Number(draft.rewardAmountCap || 0)}
+        rewardType={draft.rewardType}
+        totalLevels={totalLevels}
+        label="Preview"
+      />
+
+      {isAddMode ? (
+        <Button
+          type="button"
+          onClick={handleAdd}
+          disabled={
+            !draft.amount ||
+            !draft.rewardAmountCap ||
+            availableAssetOptions.length === 0
+          }
+          className="bg-blue-600 text-white"
+        >
+          Add Reward
+        </Button>
+      ) : (
+        <Button
+          type="button"
+          onClick={handleSave}
+          disabled={!draft.amount || !draft.rewardAmountCap}
+          className="bg-blue-600 text-white"
+        >
+          Save Changes
+        </Button>
+      )}
+    </div>
+  );
+}
+
+
+src/components/polling/editors/RewardsList.tsx
+----------------------------------------------
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+
+type Reward = {
+  id?: string;
+  assetId: string;
+  amount: number;
+  rewardAmountCap: number;
+  rewardType: "max" | "min";
+};
+
+type Props = {
+  fields: Reward[];
+  assetOptions: { label: string; value: string }[];
+  onEdit: (idx: number) => void;
+  onAdd: () => void;
+  remove: (index: number) => void;
+  allAssets: string[];
+};
+
+export default function RewardsList({
+  fields,
+  assetOptions,
+  onEdit,
+  onAdd,
+  remove,
+  allAssets,
+}: Props) {
+  const takenAssets = fields.map((f) => f.assetId);
+  const canAdd = takenAssets.length < allAssets.length;
+
+  return (
+    <div className="space-y-3">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <label className="text-sm font-medium">Rewards ({fields.length})</label>
+        <Button type="button" size="sm" onClick={onAdd} disabled={!canAdd}>
+          + Add Reward
+        </Button>
+      </div>
+
+      {/* List */}
+      {fields.map((field, idx) => {
+        const assetLabel =
+          assetOptions.find((a) => a.value === field?.assetId)?.label ??
+          field?.assetId;
+
+        return (
+          <Card
+            key={field.id || idx}
+            className="p-4 flex justify-between items-center hover:bg-muted/50"
+          >
+            <div
+              className="flex flex-col flex-1 cursor-pointer"
+              onClick={() => onEdit(idx)}
+            >
+              <span className="text-sm font-semibold">{assetLabel}</span>
+              <span className="text-xs text-muted-foreground">
+                {field?.amount} per user • Cap {field?.rewardAmountCap} •{" "}
+                {field?.rewardType?.toUpperCase?.()}
+              </span>
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onEdit(idx)}
+              >
+                Edit
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={() => remove(idx)}
+              >
+                Remove
+              </Button>
+            </div>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}

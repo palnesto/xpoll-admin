@@ -3,6 +3,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import DotGrid from "@/components/DotGrid";
 import { cn } from "@/lib/utils";
+import { Spotlight } from "@/components/ui/spotlight-new";
 
 // responsibility: To provide a default layout for the app
 export default function DefaultLayout({ children }: { children: ReactNode }) {
@@ -13,10 +14,12 @@ export default function DefaultLayout({ children }: { children: ReactNode }) {
         <SidebarInset>
           <div className="rounded-r-lg p-3 bg-sidebar">
             <div className="relative rounded-lg min-h-[97.7dvh] max-h-[97.7dvh] overflow-hidden bg-black">
+              <div className="absolute inset-0 rotate-[0deg] -translate-x-[0%] translate-y-[60dvh]">
+                <Spotlight />
+              </div>
               <div
                 className={cn(
-                  "absolute h-full w-full translate-y-[50%] scale-[2]",
-                  "bg-purple-radial"
+                  "absolute h-full w-full translate-y-[50%] scale-[2]"
                 )}
               ></div>
               <div className="absolute inset-0 z-0">
