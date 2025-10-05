@@ -60,15 +60,17 @@ const SpecificLLMQueryPage = () => {
     refetchOnWindowFocus: false,
   });
 
-  const { ui, status, llmResponse, queryText, llmSteps } = useMemo(() => {
-    return {
-      queryText: queryResultState?.input?.prompt,
-      ui: queryResultState?.structuredResult?.uiConfig,
-      status: queryResultState?.status,
-      llmResponse: queryResultState?.llmResponse,
-      llmSteps: queryResultState?.steps,
-    };
-  }, [queryResultState]);
+  const { ui, status, llmResponse, queryText, llmSteps, error } =
+    useMemo(() => {
+      return {
+        queryText: queryResultState?.input?.prompt,
+        ui: queryResultState?.structuredResult?.uiConfig,
+        status: queryResultState?.status,
+        llmResponse: queryResultState?.llmResponse,
+        llmSteps: queryResultState?.steps,
+        error: queryResultState?.error,
+      };
+    }, [queryResultState]);
 
   return (
     <div>
@@ -81,6 +83,7 @@ const SpecificLLMQueryPage = () => {
         status={status}
         llmResponse={llmResponse}
         steps={llmSteps && llmSteps.length > 0 ? llmSteps : steps}
+        error={error}
       />
     </div>
   );
@@ -193,6 +196,7 @@ const DisplayContent = ({
   llmResponse,
   queryText,
   steps = [],
+  error,
 }: {
   llmQueryId?: string;
   ui?: QueryUIResponse;
@@ -201,9 +205,15 @@ const DisplayContent = ({
   llmResponse?: string;
   queryText?: string;
   steps?: string[];
+  error?: {
+    name?: string;
+    message?: string;
+    code?: string;
+    _id?: string;
+  };
 }) => {
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <div>Processing query...</div>;
   }
 
   if (!llmQueryId || !status) {
@@ -256,6 +266,10 @@ const DisplayContent = ({
         <UILayoutRenderer data={ui} />
       ) : llmResponse ? (
         <p>{llmResponse}</p>
+      ) : status === "failed" ? (
+        <p className="text-red-700 bg-red-200 rounded-xl py-3 px-5">
+          {error?.message}
+        </p>
       ) : (
         <>Response failed to generate</>
       )}
