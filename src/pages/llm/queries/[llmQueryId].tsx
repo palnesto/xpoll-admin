@@ -252,7 +252,6 @@ const DisplayContent = ({
 
   return (
     <>
-      <p>{`status: ${status}`}</p>
       {status === "complete" && ui ? (
         <UILayoutRenderer data={ui} />
       ) : llmResponse ? (
