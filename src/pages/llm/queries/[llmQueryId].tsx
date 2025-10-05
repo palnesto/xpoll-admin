@@ -63,7 +63,7 @@ const SpecificLLMQueryPage = () => {
   const { ui, status, llmResponse, queryText, llmSteps } = useMemo(() => {
     return {
       queryText: queryResultState?.input?.prompt,
-      ui: queryResultState?.structuredResult?.ui,
+      ui: queryResultState?.uiConfig,
       status: queryResultState?.status,
       llmResponse: queryResultState?.llmResponse,
       llmSteps: queryResultState?.steps,
