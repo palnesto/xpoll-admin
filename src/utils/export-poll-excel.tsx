@@ -1,6 +1,7 @@
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { Button } from "@/components/ui/button";
+import { FileDown, Table } from "lucide-react";
 
 /**
  * Accepted shapes:
@@ -132,7 +133,14 @@ const ExportPollsButton = (props: Props) => {
     saveAs(blob, "polls.xlsx");
   };
 
-  return <Button onClick={handleExport}>Download Polls Excel</Button>;
+  return (
+    <Button
+      className="bg-emerald-800 active:bg-emerald-900 focus:bg-emerald-900 text-white"
+      onClick={handleExport}
+    >
+      <FileDown /> Download Polls Excel
+    </Button>
+  );
 };
 
 export default ExportPollsButton;
