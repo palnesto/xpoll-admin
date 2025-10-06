@@ -1,47 +1,76 @@
+// src/utils/export-poll-excel.tsx
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { Button } from "@/components/ui/button";
 
-const ExportPollsButton = ({ polls, totalPolls, totalVotes }) => {
-  const handleExport = () => {
-    // Prepare header row
-    const headers = [
-      "Poll title",
-      "Poll description",
-      "Normalized Option-1 meaning",
-      "Option-1",
-      "Normalized Option-2 meaning",
-      "Option-2",
-      "Normalized Option-3 meaning",
-      "Option-3",
-      "Normalized Option-4 meaning",
-      "Option-4",
-    ];
+/**
+ * Expected shape of `polls`:
+ * [
+ *   {
+ *     _id: string,
+ *     title: string,
+ *     description: string,
+ *     options: Array<{ meaning: string; label: string }> // label already includes "(archived)" and "(votes)"
+ *   }
+ * ]
+ */
+type PollOption = { meaning: string; label: string };
+type PollRow = {
+  _id: string;
+  title: string;
+  description: string;
+  options: PollOption[];
+};
 
-    // Convert polls array into rows (polls should be array of objects)
-    const rows = polls.map((p) => [
-      p.title,
-      p.description,
-      p.opt1Meaning,
-      p.opt1,
-      p.opt2Meaning,
-      p.opt2,
-      p.opt3Meaning,
-      p.opt3,
-      p.opt4Meaning,
-      p.opt4,
-    ]);
+type Props = {
+  polls: PollRow[];
+  totalPolls: number;
+  totalVotes: number;
+};
+
+const ExportPollsButton = ({ polls, totalPolls, totalVotes }: Props) => {
+  const handleExport = () => {
+    const safePolls = Array.isArray(polls) ? polls : [];
+
+    // Determine the maximum number of options across all polls (dynamic columns)
+    const maxOptions = safePolls.reduce(
+      (m, p) => Math.max(m, (p.options || []).length),
+      0
+    );
+
+    // Prepare header row
+    const headers: string[] = ["Poll title", "Poll description"];
+    for (let i = 1; i <= maxOptions; i++) {
+      headers.push(`Normalized Option-${i} meaning`);
+      headers.push(`Option-${i}`);
+    }
+
+    // Convert polls array into rows
+    const rows = safePolls.map((p) => {
+      const base = [p.title, p.description];
+
+      // Fill dynamic option columns
+      const cells: string[] = [];
+      for (let i = 0; i < maxOptions; i++) {
+        const opt = p.options?.[i];
+        cells.push(opt?.meaning ?? "");
+        cells.push(opt?.label ?? "");
+      }
+
+      return [...base, ...cells];
+    });
 
     // Add a separator row with just "."
     rows.push(["."]);
 
-    // Add totals row (with values in 3rd and 4th columns)
-    rows.push([
-      "",
-      "",
-      `total polls considered (${totalPolls})`,
-      `total votes considered (${totalVotes})`,
-    ]);
+    // Add totals row (values in 3rd and 4th visible columns)
+    const totalsRow: any[] = ["", ""];
+    // pad until we reach at least 2 extra columns to place totals nicely
+    // (headers length already accounts for dynamic options, but the totals text is independent)
+    totalsRow.push(`total polls considered (${totalPolls})`);
+    totalsRow.push(`total votes considered (${totalVotes})`);
+
+    rows.push(totalsRow);
 
     // Combine header + data
     const worksheetData = [headers, ...rows];
