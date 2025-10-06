@@ -1,16 +1,9 @@
 import {
   Card,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import aptos from "@/assets/aptos.png";
 import xrp from "@/assets/xrp.png";
 import sui from "@/assets/sui.png";
@@ -23,6 +16,8 @@ import { cn } from "@/lib/utils";
 import { ASSETS, assetSpecs, AssetType } from "@/utils/currency-assets/asset";
 import { amount, unwrapString } from "@/utils/currency-assets/base";
 import SystemReportSkeleton from "@/utils/SystemReportSkeleton";
+import SpotlightCard from "@/components/SpotlightCard";
+import { Slide } from "react-awesome-reveal";
 
 export const Dashboard = memo(function Dashboard() {
   const { data: stats, isLoading } = useApiQuery(
@@ -34,20 +29,20 @@ export const Dashboard = memo(function Dashboard() {
     {
       label: "Total Users",
       // value: filteredStats?.users?.total ?? 0,
-      value: 2614,
+      value: 3277,
     },
     ...//filteredStats?.users?.byCountry ||
     ([
       {
-        count: 1265,
+        count: 1586,
         country: "IN",
       },
       {
-        count: 906,
+        count: 1136,
         country: "US",
       },
       {
-        count: 443,
+        count: 555,
         country: "KR",
       },
       {
@@ -149,7 +144,9 @@ export const Dashboard = memo(function Dashboard() {
       </div>
       <div className="flex justify-around items-center gap-6 py-6 overflow-x-auto">
         {cryptoStats.map((stat, index) => (
-          <CryptoStatCircle key={`asset-${index}`} {...stat} />
+          <Slide direction="up" cascade triggerOnce delay={index * 50}>
+            <CryptoStatCircle key={`asset-${index}`} {...stat} />
+          </Slide>
         ))}
       </div>
       {/* <Card className="p-6 mb-8 bg-primary/5 rounded-3xl">
@@ -173,18 +170,22 @@ export function SectionCards({ data }) {
   const { label, value, filter } = data;
   const cardClass = filter ? "flex-1 md:col-span-2" : "";
   return (
-    <Card
-      className={`@container/card bg-primary/5 rounded-3xl flex flex-row items-start justify-between ${cardClass}`}
+    <SpotlightCard
+      className="custom-spotlight-card"
+      spotlightColor="rgba(245, 244, 207, 0.1)"
     >
-      <CardHeader>
-        <CardDescription className="text-muted-foreground text-lg w-64">
-          {label}
-        </CardDescription>
-        <CardTitle className="text-xl font-semibold @[250px]/card:text-3xl">
-          {value}
-        </CardTitle>
-      </CardHeader>
-      {/* <CardFooter className="w-48">
+      <Card
+        className={`@container/card border border-zinc-700/50 bg-sidebar rounded-3xl flex flex-row items-start justify-between ${cardClass}`}
+      >
+        <CardHeader>
+          <CardDescription className="text-muted-foreground text-lg w-64 tracking-wide">
+            {label}
+          </CardDescription>
+          <CardTitle className="text-xl font-semibold @[250px]/card:text-3xl tracking-wide">
+            {value}
+          </CardTitle>
+        </CardHeader>
+        {/* <CardFooter className="w-48">
         {filter && (
           <Select>
             <SelectTrigger>
@@ -194,7 +195,8 @@ export function SectionCards({ data }) {
           </Select>
         )}
       </CardFooter> */}
-    </Card>
+      </Card>
+    </SpotlightCard>
   );
 }
 

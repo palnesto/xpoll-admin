@@ -1,5 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
-import { useWallets, useConnectWallet, useDisconnectWallet, useCurrentAccount } from '@mysten/dapp-kit';
+import { useCallback, useEffect, useState } from "react";
+import {
+  useWallets,
+  useConnectWallet,
+  useDisconnectWallet,
+  useCurrentAccount,
+} from "@mysten/dapp-kit";
 
 type ConnState = {
   connecting: boolean;
@@ -16,7 +21,11 @@ interface SuiConnectProps {
   onDisconnected?: () => void;
 }
 
-export default function SuiConnect({ className = '', onConnected, onDisconnected }: SuiConnectProps) {
+export default function SuiConnect({
+  className = "",
+  onConnected,
+  onDisconnected,
+}: SuiConnectProps) {
   const currentSui = useCurrentAccount();
   const wallets = useWallets();
   const { mutateAsync: connectWallet } = useConnectWallet();
@@ -26,13 +35,24 @@ export default function SuiConnect({ className = '', onConnected, onDisconnected
   const connectSui = useCallback(async () => {
     setSui((s) => ({ ...s, connecting: true, error: undefined }));
     try {
-      const slush = wallets.find((w) => /slush/i.test(String(w?.name ?? w?.id ?? ''))) || wallets[0];
-      if (!slush) throw new Error('No Sui wallets available');
+      const slush =
+        wallets.find((w) => /slush/i.test(String(w?.name ?? w?.id ?? ""))) ||
+        wallets[0];
+      if (!slush) throw new Error("No Sui wallets available");
       await connectWallet({ wallet: slush });
-      setSui({ connecting: false, connected: true, address: currentSui?.address, error: undefined });
+      setSui({
+        connecting: false,
+        connected: true,
+        address: currentSui?.address,
+        error: undefined,
+      });
       if (currentSui?.address) onConnected?.(currentSui.address);
     } catch (e: any) {
-      setSui({ connecting: false, connected: false, error: String(e?.message ?? e) });
+      setSui({
+        connecting: false,
+        connected: false,
+        error: String(e?.message ?? e),
+      });
     }
   }, [wallets, connectWallet, currentSui?.address]);
 
@@ -48,11 +68,10 @@ export default function SuiConnect({ className = '', onConnected, onDisconnected
     address: currentSui?.address,
   };
 
-
   useEffect(() => {
     if (currentSui?.address) {
-      console.log('Sui connected', currentSui?.address);
-      console.log('Chain', currentSui?.chains);
+      console.log("Sui connected", currentSui?.address);
+      console.log("Chain", currentSui?.chains);
       onConnected?.(currentSui.address);
     } else {
       onDisconnected?.();
@@ -61,7 +80,9 @@ export default function SuiConnect({ className = '', onConnected, onDisconnected
   }, [currentSui?.address]);
 
   return (
-    <section className={`rounded-xl border border-black/10 p-4 bg-white/50 ${className}`}>
+    <section
+      className={`rounded-xl border border-black/10 p-4 bg-sidebar ${className}`}
+    >
       <h2 className="font-medium mb-2">Connect Sui Wallet</h2>
       <div className="text-sm text-black/70 min-h-6 mb-3">
         {state.connected && state.address ? (
@@ -72,11 +93,11 @@ export default function SuiConnect({ className = '', onConnected, onDisconnected
             </code>
           </div>
         ) : state.connected ? (
-          <span>Connected</span>
+          <span className="text-zinc-500">Connected</span>
         ) : state.error ? (
           <span className="text-red-600">{state.error}</span>
         ) : (
-          <span>Not connected</span>
+          <span className="text-zinc-500">Not connected</span>
         )}
       </div>
       <div className="flex gap-2">
@@ -84,9 +105,9 @@ export default function SuiConnect({ className = '', onConnected, onDisconnected
           <button
             onClick={connectSui}
             disabled={state.connecting}
-            className="px-3 py-2 rounded-md bg-black text-white text-sm disabled:opacity-60"
+            className="px-3 py-2 rounded-md text-sm disabled:opacity-60 bg-foreground text-background"
           >
-            {state.connecting ? 'Connecting…' : 'Connect'}
+            {state.connecting ? "Connecting…" : "Connect"}
           </button>
         ) : (
           <button

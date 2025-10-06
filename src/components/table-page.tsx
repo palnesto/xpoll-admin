@@ -149,7 +149,7 @@ export function TablePage<T>({
           }}
         >
           <Table>
-            <TableHeader>
+            <TableHeader className="bg-zinc-800">
               {/* Header Row */}
               <TableRow>
                 {columns.map((column) => (
@@ -190,7 +190,7 @@ export function TablePage<T>({
                 </TableRow>
               )}
             </TableHeader>
-            <TableBody>
+            <TableBody className="bg-[#18181B]">
               {filteredData.map((row, rowIndex) => (
                 <TableRow key={rowIndex}>
                   {columns.map((column) => (
@@ -200,7 +200,10 @@ export function TablePage<T>({
                         maxWidth: "800px",
                       }}
                       key={String(column.key)}
-                      className={cn(column.isRightAligned && "text-right")}
+                      className={cn(
+                        column.isRightAligned && "text-right",
+                        "px-5"
+                      )}
                     >
                       {column.render ? (
                         column.render(row[column.key], row)

@@ -9,6 +9,7 @@ import "./index.css";
 import { SuiClientProvider, WalletProvider } from "@mysten/dapp-kit";
 import { getFullnodeUrl } from "@mysten/sui/client";
 import "@mysten/dapp-kit/dist/index.css";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
 const app = createRoot(document.getElementById("root")!);
 
@@ -31,6 +32,6 @@ app.render(
         </SuiClientProvider>
       </ThemeProvider>
     </BrowserRouter>
-    {/* <ReactQueryDevtools initialIsOpen={false} /> */}
+    <ReactQueryDevtools initialIsOpen={false} />
   </QueryClientProvider>
 );

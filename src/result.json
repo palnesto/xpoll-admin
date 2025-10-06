@@ -1,89 +1,2375 @@
 {
   "meta": {
-    "query": "What are the top issues of US?",
-    "generatedAt": "2025-09-30T17:55:54.843Z",
-    "confidence": {
-      "score": 10,
-      "level": "Low"
-    },
+    "query": "Effects of AI on Governments",
+    "generatedAt": "2025-10-05T12:40:27.182Z",
     "coverage": {
-      "pollsConsidered": 3,
-      "totalVotes": 92
+      "pollsConsidered": 8,
+      "totalVotes": 1448
     },
-    "tags": ["Immigration", "USA", "India", "South Korea", "Hate Speech"]
+    "tags": [
+      "Global",
+      "Country Trends",
+      "Normalized Verdicts",
+      "Trend",
+      "Granularity:Month"
+    ]
   },
   "layout": [
     {
       "type": "text",
       "variant": "heading",
-      "content": "Polling Analysis: What are the top issues of US?"
+      "content": "Global Opinion — Normalized Verdict Trends"
+    },
+    {
+      "type": "text",
+      "variant": "subheading",
+      "content": "Global Summary"
     },
     {
       "type": "text",
       "variant": "body",
-      "content": "**Key Insights:** Immigration leads, followed by Economy."
+      "content": "The global discourse surrounding the impact of artificial intelligence (AI) on government policy is increasingly complex, reflecting diverse public opinions and varying levels of trust in governmental oversight. A significant portion of the global population, approximately 30% (367 out of 1,500 respondents), supports government intervention in AI regulation, indicating a strong desire for structured oversight in this rapidly evolving field. This is juxtaposed with a notable 23% (287 respondents) expressing skepticism towards government oversight, highlighting concerns about the effectiveness and capability of governments to manage AI technologies responsibly. Additionally, 23% of respondents maintain a neutral or ambivalent stance, suggesting uncertainty about the implications of AI and the role of government in its development. The preference for market-driven solutions is less pronounced, with only 13% advocating for minimal government involvement in AI development. This landscape suggests a critical need for policymakers to balance regulation with innovation, ensuring that AI technologies are developed responsibly while fostering an environment conducive to technological advancement. Policymakers should consider establishing frameworks that incorporate public input, enhance transparency, and prioritize ethical standards in AI deployment. As AI continues to permeate various sectors, the call for a cautious approach—supported by 17% of respondents—emphasizes the importance of human oversight in AI decision-making processes. Overall, the global sentiment indicates a clear demand for proactive engagement from governments to navigate the challenges posed by AI, ensuring that its benefits are maximized while mitigating potential risks."
+    },
+    {
+      "type": "text",
+      "variant": "note",
+      "content": "Granularity: Month (auto-selected from overall time span)"
+    },
+    {
+      "type": "table",
+      "title": "Verdict Legend",
+      "columns": ["Verdict", "Description"],
+      "rows": [
+        [
+          "Government Intervention",
+          "Support for government involvement in AI regulation, development, or access."
+        ],
+        [
+          "Market-Driven Solutions",
+          "Preference for the market to dictate AI development and access without government interference."
+        ],
+        [
+          "Cautious Approach",
+          "Support for limited or conditional use of AI in government decisions, emphasizing oversight and human review."
+        ],
+        [
+          "Skepticism Towards Government Oversight",
+          "Concerns about the government's ability to effectively manage and regulate AI technologies."
+        ],
+        [
+          "Neutral or Ambivalent",
+          "Uncertainty or balanced views regarding the impact of AI and the role of government."
+        ]
+      ]
     },
     {
       "type": "stat-cards",
       "cards": [
         {
-          "label": "Confidence",
-          "value": 10,
-          "unit": "/100"
+          "label": "Total Votes (normalized)",
+          "value": 1448
         },
         {
-          "label": "Polls considered",
-          "value": 3
+          "label": "Polls Considered",
+          "value": 8
         },
         {
-          "label": "Total votes",
-          "value": 92
+          "label": "Top Verdict",
+          "value": "Government Intervention (25%)"
         }
       ]
     },
     {
-      "type": "table",
-      "title": "Top Entities",
-      "columns": ["Entity", "Total votes"],
-      "rows": [
-        ["Unsure about top issues", 53],
-        ["Immigration is top issue", 39]
-      ]
+      "type": "text",
+      "variant": "body",
+      "content": "Showing monthly vote trends from 2024-01 to 2025-12. Each line represents a deduced verdict."
     },
     {
-      "type": "table",
-      "title": "Top Insights",
-      "columns": ["Insight", "Support votes", "Evidence polls"],
-      "rows": [
-        [
-          "In the US (n=26), 46% supported 'Immigration is top issue' (n=8) compared to 0% in India (n=4) and South Korea (n=1).",
-          8,
-          2
-        ],
-        [
-          "In the US (n=25), 100% expressed uncertainty about top issues (n=30) in the 'Hate speech crackdown controversies' poll, while in India (n=4) and South Korea (n=1) the same view was also dominant.",
-          30,
-          1
-        ],
-        [
-          "Across all polls, there is a consistent trend where 100% of respondents from the US (n=26) and India (n=4) support 'Immigration is top issue' (n=31) in the 'Immigrant neighborhoods on alert' poll.",
-          31,
-          1
-        ]
+      "type": "chart",
+      "chartType": "line",
+      "title": "Votes by Verdict (Month-level, Global)",
+      "legend": true,
+      "xAxis": "Month",
+      "yAxis": "Votes",
+      "data": [
+        {
+          "label": "2024-01",
+          "value": 7,
+          "group": "Market-Driven Solutions"
+        },
+        {
+          "label": "2024-01",
+          "value": 15,
+          "group": "Government Intervention"
+        },
+        {
+          "label": "2024-01",
+          "value": 12,
+          "group": "Cautious Approach"
+        },
+        {
+          "label": "2024-01",
+          "value": 7,
+          "group": "Skepticism Towards Government Oversight"
+        },
+        {
+          "label": "2024-01",
+          "value": 15,
+          "group": "Neutral or Ambivalent"
+        },
+        {
+          "label": "2024-02",
+          "value": 10,
+          "group": "Market-Driven Solutions"
+        },
+        {
+          "label": "2024-02",
+          "value": 14,
+          "group": "Government Intervention"
+        },
+        {
+          "label": "2024-02",
+          "value": 16,
+          "group": "Cautious Approach"
+        },
+        {
+          "label": "2024-02",
+          "value": 12,
+          "group": "Skepticism Towards Government Oversight"
+        },
+        {
+          "label": "2024-02",
+          "value": 21,
+          "group": "Neutral or Ambivalent"
+        },
+        {
+          "label": "2024-03",
+          "value": 10,
+          "group": "Market-Driven Solutions"
+        },
+        {
+          "label": "2024-03",
+          "value": 18,
+          "group": "Government Intervention"
+        },
+        {
+          "label": "2024-03",
+          "value": 11,
+          "group": "Cautious Approach"
+        },
+        {
+          "label": "2024-03",
+          "value": 14,
+          "group": "Skepticism Towards Government Oversight"
+        },
+        {
+          "label": "2024-03",
+          "value": 10,
+          "group": "Neutral or Ambivalent"
+        },
+        {
+          "label": "2024-04",
+          "value": 10,
+          "group": "Market-Driven Solutions"
+        },
+        {
+          "label": "2024-04",
+          "value": 20,
+          "group": "Government Intervention"
+        },
+        {
+          "label": "2024-04",
+          "value": 8,
+          "group": "Cautious Approach"
+        },
+        {
+          "label": "2024-04",
+          "value": 8,
+          "group": "Skepticism Towards Government Oversight"
+        },
+        {
+          "label": "2024-04",
+          "value": 20,
+          "group": "Neutral or Ambivalent"
+        },
+        {
+          "label": "2024-05",
+          "value": 7,
+          "group": "Market-Driven Solutions"
+        },
+        {
+          "label": "2024-05",
+          "value": 15,
+          "group": "Government Intervention"
+        },
+        {
+          "label": "2024-05",
+          "value": 13,
+          "group": "Cautious Approach"
+        },
+        {
+          "label": "2024-05",
+          "value": 15,
+          "group": "Skepticism Towards Government Oversight"
+        },
+        {
+          "label": "2024-05",
+          "value": 16,
+          "group": "Neutral or Ambivalent"
+        },
+        {
+          "label": "2024-06",
+          "value": 6,
+          "group": "Market-Driven Solutions"
+        },
+        {
+          "label": "2024-06",
+          "value": 26,
+          "group": "Government Intervention"
+        },
+        {
+          "label": "2024-06",
+          "value": 9,
+          "group": "Cautious Approach"
+        },
+        {
+          "label": "2024-06",
+          "value": 8,
+          "group": "Skepticism Towards Government Oversight"
+        },
+        {
+          "label": "2024-06",
+          "value": 18,
+          "group": "Neutral or Ambivalent"
+        },
+        {
+          "label": "2024-07",
+          "value": 10,
+          "group": "Market-Driven Solutions"
+        },
+        {
+          "label": "2024-07",
+          "value": 21,
+          "group": "Government Intervention"
+        },
+        {
+          "label": "2024-07",
+          "value": 16,
+          "group": "Skepticism Towards Government Oversight"
+        },
+        {
+          "label": "2024-07",
+          "value": 7,
+          "group": "Cautious Approach"
+        },
+        {
+          "label": "2024-07",
+          "value": 17,
+          "group": "Neutral or Ambivalent"
+        },
+        {
+          "label": "2024-08",
+          "value": 12,
+          "group": "Government Intervention"
+        },
+        {
+          "label": "2024-08",
+          "value": 7,
+          "group": "Cautious Approach"
+        },
+        {
+          "label": "2024-08",
+          "value": 5,
+          "group": "Market-Driven Solutions"
+        },
+        {
+          "label": "2024-08",
+          "value": 13,
+          "group": "Skepticism Towards Government Oversight"
+        },
+        {
+          "label": "2024-08",
+          "value": 17,
+          "group": "Neutral or Ambivalent"
+        },
+        {
+          "label": "2024-09",
+          "value": 9,
+          "group": "Market-Driven Solutions"
+        },
+        {
+          "label": "2024-09",
+          "value": 9,
+          "group": "Government Intervention"
+        },
+        {
+          "label": "2024-09",
+          "value": 9,
+          "group": "Cautious Approach"
+        },
+        {
+          "label": "2024-09",
+          "value": 13,
+          "group": "Skepticism Towards Government Oversight"
+        },
+        {
+          "label": "2024-09",
+          "value": 20,
+          "group": "Neutral or Ambivalent"
+        },
+        {
+          "label": "2024-10",
+          "value": 14,
+          "group": "Market-Driven Solutions"
+        },
+        {
+          "label": "2024-10",
+          "value": 14,
+          "group": "Government Intervention"
+        },
+        {
+          "label": "2024-10",
+          "value": 8,
+          "group": "Cautious Approach"
+        },
+        {
+          "label": "2024-10",
+          "value": 12,
+          "group": "Skepticism Towards Government Oversight"
+        },
+        {
+          "label": "2024-10",
+          "value": 13,
+          "group": "Neutral or Ambivalent"
+        },
+        {
+          "label": "2024-11",
+          "value": 8,
+          "group": "Market-Driven Solutions"
+        },
+        {
+          "label": "2024-11",
+          "value": 13,
+          "group": "Government Intervention"
+        },
+        {
+          "label": "2024-11",
+          "value": 15,
+          "group": "Cautious Approach"
+        },
+        {
+          "label": "2024-11",
+          "value": 10,
+          "group": "Skepticism Towards Government Oversight"
+        },
+        {
+          "label": "2024-11",
+          "value": 10,
+          "group": "Neutral or Ambivalent"
+        },
+        {
+          "label": "2024-12",
+          "value": 9,
+          "group": "Market-Driven Solutions"
+        },
+        {
+          "label": "2024-12",
+          "value": 12,
+          "group": "Government Intervention"
+        },
+        {
+          "label": "2024-12",
+          "value": 12,
+          "group": "Cautious Approach"
+        },
+        {
+          "label": "2024-12",
+          "value": 13,
+          "group": "Skepticism Towards Government Oversight"
+        },
+        {
+          "label": "2024-12",
+          "value": 16,
+          "group": "Neutral or Ambivalent"
+        },
+        {
+          "label": "2025-01",
+          "value": 10,
+          "group": "Market-Driven Solutions"
+        },
+        {
+          "label": "2025-01",
+          "value": 18,
+          "group": "Government Intervention"
+        },
+        {
+          "label": "2025-01",
+          "value": 10,
+          "group": "Cautious Approach"
+        },
+        {
+          "label": "2025-01",
+          "value": 7,
+          "group": "Skepticism Towards Government Oversight"
+        },
+        {
+          "label": "2025-01",
+          "value": 8,
+          "group": "Neutral or Ambivalent"
+        },
+        {
+          "label": "2025-02",
+          "value": 9,
+          "group": "Market-Driven Solutions"
+        },
+        {
+          "label": "2025-02",
+          "value": 18,
+          "group": "Government Intervention"
+        },
+        {
+          "label": "2025-02",
+          "value": 10,
+          "group": "Cautious Approach"
+        },
+        {
+          "label": "2025-02",
+          "value": 14,
+          "group": "Skepticism Towards Government Oversight"
+        },
+        {
+          "label": "2025-02",
+          "value": 12,
+          "group": "Neutral or Ambivalent"
+        },
+        {
+          "label": "2025-03",
+          "value": 7,
+          "group": "Market-Driven Solutions"
+        },
+        {
+          "label": "2025-03",
+          "value": 12,
+          "group": "Cautious Approach"
+        },
+        {
+          "label": "2025-03",
+          "value": 16,
+          "group": "Skepticism Towards Government Oversight"
+        },
+        {
+          "label": "2025-03",
+          "value": 10,
+          "group": "Government Intervention"
+        },
+        {
+          "label": "2025-03",
+          "value": 11,
+          "group": "Neutral or Ambivalent"
+        },
+        {
+          "label": "2025-04",
+          "value": 20,
+          "group": "Government Intervention"
+        },
+        {
+          "label": "2025-04",
+          "value": 11,
+          "group": "Cautious Approach"
+        },
+        {
+          "label": "2025-04",
+          "value": 18,
+          "group": "Skepticism Towards Government Oversight"
+        },
+        {
+          "label": "2025-04",
+          "value": 15,
+          "group": "Neutral or Ambivalent"
+        },
+        {
+          "label": "2025-04",
+          "value": 5,
+          "group": "Market-Driven Solutions"
+        },
+        {
+          "label": "2025-05",
+          "value": 8,
+          "group": "Market-Driven Solutions"
+        },
+        {
+          "label": "2025-05",
+          "value": 16,
+          "group": "Government Intervention"
+        },
+        {
+          "label": "2025-05",
+          "value": 9,
+          "group": "Cautious Approach"
+        },
+        {
+          "label": "2025-05",
+          "value": 11,
+          "group": "Skepticism Towards Government Oversight"
+        },
+        {
+          "label": "2025-05",
+          "value": 11,
+          "group": "Neutral or Ambivalent"
+        },
+        {
+          "label": "2025-06",
+          "value": 9,
+          "group": "Market-Driven Solutions"
+        },
+        {
+          "label": "2025-06",
+          "value": 13,
+          "group": "Government Intervention"
+        },
+        {
+          "label": "2025-06",
+          "value": 8,
+          "group": "Cautious Approach"
+        },
+        {
+          "label": "2025-06",
+          "value": 14,
+          "group": "Skepticism Towards Government Oversight"
+        },
+        {
+          "label": "2025-06",
+          "value": 14,
+          "group": "Neutral or Ambivalent"
+        },
+        {
+          "label": "2025-07",
+          "value": 9,
+          "group": "Market-Driven Solutions"
+        },
+        {
+          "label": "2025-07",
+          "value": 19,
+          "group": "Government Intervention"
+        },
+        {
+          "label": "2025-07",
+          "value": 11,
+          "group": "Cautious Approach"
+        },
+        {
+          "label": "2025-07",
+          "value": 12,
+          "group": "Skepticism Towards Government Oversight"
+        },
+        {
+          "label": "2025-07",
+          "value": 12,
+          "group": "Neutral or Ambivalent"
+        },
+        {
+          "label": "2025-08",
+          "value": 15,
+          "group": "Government Intervention"
+        },
+        {
+          "label": "2025-08",
+          "value": 12,
+          "group": "Cautious Approach"
+        },
+        {
+          "label": "2025-08",
+          "value": 11,
+          "group": "Skepticism Towards Government Oversight"
+        },
+        {
+          "label": "2025-08",
+          "value": 17,
+          "group": "Neutral or Ambivalent"
+        },
+        {
+          "label": "2025-08",
+          "value": 3,
+          "group": "Market-Driven Solutions"
+        },
+        {
+          "label": "2025-09",
+          "value": 10,
+          "group": "Government Intervention"
+        },
+        {
+          "label": "2025-09",
+          "value": 11,
+          "group": "Cautious Approach"
+        },
+        {
+          "label": "2025-09",
+          "value": 5,
+          "group": "Skepticism Towards Government Oversight"
+        },
+        {
+          "label": "2025-09",
+          "value": 8,
+          "group": "Neutral or Ambivalent"
+        },
+        {
+          "label": "2025-09",
+          "value": 4,
+          "group": "Market-Driven Solutions"
+        },
+        {
+          "label": "2025-10",
+          "value": 7,
+          "group": "Market-Driven Solutions"
+        },
+        {
+          "label": "2025-10",
+          "value": 10,
+          "group": "Government Intervention"
+        },
+        {
+          "label": "2025-10",
+          "value": 13,
+          "group": "Cautious Approach"
+        },
+        {
+          "label": "2025-10",
+          "value": 13,
+          "group": "Skepticism Towards Government Oversight"
+        },
+        {
+          "label": "2025-10",
+          "value": 15,
+          "group": "Neutral or Ambivalent"
+        },
+        {
+          "label": "2025-11",
+          "value": 11,
+          "group": "Market-Driven Solutions"
+        },
+        {
+          "label": "2025-11",
+          "value": 14,
+          "group": "Government Intervention"
+        },
+        {
+          "label": "2025-11",
+          "value": 6,
+          "group": "Cautious Approach"
+        },
+        {
+          "label": "2025-11",
+          "value": 9,
+          "group": "Skepticism Towards Government Oversight"
+        },
+        {
+          "label": "2025-11",
+          "value": 11,
+          "group": "Neutral or Ambivalent"
+        },
+        {
+          "label": "2025-12",
+          "value": 8,
+          "group": "Market-Driven Solutions"
+        },
+        {
+          "label": "2025-12",
+          "value": 15,
+          "group": "Government Intervention"
+        },
+        {
+          "label": "2025-12",
+          "value": 8,
+          "group": "Cautious Approach"
+        },
+        {
+          "label": "2025-12",
+          "value": 16,
+          "group": "Skepticism Towards Government Oversight"
+        },
+        {
+          "label": "2025-12",
+          "value": 24,
+          "group": "Neutral or Ambivalent"
+        }
       ]
     },
     {
       "type": "chart",
-      "chartType": "bar",
-      "title": "Support by Entities",
+      "chartType": "pie",
+      "title": "Overall Verdict Distribution (Global)",
+      "legend": true,
       "data": [
         {
-          "label": "Unsure about top issues",
-          "value": 53
+          "label": "Government Intervention",
+          "value": 367
         },
         {
-          "label": "Immigration is top issue",
-          "value": 39
+          "label": "Neutral or Ambivalent",
+          "value": 351
+        },
+        {
+          "label": "Skepticism Towards Government Oversight",
+          "value": 287
+        },
+        {
+          "label": "Cautious Approach",
+          "value": 248
+        },
+        {
+          "label": "Market-Driven Solutions",
+          "value": 195
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "title": "Country Trends — IN",
+      "content": [
+        {
+          "type": "text",
+          "variant": "subheading",
+          "content": "Country Summary — IN"
+        },
+        {
+          "type": "text",
+          "variant": "body",
+          "content": "In India, the discourse surrounding the effects of artificial intelligence (AI) on government operations reflects a complex interplay of perspectives. The data indicates a notable inclination towards 'Neutral or Ambivalent' views, which accounts for 57 out of 228 responses. This suggests that a significant portion of the population is uncertain about the implications of AI, indicating a need for more public education and discourse on the subject. Following closely is 'Government Intervention' at 55 responses, highlighting a preference for regulatory frameworks to ensure that AI technologies are developed and deployed responsibly. This sentiment is crucial in a country where rapid technological advancements often outpace regulatory measures. The 'Skepticism Towards Government Oversight' category, with 45 responses, underscores concerns about the government's capacity to effectively manage AI technologies, reflecting a broader global skepticism regarding government capabilities in tech regulation. Additionally, the 'Cautious Approach' with 39 responses indicates a desire for oversight and human review in AI applications, particularly in sensitive areas such as public welfare and security. Lastly, 'Market-Driven Solutions' received the least support with 28 responses, suggesting that there is less confidence in the market's ability to self-regulate AI development without government intervention. Overall, the Indian perspective on AI governance is characterized by a cautious optimism, emphasizing the need for balanced approaches that incorporate both innovation and regulation."
+        },
+        {
+          "type": "text",
+          "variant": "body",
+          "content": "Month-level votes by deduced verdict from 2024-01 to 2025-12. See “Verdict Legend” above for definitions."
+        },
+        {
+          "type": "chart",
+          "chartType": "line",
+          "title": "Votes by Verdict (Month-level, IN)",
+          "legend": true,
+          "xAxis": "Month",
+          "yAxis": "Votes",
+          "data": [
+            {
+              "label": "2024-01",
+              "value": 2,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2024-01",
+              "value": 2,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2024-01",
+              "value": 4,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2024-01",
+              "value": 2,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2024-02",
+              "value": 5,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2024-02",
+              "value": 2,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2024-02",
+              "value": 4,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2024-02",
+              "value": 2,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2024-03",
+              "value": 4,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2024-03",
+              "value": 1,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2024-04",
+              "value": 2,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2024-04",
+              "value": 6,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2024-04",
+              "value": 2,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2024-04",
+              "value": 5,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2024-05",
+              "value": 4,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2024-05",
+              "value": 4,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2024-05",
+              "value": 3,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2024-05",
+              "value": 5,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2024-05",
+              "value": 4,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2024-06",
+              "value": 3,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2024-06",
+              "value": 4,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2024-06",
+              "value": 2,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2024-06",
+              "value": 1,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2024-07",
+              "value": 4,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2024-07",
+              "value": 5,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2024-07",
+              "value": 1,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2024-08",
+              "value": 1,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2024-08",
+              "value": 2,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2024-09",
+              "value": 5,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2024-09",
+              "value": 1,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2024-09",
+              "value": 1,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2024-10",
+              "value": 1,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2024-10",
+              "value": 3,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2024-10",
+              "value": 3,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2024-10",
+              "value": 2,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2024-11",
+              "value": 4,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2024-11",
+              "value": 2,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2024-11",
+              "value": 1,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2024-11",
+              "value": 1,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2024-11",
+              "value": 1,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2024-12",
+              "value": 2,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2024-12",
+              "value": 1,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2024-12",
+              "value": 3,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2025-01",
+              "value": 1,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2025-01",
+              "value": 1,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2025-01",
+              "value": 1,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2025-01",
+              "value": 1,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2025-01",
+              "value": 1,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2025-02",
+              "value": 4,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2025-02",
+              "value": 3,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2025-02",
+              "value": 4,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2025-02",
+              "value": 2,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2025-02",
+              "value": 1,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2025-03",
+              "value": 1,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2025-03",
+              "value": 3,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2025-03",
+              "value": 2,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2025-03",
+              "value": 2,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2025-03",
+              "value": 1,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2025-04",
+              "value": 4,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2025-04",
+              "value": 1,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2025-04",
+              "value": 3,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2025-04",
+              "value": 2,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2025-04",
+              "value": 2,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2025-05",
+              "value": 3,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2025-05",
+              "value": 5,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2025-05",
+              "value": 3,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2025-06",
+              "value": 2,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2025-06",
+              "value": 2,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2025-06",
+              "value": 2,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2025-06",
+              "value": 1,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2025-07",
+              "value": 1,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2025-07",
+              "value": 3,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2025-07",
+              "value": 2,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2025-07",
+              "value": 1,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2025-08",
+              "value": 2,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2025-08",
+              "value": 1,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2025-08",
+              "value": 1,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2025-08",
+              "value": 1,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2025-09",
+              "value": 3,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2025-09",
+              "value": 3,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2025-09",
+              "value": 1,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2025-09",
+              "value": 1,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2025-10",
+              "value": 2,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2025-10",
+              "value": 1,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2025-10",
+              "value": 3,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2025-10",
+              "value": 3,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2025-10",
+              "value": 1,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2025-11",
+              "value": 3,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2025-11",
+              "value": 2,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2025-11",
+              "value": 1,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2025-11",
+              "value": 4,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2025-12",
+              "value": 2,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2025-12",
+              "value": 4,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2025-12",
+              "value": 1,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2025-12",
+              "value": 2,
+              "group": "Skepticism Towards Government Oversight"
+            }
+          ]
+        },
+        {
+          "type": "chart",
+          "chartType": "pie",
+          "title": "Overall Verdict Distribution (IN)",
+          "legend": true,
+          "data": [
+            {
+              "label": "Neutral or Ambivalent",
+              "value": 57
+            },
+            {
+              "label": "Government Intervention",
+              "value": 55
+            },
+            {
+              "label": "Skepticism Towards Government Oversight",
+              "value": 45
+            },
+            {
+              "label": "Cautious Approach",
+              "value": 39
+            },
+            {
+              "label": "Market-Driven Solutions",
+              "value": 28
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "title": "Country Trends — KR",
+      "content": [
+        {
+          "type": "text",
+          "variant": "subheading",
+          "content": "Country Summary — KR"
+        },
+        {
+          "type": "text",
+          "variant": "body",
+          "content": "In South Korea, the conversation around AI's impact on government is marked by a strong preference for 'Government Intervention,' which garnered 16 responses. This reflects a societal inclination towards ensuring that AI technologies are developed under strict regulatory oversight, likely due to the rapid pace of technological advancements in the country. However, the relatively low number of responses indicates a sparsity of strong opinions, suggesting that the public may not be fully engaged or informed about the nuances of AI governance. The 'Skepticism Towards Government Oversight' category, with 10 responses, reveals concerns about whether the government can effectively manage and regulate AI technologies, a sentiment echoed globally. Similarly, 'Neutral or Ambivalent' views also received 10 responses, indicating a segment of the population that is unsure about the role of government in AI. The 'Cautious Approach' category, with 7 responses, suggests a desire for oversight but with a recognition of the need for human judgment in AI applications. Lastly, 'Market-Driven Solutions' received the least attention with only 5 responses, indicating a lack of confidence in the market's ability to self-regulate AI development. Overall, the South Korean perspective on AI governance reflects a cautious approach, with a clear call for government involvement to ensure ethical and responsible AI deployment."
+        },
+        {
+          "type": "text",
+          "variant": "body",
+          "content": "Month-level votes by deduced verdict from 2024-01 to 2025-12. See “Verdict Legend” above for definitions."
+        },
+        {
+          "type": "chart",
+          "chartType": "line",
+          "title": "Votes by Verdict (Month-level, KR)",
+          "legend": true,
+          "xAxis": "Month",
+          "yAxis": "Votes",
+          "data": [
+            {
+              "label": "2024-01",
+              "value": 1,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2024-01",
+              "value": 1,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2024-01",
+              "value": 1,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2024-02",
+              "value": 3,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2024-03",
+              "value": 1,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2024-03",
+              "value": 2,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2024-04",
+              "value": 2,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2024-04",
+              "value": 1,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2024-05",
+              "value": 1,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2024-06",
+              "value": 1,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2024-07",
+              "value": 1,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2024-07",
+              "value": 1,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2024-07",
+              "value": 2,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2024-08",
+              "value": 1,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2024-08",
+              "value": 2,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2024-09",
+              "value": 1,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2024-09",
+              "value": 1,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2024-09",
+              "value": 2,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2024-11",
+              "value": 1,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2024-11",
+              "value": 1,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2024-12",
+              "value": 1,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2024-12",
+              "value": 2,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2025-01",
+              "value": 1,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2025-03",
+              "value": 1,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2025-03",
+              "value": 1,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2025-04",
+              "value": 1,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2025-04",
+              "value": 1,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2025-06",
+              "value": 1,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2025-06",
+              "value": 1,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2025-07",
+              "value": 1,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2025-08",
+              "value": 2,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2025-08",
+              "value": 2,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2025-09",
+              "value": 1,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2025-10",
+              "value": 1,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2025-11",
+              "value": 1,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2025-12",
+              "value": 1,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2025-12",
+              "value": 2,
+              "group": "Neutral or Ambivalent"
+            }
+          ]
+        },
+        {
+          "type": "chart",
+          "chartType": "pie",
+          "title": "Overall Verdict Distribution (KR)",
+          "legend": true,
+          "data": [
+            {
+              "label": "Government Intervention",
+              "value": 16
+            },
+            {
+              "label": "Skepticism Towards Government Oversight",
+              "value": 10
+            },
+            {
+              "label": "Neutral or Ambivalent",
+              "value": 10
+            },
+            {
+              "label": "Cautious Approach",
+              "value": 7
+            },
+            {
+              "label": "Market-Driven Solutions",
+              "value": 5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "title": "Country Trends — US",
+      "content": [
+        {
+          "type": "text",
+          "variant": "subheading",
+          "content": "Country Summary — US"
+        },
+        {
+          "type": "text",
+          "variant": "body",
+          "content": "In the United States, the discourse on the effects of AI on government is characterized by a significant preference for 'Government Intervention,' which received 289 responses, the highest among the three countries analyzed. This overwhelming support for regulatory frameworks suggests a strong public sentiment that the government should play an active role in overseeing AI technologies to mitigate risks and ensure ethical standards. The 'Neutral or Ambivalent' category follows closely with 274 responses, indicating that a substantial portion of the population is still grappling with the implications of AI, reflecting a broader uncertainty in society about the future of technology and its governance. 'Skepticism Towards Government Oversight' garnered 223 responses, highlighting concerns about the government's ability to effectively manage AI technologies, a sentiment that resonates with global trends. Additionally, the 'Cautious Approach' received 199 responses, emphasizing the need for oversight and human review in AI applications, particularly in areas such as law enforcement and public safety. Lastly, 'Market-Driven Solutions' received 155 responses, suggesting that while there is some support for market-led initiatives, it is overshadowed by the demand for government intervention. Overall, the U.S. perspective on AI governance is marked by a strong call for regulatory oversight, reflecting a deep-seated concern for ethical considerations and the potential societal impacts of AI technologies."
+        },
+        {
+          "type": "text",
+          "variant": "body",
+          "content": "Month-level votes by deduced verdict from 2024-01 to 2025-12. See “Verdict Legend” above for definitions."
+        },
+        {
+          "type": "chart",
+          "chartType": "line",
+          "title": "Votes by Verdict (Month-level, US)",
+          "legend": true,
+          "xAxis": "Month",
+          "yAxis": "Votes",
+          "data": [
+            {
+              "label": "2024-01",
+              "value": 11,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2024-01",
+              "value": 10,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2024-01",
+              "value": 11,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2024-01",
+              "value": 4,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2024-01",
+              "value": 5,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2024-02",
+              "value": 18,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2024-02",
+              "value": 7,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2024-02",
+              "value": 14,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2024-02",
+              "value": 7,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2024-02",
+              "value": 10,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2024-03",
+              "value": 9,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2024-03",
+              "value": 9,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2024-03",
+              "value": 10,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2024-03",
+              "value": 14,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2024-03",
+              "value": 12,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2024-04",
+              "value": 7,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2024-04",
+              "value": 7,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2024-04",
+              "value": 13,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2024-04",
+              "value": 5,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2024-04",
+              "value": 12,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2024-05",
+              "value": 11,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2024-05",
+              "value": 9,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2024-05",
+              "value": 9,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2024-05",
+              "value": 10,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2024-05",
+              "value": 4,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2024-06",
+              "value": 5,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2024-06",
+              "value": 23,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2024-06",
+              "value": 5,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2024-06",
+              "value": 13,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2024-06",
+              "value": 8,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2024-07",
+              "value": 16,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2024-07",
+              "value": 13,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2024-07",
+              "value": 11,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2024-07",
+              "value": 7,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2024-07",
+              "value": 9,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2024-08",
+              "value": 14,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2024-08",
+              "value": 11,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2024-08",
+              "value": 7,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2024-08",
+              "value": 11,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2024-08",
+              "value": 5,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2024-09",
+              "value": 6,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2024-09",
+              "value": 8,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2024-09",
+              "value": 7,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2024-09",
+              "value": 12,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2024-09",
+              "value": 14,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2024-10",
+              "value": 11,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2024-10",
+              "value": 5,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2024-10",
+              "value": 11,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2024-10",
+              "value": 11,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2024-10",
+              "value": 9,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2024-11",
+              "value": 7,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2024-11",
+              "value": 9,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2024-11",
+              "value": 9,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2024-11",
+              "value": 13,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2024-11",
+              "value": 6,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2024-12",
+              "value": 13,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2024-12",
+              "value": 7,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2024-12",
+              "value": 9,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2024-12",
+              "value": 15,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2024-12",
+              "value": 8,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2025-01",
+              "value": 9,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2025-01",
+              "value": 7,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2025-01",
+              "value": 16,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2025-01",
+              "value": 6,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2025-01",
+              "value": 6,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2025-02",
+              "value": 10,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2025-02",
+              "value": 15,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2025-02",
+              "value": 8,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2025-02",
+              "value": 8,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2025-02",
+              "value": 8,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2025-03",
+              "value": 14,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2025-03",
+              "value": 8,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2025-03",
+              "value": 9,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2025-03",
+              "value": 9,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2025-03",
+              "value": 4,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2025-04",
+              "value": 3,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2025-04",
+              "value": 11,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2025-04",
+              "value": 17,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2025-04",
+              "value": 13,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2025-04",
+              "value": 9,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2025-05",
+              "value": 10,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2025-05",
+              "value": 6,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2025-05",
+              "value": 11,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2025-05",
+              "value": 7,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2025-05",
+              "value": 7,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2025-06",
+              "value": 12,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2025-06",
+              "value": 12,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2025-06",
+              "value": 7,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2025-06",
+              "value": 11,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2025-06",
+              "value": 7,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2025-07",
+              "value": 18,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2025-07",
+              "value": 8,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2025-07",
+              "value": 11,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2025-07",
+              "value": 9,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2025-07",
+              "value": 8,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2025-08",
+              "value": 12,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2025-08",
+              "value": 15,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2025-08",
+              "value": 11,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2025-08",
+              "value": 7,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2025-08",
+              "value": 3,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2025-09",
+              "value": 5,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2025-09",
+              "value": 8,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2025-09",
+              "value": 4,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2025-09",
+              "value": 8,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2025-09",
+              "value": 3,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2025-10",
+              "value": 10,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2025-10",
+              "value": 6,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2025-10",
+              "value": 7,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2025-10",
+              "value": 10,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2025-10",
+              "value": 12,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2025-11",
+              "value": 13,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2025-11",
+              "value": 6,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2025-11",
+              "value": 8,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2025-11",
+              "value": 6,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2025-11",
+              "value": 7,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2025-12",
+              "value": 13,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2025-12",
+              "value": 13,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2025-12",
+              "value": 7,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2025-12",
+              "value": 8,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2025-12",
+              "value": 18,
+              "group": "Neutral or Ambivalent"
+            }
+          ]
+        },
+        {
+          "type": "chart",
+          "chartType": "pie",
+          "title": "Overall Verdict Distribution (US)",
+          "legend": true,
+          "data": [
+            {
+              "label": "Government Intervention",
+              "value": 289
+            },
+            {
+              "label": "Neutral or Ambivalent",
+              "value": 274
+            },
+            {
+              "label": "Skepticism Towards Government Oversight",
+              "value": 223
+            },
+            {
+              "label": "Cautious Approach",
+              "value": 199
+            },
+            {
+              "label": "Market-Driven Solutions",
+              "value": 155
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "title": "Country Trends — VN",
+      "content": [
+        {
+          "type": "text",
+          "variant": "subheading",
+          "content": "Country Summary — VN"
+        },
+        {
+          "type": "text",
+          "variant": "body",
+          "content": "In Vietnam, public opinion on AI governance is notably sparse, with only 10 respondents expressing neutral or ambivalent views about the role of government in AI development. The support for government intervention is minimal, with only 7 respondents advocating for regulatory measures. Skepticism towards government oversight is slightly higher, with 9 respondents expressing concerns about the government's capacity to effectively manage AI technologies. The preference for market-driven solutions is equally low, with only 7 respondents supporting minimal government involvement. The cautious approach is the least favored, with only 3 respondents advocating for limited use of AI in government decisions. This limited engagement suggests a need for greater public discourse on AI governance in Vietnam. Policymakers should consider initiatives to raise awareness about AI technologies and their potential impacts, fostering a more informed public. Engaging citizens in discussions about AI governance could help build trust and support for necessary regulatory measures, ensuring that Vietnam can navigate the challenges and opportunities presented by AI technologies effectively."
+        },
+        {
+          "type": "text",
+          "variant": "body",
+          "content": "Month-level votes by deduced verdict from 2024-01 to 2025-10. See “Verdict Legend” above for definitions."
+        },
+        {
+          "type": "chart",
+          "chartType": "line",
+          "title": "Votes by Verdict (Month-level, VN)",
+          "legend": true,
+          "xAxis": "Month",
+          "yAxis": "Votes",
+          "data": [
+            {
+              "label": "2024-01",
+              "value": 1,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2024-01",
+              "value": 1,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2024-02",
+              "value": 1,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2024-03",
+              "value": 1,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2024-04",
+              "value": 1,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2024-04",
+              "value": 1,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2024-04",
+              "value": 1,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2024-04",
+              "value": 1,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2024-05",
+              "value": 2,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2024-06",
+              "value": 1,
+              "group": "Cautious Approach"
+            },
+            {
+              "label": "2024-06",
+              "value": 1,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2024-07",
+              "value": 1,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2024-09",
+              "value": 1,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2024-09",
+              "value": 1,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2024-10",
+              "value": 2,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2024-10",
+              "value": 2,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2024-10",
+              "value": 1,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2024-11",
+              "value": 1,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2024-12",
+              "value": 1,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2025-01",
+              "value": 1,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2025-01",
+              "value": 2,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2025-03",
+              "value": 1,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2025-04",
+              "value": 2,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2025-05",
+              "value": 1,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2025-05",
+              "value": 1,
+              "group": "Market-Driven Solutions"
+            },
+            {
+              "label": "2025-05",
+              "value": 1,
+              "group": "Skepticism Towards Government Oversight"
+            },
+            {
+              "label": "2025-07",
+              "value": 1,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2025-08",
+              "value": 1,
+              "group": "Neutral or Ambivalent"
+            },
+            {
+              "label": "2025-09",
+              "value": 1,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2025-10",
+              "value": 1,
+              "group": "Government Intervention"
+            },
+            {
+              "label": "2025-10",
+              "value": 1,
+              "group": "Cautious Approach"
+            }
+          ]
+        },
+        {
+          "type": "chart",
+          "chartType": "pie",
+          "title": "Overall Verdict Distribution (VN)",
+          "legend": true,
+          "data": [
+            {
+              "label": "Neutral or Ambivalent",
+              "value": 10
+            },
+            {
+              "label": "Skepticism Towards Government Oversight",
+              "value": 9
+            },
+            {
+              "label": "Government Intervention",
+              "value": 7
+            },
+            {
+              "label": "Market-Driven Solutions",
+              "value": 7
+            },
+            {
+              "label": "Cautious Approach",
+              "value": 3
+            }
+          ]
         }
       ]
     }

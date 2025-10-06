@@ -132,7 +132,7 @@ function AssetRow({
 function RoleCard({ block }: { block: RoleBalanceBlock }) {
   const entries = Object.entries(block.balances ?? {});
   return (
-    <Card>
+    <Card className="bg-sidebar">
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span>{ROLE_LABEL[block.role as RoleKey] ?? block.role}</span>
@@ -171,7 +171,7 @@ function SummaryCard({
   if (!rows.length) return null;
 
   return (
-    <Card>
+    <Card className="bg-sidebar">
       <CardHeader>
         <CardTitle>{title}</CardTitle>
       </CardHeader>
@@ -216,7 +216,7 @@ function FundingNeedsCard({
   if (!needs) return null;
   const rows = Object.entries(needs.byAsset ?? {});
   return (
-    <Card>
+    <Card className="bg-sidebar">
       <CardHeader>
         <CardTitle>Poll Funding Needs</CardTitle>
       </CardHeader>
