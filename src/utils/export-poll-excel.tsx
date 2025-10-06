@@ -1,6 +1,6 @@
-import React from "react";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import { Button } from "@/components/ui/button";
 
 const ExportPollsButton = ({ polls, totalPolls, totalVotes }) => {
   const handleExport = () => {
@@ -64,7 +64,7 @@ const ExportPollsButton = ({ polls, totalPolls, totalVotes }) => {
     saveAs(blob, "polls.xlsx");
   };
 
-  return <button onClick={handleExport}>Download Polls Excel</button>;
+  return <Button onClick={handleExport}>Download Polls Excel</Button>;
 };
 
 export default ExportPollsButton;

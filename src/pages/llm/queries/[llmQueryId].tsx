@@ -21,6 +21,7 @@ import { useApiQuery } from "@/hooks/useApiQuery";
 import { useApiInfiniteQuery } from "@/hooks/useApiInfiniteQuery";
 import LetterGlitch from "@/components/LetterGlitch";
 import TextType from "@/components/TextType";
+import ExportPollsButton from "@/utils/export-poll-excel";
 
 export function SkeletonCard() {
   return (
@@ -60,7 +61,7 @@ const SpecificLLMQueryPage = () => {
     refetchOnWindowFocus: false,
   });
 
-  const { ui, status, llmResponse, queryText, llmSteps, error } =
+  const { ui, status, llmResponse, queryText, llmSteps, error, excelData } =
     useMemo(() => {
       return {
         queryText: queryResultState?.input?.prompt,
@@ -69,12 +70,31 @@ const SpecificLLMQueryPage = () => {
         llmResponse: queryResultState?.llmResponse,
         llmSteps: queryResultState?.steps,
         error: queryResultState?.error,
+        excelData: queryResultState?.structuredResult?.uiConfig?.excelData,
       };
     }, [queryResultState]);
+
+  const { excelPolls, excelTotalPolls, excelTotalVotes } = useMemo(() => {
+    const excelPolls = excelData?.polls;
+    const excelTotalPolls = excelData?.totalPolls;
+    const excelTotalVotes = excelData?.totalVotes;
+    return {
+      excelPolls,
+      excelTotalPolls,
+      excelTotalVotes,
+    };
+  }, [excelData]);
 
   return (
     <div>
       <LLMSideSheet llmQueryId={llmQueryId} />
+      {excelData && status === "complete" && (
+        <ExportPollsButton
+          polls={excelPolls}
+          totalPolls={excelTotalPolls}
+          totalVotes={excelTotalVotes}
+        />
+      )}
       <DisplayContent
         queryText={queryText}
         llmQueryId={llmQueryId}
