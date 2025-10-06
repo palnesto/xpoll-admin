@@ -89,11 +89,13 @@ const SpecificLLMQueryPage = () => {
     <div>
       <LLMSideSheet llmQueryId={llmQueryId} />
       {excelData && status === "complete" && (
-        <ExportPollsButton
-          polls={excelPolls}
-          totalPolls={excelTotalPolls}
-          totalVotes={excelTotalVotes}
-        />
+        <div className="flex justify-end w-full mb-5">
+          <ExportPollsButton
+            polls={excelPolls}
+            totalPolls={excelTotalPolls}
+            totalVotes={excelTotalVotes}
+          />
+        </div>
       )}
       <DisplayContent
         queryText={queryText}
