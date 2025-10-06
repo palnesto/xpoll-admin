@@ -10,28 +10,97 @@ const TestPage = () => {
   }
   const polls = [
     {
-      title: "AI in legal gov..",
-      description: "()",
-      opt1Meaning: "india will win",
-      opt1: "Yes (32)",
-      opt2Meaning: "",
-      opt2: "No (20)",
-      opt3Meaning: "",
-      opt3: "Maybe (3)",
-      opt4Meaning: "",
-      opt4: "No opinion (1)",
+      _id: "68cd82096a389a59d0b8bb4d",
+      title: "Topic of Interest",
+      description: "Which KBW topic excites you most?",
+      options: [
+        {
+          meaning: "Interest Topics",
+          label: "Regulation (583)",
+        },
+        {
+          meaning: "Interest Topics",
+          label: "NFTs & gaming (441)",
+        },
+        {
+          meaning: "Interest Topics",
+          label: "RWAfi (149)",
+        },
+        {
+          meaning: "Interest Topics",
+          label: "DeFi (51)",
+        },
+      ],
     },
     {
-      title: "AI in legal gov..",
-      description: "()",
-      opt1Meaning: "india will win",
-      opt1: "Ya",
-      opt2Meaning: "",
-      opt2: "",
-      opt3Meaning: "",
-      opt3: "",
-      opt4Meaning: "",
-      opt4: "",
+      _id: "68cd82086a389a59d0b8bb46",
+      title: "KBW Goals",
+      description: "What is your main goal for KBW?",
+      options: [
+        {
+          meaning: "Goals",
+          label: "Investing (583)",
+        },
+        {
+          meaning: "Goals",
+          label: "Networking (452)",
+        },
+        {
+          meaning: "Goals",
+          label: "Other (128)",
+        },
+        {
+          meaning: "Goals",
+          label: "Learning (61)",
+        },
+      ],
+    },
+    {
+      _id: "68cd82096a389a59d0b8bb5b",
+      title: "Token2049 Plans",
+      description: "Will you attend Token2049 right after KBW?",
+      options: [
+        {
+          meaning: "Token2049 Attendance",
+          label: "No (624)",
+        },
+        {
+          meaning: "Token2049 Attendance",
+          label: "Undecided (409)",
+        },
+        {
+          meaning: "Token2049 Attendance",
+          label: "Yes (191)",
+        },
+      ],
+    },
+    {
+      _id: "68d04e89c71533633b7026c8",
+      title: "Best contacts to make at KBW?",
+      description:
+        "Do you think it would be better to talk to protocols, evangelists, or investors at KWB",
+      options: [
+        {
+          meaning: "Networking Contacts",
+          label: "Protocols (649)",
+        },
+        {
+          meaning: "Networking Contacts",
+          label: "Investors (367)",
+        },
+        {
+          meaning: "Networking Contacts",
+          label: "Evangelists (196)",
+        },
+        {
+          meaning: "Networking Contacts",
+          label: "Community Attendees (50)",
+        },
+        {
+          meaning: "Networking Contacts",
+          label: "undefined (12)",
+        },
+      ],
     },
   ];
   return (
