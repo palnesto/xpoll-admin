@@ -18,8 +18,8 @@ export interface QueryUIResponse {
   meta: {
     query: string;
     generatedAt: string;
-    confidence: { score: number; level: ConfidenceLevel };
-    coverage: { pollsConsidered: number; totalVotes: number };
+    confidence?: { score: number; level: ConfidenceLevel };
+    coverage?: { pollsConsidered: number; totalVotes: number };
     tags?: string[];
   };
   layout: UIBlock[];
@@ -63,7 +63,42 @@ interface ChartBlock {
   xAxis?: string;
   yAxis?: string;
   legend?: boolean;
+  /**
+   * Default / fallback data when no selector is provided,
+   * or when the selected option has no data.
+   */
   data: ChartDataItem[];
+
+  /**
+   * Generic selector to allow the frontend to switch the dataset
+   * used by this chart without the component knowing domain specifics.
+   *
+   * Example (granularity):
+   * {
+   *   label: "Granularity",
+   *   defaultValue: "day",
+   *   options: [
+   *     { value: "20min", label: "20-min" },
+   *     { value: "hour", label: "Hour" },
+   *     { value: "day", label: "Day" },
+   *     { value: "month", label: "Month" }
+   *   ],
+   *   dataByOption: {
+   *     "20min": [...ChartDataItem],
+   *     "hour":  [...],
+   *     "day":   [...],
+   *     "month": [...]
+   *   },
+   *   note: "Select the time grain"
+   * }
+   */
+  selector?: {
+    label?: string;
+    defaultValue?: string;
+    options: { value: string; label: string }[];
+    dataByOption: Record<string, ChartDataItem[] | undefined>;
+    note?: string;
+  };
 }
 
 interface ChartDataItem {
@@ -122,6 +157,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 /**
  * ---- Chart.js setup ----
@@ -176,6 +218,8 @@ const CHART_COLORS = [
   "#F65E56",
   "#56F696",
   "#6B46C1",
+  "#22C55E",
+  "#F59E0B",
 ];
 
 function toChartDataset(
@@ -393,10 +437,38 @@ const TableRenderer: React.FC<{ block: TableBlock }> = ({ block }) => (
 );
 
 const ChartRenderer: React.FC<{ block: ChartBlock }> = ({ block }) => {
-  const { chartType, data, title, legend, xAxis, yAxis } = block;
-  const cardClass = "bg-[#111] border border-border/50 shadow-md rounded-xl";
+  const { chartType, title, legend, xAxis, yAxis } = block;
 
+  // --- selector state (generic) ---
+  const selector = block.selector;
+  const selectorOptions = selector?.options ?? [];
+  const defaultKey =
+    selector?.defaultValue ?? selectorOptions[0]?.value ?? undefined;
+  const [activeKey, setActiveKey] = React.useState<string | undefined>(
+    defaultKey
+  );
+
+  // Resolve current items
+  const selectedData =
+    selector && activeKey
+      ? selector.dataByOption?.[activeKey] ?? block.data
+      : block.data;
+  const data = (
+    selectedData && selectedData.length > 0 ? selectedData : block.data
+  ) as ChartDataItem[];
+
+  // Title suffix to reflect selection (without mutating server title)
+  const titleSuffix =
+    selector && activeKey
+      ? ` — ${
+          selectorOptions.find((o) => o.value === activeKey)?.label ?? activeKey
+        }`
+      : "";
+
+  // Chart rendering
+  const cardClass = "bg-[#111] border border-border/50 shadow-md rounded-xl";
   let content: React.ReactNode = null;
+
   const commonOptions: any = {
     responsive: true,
     maintainAspectRatio: false,
@@ -417,7 +489,7 @@ const ChartRenderer: React.FC<{ block: ChartBlock }> = ({ block }) => {
         title: xAxis
           ? { display: true, text: xAxis, color: "#aaa", font: { size: 12 } }
           : undefined,
-        ticks: { color: "#aaa" },
+        ticks: { color: "#aaa", autoSkip: true, maxRotation: 0 },
         grid: { color: "rgba(255,255,255,0.08)" },
       },
       y: {
@@ -503,13 +575,47 @@ const ChartRenderer: React.FC<{ block: ChartBlock }> = ({ block }) => {
 
   return (
     <Card className={cardClass}>
-      {title ? (
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold text-white">
-            {title}
-          </CardTitle>
+      {title || selector ? (
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle className="text-lg font-semibold text-white">
+              {title}
+              <span className="text-white/60">{titleSuffix}</span>
+            </CardTitle>
+
+            {selector && selectorOptions.length > 0 ? (
+              <div className="flex items-center gap-2">
+                {selector.label ? (
+                  <span className="text-sm text-muted-foreground">
+                    {selector.label}
+                  </span>
+                ) : null}
+                <Select
+                  value={activeKey}
+                  onValueChange={(v) => setActiveKey(v)}
+                >
+                  <SelectTrigger className="w-36 bg-[#0b0b0b] border-border/60 text-white">
+                    <SelectValue placeholder="Select…" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#0b0b0b] text-white border-border/60">
+                    {selectorOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
+          </div>
+          {selector?.note ? (
+            <div className="text-xs text-muted-foreground mt-1">
+              {selector.note}
+            </div>
+          ) : null}
         </CardHeader>
       ) : null}
+
       <CardContent className="p-4">{content}</CardContent>
     </Card>
   );
@@ -582,7 +688,7 @@ export const UILayoutRenderer: React.FC<{
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {meta?.confidence?.level && (
+          {meta?.confidence?.level != null && (
             <Badge
               variant="outline"
               className="bg-emerald-900 text-emerald-200"
@@ -591,12 +697,13 @@ export const UILayoutRenderer: React.FC<{
               /100)
             </Badge>
           )}
-          {meta?.coverage?.pollsConsidered && (
-            <Badge variant="outline" className="bg-blue-900 text-blue-200">
-              Coverage: {meta?.coverage?.pollsConsidered} polls /{" "}
-              {meta?.coverage?.totalVotes} votes
-            </Badge>
-          )}
+          {meta?.coverage?.pollsConsidered != null &&
+            meta?.coverage?.totalVotes != null && (
+              <Badge variant="outline" className="bg-blue-900 text-blue-200">
+                Coverage: {meta.coverage.pollsConsidered} polls /{" "}
+                {meta.coverage.totalVotes} votes
+              </Badge>
+            )}
           {meta.tags?.slice(0, 4).map((t, i) => (
             <Badge
               key={i}
