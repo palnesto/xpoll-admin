@@ -1,5 +1,5 @@
 import { useMemo, useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -44,9 +44,7 @@ import { ArchiveToggleOptionModal } from "@/components/modals/table_polls/archiv
 import { cn } from "@/lib/utils";
 
 import ResourceAssetsEditor from "@/components/polling/editors/ResourceAssetsEditor";
-import RewardsEditor, {
-  type AssetOption,
-} from "@/components/polling/editors/RewardsEditor";
+import { type AssetOption } from "@/components/polling/editors/RewardsEditor";
 import ExpireRewardAtPicker from "@/components/polling/editors/ExpireRewardAtPicker";
 import TargetGeoEditor from "@/components/polling/editors/TargetGeoEditor";
 import { useImageUpload } from "@/hooks/upload/useAssetUpload";
@@ -216,6 +214,8 @@ function toComparableAssets(arr?: OutputResourceAsset[]) {
    ========================================================= */
 export default function PollShowPage() {
   const navigate = useNavigate();
+  const location = useLocation() || {};
+  const isNavigationEditing = location?.state?.isNavigationEditing;
   const { id = "" } = useParams<{ id: string }>();
   const [activeRewardIndex, setActiveRewardIndex] = useState<number | null>(
     null
@@ -229,10 +229,9 @@ export default function PollShowPage() {
   const poll: Poll | null = useMemo(() => {
     return data?.data?.data ?? data?.data ?? null;
   }, [data]);
-  console.log("poll", poll);
   const isTrialPoll = !!(poll?.trialId || poll?.trial?._id);
 
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(isNavigationEditing ?? false);
 
   const form = useForm<EditValues>({
     resolver: zodResolver(isTrialPoll ? trialEditSchema : normalEditSchema),
@@ -313,7 +312,6 @@ export default function PollShowPage() {
     method: "PUT",
     onSuccess: (_resp, _vars) => {
       appToast.success("Poll updated");
-      setIsEditing(false);
 
       const v = getValues();
 
@@ -354,6 +352,8 @@ export default function PollShowPage() {
             (endpoints.entities as any)?.polls?.all ?? "/poll/list"
           ),
       });
+      setIsEditing(false);
+      navigate(location.pathname, { replace: true });
     },
   });
 
@@ -684,9 +684,6 @@ export default function PollShowPage() {
                                         <button
                                           className="rounded-md p-1 hover:bg-foreground/10"
                                           onClick={() => {
-                                            console.log(
-                                              "is reaching archiving"
-                                            );
                                             setIsArchiveToggleOption({
                                               pollId: (poll as any)._id,
                                               optionId: opt._id,
@@ -907,7 +904,6 @@ export default function PollShowPage() {
                 {viewAssets.length ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
                     {viewAssets.map((a, i) => {
-                      console.log("a", a);
                       return a.type === "youtube" ? (
                         <div
                           key={`yt-${i}`}

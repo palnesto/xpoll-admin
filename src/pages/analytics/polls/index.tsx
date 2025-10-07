@@ -1,365 +1,3 @@
-// import { memo, useEffect, useMemo } from "react";
-// import { Button } from "@/components/ui/button";
-// import { Input } from "@/components/ui/input";
-// import {
-//   Select,
-//   SelectTrigger,
-//   SelectValue,
-//   SelectContent,
-//   SelectItem,
-// } from "@/components/ui/select";
-// import {
-//   Card,
-//   CardDescription,
-//   CardFooter,
-//   CardHeader,
-//   CardTitle,
-// } from "@/components/ui/card";
-// import {
-//   Pagination,
-//   PaginationContent,
-//   PaginationEllipsis,
-//   PaginationItem,
-//   PaginationLink,
-//   PaginationNext,
-//   PaginationPrevious,
-// } from "@/components/ui/pagination";
-// import { useNavigate } from "react-router-dom";
-// import { useApiQuery } from "@/hooks/useApiQuery";
-// import { endpoints } from "@/api/endpoints";
-// import { usePollFilters, Tri } from "@/stores/usePollFilters";
-
-// // Infinite selects you provided
-// import CountrySelect from "@/components/commons/selects/country-select";
-// import StateSelect from "@/components/commons/selects/state-select";
-// import { CitySelect } from "@/components/commons/selects/city-select";
-
-// const PAGE_SIZE = 10;
-
-// // If you have more assets on backend, add them here easily.
-// const ASSET_OPTIONS = ["xDrop", "xOcta", "xPoll", "xMYST"] as const;
-
-// const MemoPolls = () => {
-//   const navigate = useNavigate();
-
-//   const {
-//     search,
-//     assetId, // single selected asset from dropdown
-//     countryId,
-//     stateId,
-//     cityId,
-//     expired,
-//     exhausted,
-//     page,
-//     uiNonce,
-//     patch,
-//     reset,
-//   } = usePollFilters();
-
-//   // ---- Build params (ALWAYS pageSize=10) ----
-//   const params = useMemo(() => {
-//     const p: Record<string, any> = { page, pageSize: PAGE_SIZE };
-
-//     // Title-only search (backend rejects 'search')
-//     if (search.trim()) p.title = search.trim();
-//     if (countryId) p.countryId = countryId;
-//     if (stateId) p.stateId = stateId;
-//     if (cityId) p.cityId = cityId;
-//     if (assetId) p.assetId = assetId;
-//     if (expired !== "all") p.expired = expired === "true";
-//     if (exhausted !== "all") p.exhausted = exhausted === "true";
-
-//     return p;
-//   }, [page, search, countryId, stateId, cityId, assetId, expired, exhausted]);
-
-//   const urlWithQuery = useMemo(() => {
-//     const usp = new URLSearchParams();
-//     Object.entries(params).forEach(([k, v]) => {
-//       if (v !== undefined && v !== null && v !== "") usp.set(k, String(v));
-//     });
-//     const base = endpoints.entities.polls.advancedListing; // "/internal/poll/advanced-listing"
-//     const qs = usp.toString();
-//     return qs ? `${base}?${qs}` : base;
-//   }, [params]);
-
-//   // ---- Query (include URL in key so filters/pagination refetch) ----
-//   const { data, isLoading, isFetching, error, refetch } = useApiQuery(
-//     urlWithQuery,
-//     { key: ["polls-advanced", urlWithQuery] } as any
-//   );
-
-//   // Safety net: if your hook ignores the key, still refetch on URL change
-//   useEffect(() => {
-//     try {
-//       (refetch as any)?.();
-//     } catch {}
-//   }, [urlWithQuery]);
-
-//   const payload = data?.data?.data ?? {};
-//   const meta = payload?.meta ?? {};
-//   const entries: any[] = Array.isArray(payload.entries) ? payload.entries : [];
-
-//   const total: number =
-//     typeof meta.total === "number" ? meta.total : entries.length ?? 0;
-
-//   const totalPages: number =
-//     typeof meta.totalPages === "number" && meta.totalPages > 0
-//       ? meta.totalPages
-//       : Math.max(1, Math.ceil((total || 1) / PAGE_SIZE));
-
-//   const currentPage: number =
-//     typeof meta.page === "number" && meta.page > 0 ? meta.page : page;
-
-//   const handleViewMore = (id: string, title: string) => {
-//     navigate(`/analytics/polls/${id}`, { state: { title } });
-//   };
-
-//   // Build page list with ellipses: Prev 1 2 3 … Next
-//   const buildPages = (): (number | "...")[] => {
-//     const maxPagesToShow = 9;
-//     const pages: (number | "...")[] = [];
-
-//     if (totalPages <= maxPagesToShow) {
-//       for (let i = 1; i <= totalPages; i++) pages.push(i);
-//       return pages;
-//     }
-
-//     const window = 2;
-//     const start = Math.max(2, currentPage - window);
-//     const end = Math.min(totalPages - 1, currentPage + window);
-
-//     pages.push(1);
-//     if (start > 2) pages.push("...");
-//     for (let i = start; i <= end; i++) pages.push(i);
-//     if (end < totalPages - 1) pages.push("...");
-//     pages.push(totalPages);
-
-//     return pages;
-//   };
-
-//   const handleResetAll = () => {
-//     usePollFilters.persist?.clearStorage?.();
-//     reset();
-//   };
-
-//   return (
-//     <div className="flex flex-col gap-6 md:px-4 h-full">
-//       {/* Header */}
-//       <section className="flex flex-col gap-4">
-//         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-//           <div className="flex flex-col gap-1">
-//             <h1 className="text-3xl font-bold">Stats</h1>
-//             <p className="text-muted-foreground">
-//               View detailed analytics of all the polls
-//             </p>
-//           </div>
-
-//           <div className="flex w-full md:w-[40dvw] gap-2">
-//             <Input
-//               placeholder="Search by title…"
-//               value={search}
-//               onChange={(e) => patch({ page: 1, search: e.target.value })}
-//               autoComplete="off"
-//             />
-//             <Button variant="secondary" onClick={handleResetAll}>
-//               Reset
-//             </Button>
-//           </div>
-//         </div>
-
-//         {/* Filters row */}
-//         <section className="grid grid-cols-2 xl:grid-cols-3 gap-3">
-//           <section className="flex flex-col gap-1">
-//             <label className="text-sm text-muted-foreground">Country</label>
-//             <CountrySelect
-//               key={`country-${uiNonce}`}
-//               onChange={(opt) =>
-//                 patch({ page: 1, countryId: opt?.value || "" })
-//               }
-//               selectProps={{ menuPortalTarget: document.body }}
-//             />
-//           </section>
-
-//           <section className="flex flex-col gap-1">
-//             <label className="text-sm text-muted-foreground">State</label>
-//             <StateSelect
-//               key={`state-${uiNonce}`}
-//               onChange={(opt) => patch({ page: 1, stateId: opt?.value || "" })}
-//               selectProps={{ menuPortalTarget: document.body }}
-//             />
-//           </section>
-
-//           <section className="flex flex-col gap-1">
-//             <label className="text-sm text-muted-foreground">City</label>
-//             <CitySelect
-//               key={`city-${uiNonce}`}
-//               onChange={(opt) => patch({ page: 1, cityId: opt?.value || "" })}
-//               selectProps={{ menuPortalTarget: document.body }}
-//             />
-//           </section>
-
-//           {/* Asset dropdown (single) */}
-//           <section className="flex flex-col gap-1">
-//             <label className="text-sm text-muted-foreground">Asset</label>
-//             <Select
-//               value={assetId || "all"}
-//               onValueChange={(v) =>
-//                 patch({ page: 1, assetId: v === "all" ? "" : v })
-//               }
-//             >
-//               <SelectTrigger>
-//                 <SelectValue placeholder="All" />
-//               </SelectTrigger>
-//               <SelectContent>
-//                 <SelectItem value="all">All</SelectItem>
-//                 {ASSET_OPTIONS.map((a) => (
-//                   <SelectItem key={a} value={a}>
-//                     {a}
-//                   </SelectItem>
-//                 ))}
-//               </SelectContent>
-//             </Select>
-//           </section>
-
-//           {/* Tri-state selects */}
-//           <section className="flex flex-col gap-1">
-//             <label className="text-sm text-muted-foreground">Expired</label>
-//             <Select
-//               value={expired}
-//               onValueChange={(v: Tri) => patch({ page: 1, expired: v })}
-//             >
-//               <SelectTrigger>
-//                 <SelectValue placeholder="All" />
-//               </SelectTrigger>
-//               <SelectContent>
-//                 <SelectItem value="all">All</SelectItem>
-//                 <SelectItem value="true">True</SelectItem>
-//                 <SelectItem value="false">False</SelectItem>
-//               </SelectContent>
-//             </Select>
-//           </section>
-
-//           <section className="flex flex-col gap-1">
-//             <label className="text-sm text-muted-foreground">Exhausted</label>
-//             <Select
-//               value={exhausted}
-//               onValueChange={(v: Tri) => patch({ page: 1, exhausted: v })}
-//             >
-//               <SelectTrigger>
-//                 <SelectValue placeholder="All" />
-//               </SelectTrigger>
-//               <SelectContent>
-//                 <SelectItem value="all">All</SelectItem>
-//                 <SelectItem value="true">True</SelectItem>
-//                 <SelectItem value="false">False</SelectItem>
-//               </SelectContent>
-//             </Select>
-//           </section>
-//         </section>
-//       </section>
-
-//       {error ? (
-//         <div className="text-red-500 text-sm">Failed to load polls.</div>
-//       ) : null}
-
-//       <div className="flex items-center gap-2">
-//         {isLoading || isFetching ? (
-//           <span className="text-sm text-muted-foreground">Loading…</span>
-//         ) : (
-//           <></>
-//         )}
-//       </div>
-
-//       <div className="flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
-//         {entries.map((poll: any) => (
-//           <Card
-//             key={poll._id}
-//             className="@container/card bg-primary/5 rounded-3xl flex flex-row justify-between"
-//           >
-//             <CardHeader className="w-full">
-//               <CardTitle className="text- font-semibold @[250px]/card:text-xl">
-//                 {poll.title}
-//               </CardTitle>
-//               <CardDescription className="text-muted-foreground ">
-//                 {poll.viewCount ?? 0} views • {poll.voteCount ?? 0} votes
-//               </CardDescription>
-//             </CardHeader>
-//             <CardFooter className="md:w-48">
-//               <Button
-//                 onClick={() => handleViewMore(poll._id, poll.title)}
-//                 variant="outline"
-//                 className="w-full md:h-12 rounded-2xl"
-//               >
-//                 View More
-//               </Button>
-//             </CardFooter>
-//           </Card>
-//         ))}
-//       </div>
-
-//       <section className="sticky bottom-0 left-0 bg-background flex justify-center py-4 shadow-md w-fit mx-auto rounded-2xl">
-//         <Pagination>
-//           <PaginationContent>
-//             <PaginationItem>
-//               <PaginationPrevious
-//                 href="#"
-//                 aria-disabled={currentPage <= 1}
-//                 className={
-//                   currentPage <= 1 ? "pointer-events-none opacity-50" : ""
-//                 }
-//                 onClick={(e) => {
-//                   e.preventDefault();
-//                   if (currentPage > 1) patch({ page: currentPage - 1 });
-//                 }}
-//               />
-//             </PaginationItem>
-
-//             {buildPages().map((p, idx) =>
-//               p === "..." ? (
-//                 <PaginationItem key={`ellipsis-${idx}`}>
-//                   <PaginationEllipsis />
-//                 </PaginationItem>
-//               ) : (
-//                 <PaginationItem key={p}>
-//                   <PaginationLink
-//                     href="#"
-//                     isActive={p === currentPage}
-//                     onClick={(e) => {
-//                       e.preventDefault();
-//                       if (p !== currentPage) patch({ page: p as number });
-//                     }}
-//                   >
-//                     {p}
-//                   </PaginationLink>
-//                 </PaginationItem>
-//               )
-//             )}
-
-//             <PaginationItem>
-//               <PaginationNext
-//                 href="#"
-//                 aria-disabled={currentPage >= totalPages}
-//                 className={
-//                   currentPage >= totalPages
-//                     ? "pointer-events-none opacity-50"
-//                     : ""
-//                 }
-//                 onClick={(e) => {
-//                   e.preventDefault();
-//                   if (currentPage < totalPages)
-//                     patch({ page: currentPage + 1 });
-//                 }}
-//               />
-//             </PaginationItem>
-//           </PaginationContent>
-//         </Pagination>
-//       </section>
-//     </div>
-//   );
-// };
-
-// const Polls = memo(MemoPolls);
-// export default Polls;
 import { memo, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -393,7 +31,7 @@ import { usePollFilters, Tri, Opt } from "@/stores/usePollFilters";
 
 import AssetMultiSelect from "@/components/commons/selects/asset-multi-select";
 
-import { X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import CountrySelect from "@/components/commons/selects/country-select";
 import StateSelect from "@/components/commons/selects/state-select";
 import CitySelect from "@/components/commons/selects/city-select";
@@ -622,27 +260,33 @@ const MemoPolls = () => {
 
   return (
     <div className="flex flex-col gap-6 md:px-4 h-full">
-      {/* Header */}
+      {/* Filter */}
       <section className="flex flex-col gap-4">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex flex-col gap-1">
-            <h1 className="text-3xl font-bold">Stats</h1>
+            <h1 className="text-3xl font-bold">Polls</h1>
             <p className="text-muted-foreground">
               View detailed analytics of all the polls
             </p>
           </div>
-
-          <div className="flex w-full md:w-[40dvw] gap-2">
-            <Input
-              placeholder="Search by title…"
-              value={search}
-              onChange={(e) => patch({ page: 1, search: e.target.value })}
-              autoComplete="off"
-            />
-            <Button variant="secondary" onClick={handleResetAll}>
-              Reset
+          <div>
+            <Button variant="default" onClick={() => navigate("/polls/create")}>
+              <Plus /> Create New Poll
             </Button>
           </div>
+        </div>
+
+        <div className="flex justify-between w-full gap-2">
+          <Input
+            className="md:w-[40dvw]"
+            placeholder="Search by title…"
+            value={search}
+            onChange={(e) => patch({ page: 1, search: e.target.value })}
+            autoComplete="off"
+          />
+          <Button variant="secondary" onClick={handleResetAll}>
+            Reset Filters
+          </Button>
         </div>
 
         {/* Filters row */}
@@ -736,24 +380,37 @@ const MemoPolls = () => {
       </div>
 
       <div className="flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
-        {entries.map((poll: any) => (
+        {entries?.map((poll: any) => (
           <Card
             key={poll._id}
-            className="@container/card bg-primary/5 rounded-3xl flex flex-row justify-between"
+            className="@container/card bg-primary/5 rounded-3xl flex flex-row justify-between items-center gap-32"
           >
             <CardHeader className="w-full">
-              <CardTitle className="text-lg font-semibold @[250px]/card:text-xl">
+              <CardTitle className="text-lg font-semibold @[250px]/card:text-xl overflow-hidden text-ellipsis whitespace-nowrap">
                 {poll.title}
               </CardTitle>
               <CardDescription className="text-muted-foreground">
                 {poll.viewCount ?? 0} views • {poll.voteCount ?? 0} votes
               </CardDescription>
             </CardHeader>
-            <CardFooter className="md:w-48">
+            <CardFooter className="flex items-center gap-3">
+              <Button
+                onClick={() =>
+                  navigate(`/polls/${poll._id}`, {
+                    state: {
+                      isNavigationEditing: true,
+                    },
+                  })
+                }
+                variant="outline"
+                className="w-full md:h-12 rounded-2xl min-w-32"
+              >
+                Edit
+              </Button>
               <Button
                 onClick={() => handleViewMore(poll._id, poll.title)}
                 variant="outline"
-                className="w-full md:h-12 rounded-2xl"
+                className="w-full md:h-12 rounded-2xl min-w-32"
               >
                 View More
               </Button>
