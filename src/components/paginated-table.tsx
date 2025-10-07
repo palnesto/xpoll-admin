@@ -29,7 +29,7 @@ type PaginatedTableProps<T> = Exclude<TablePageProps<T>, "data"> & {
   pageSize?: any;
 };
 export const fmt = (v?: string | null) =>
-  v ? new Date(v).toLocaleString() : "-";
+  v && v.trim() ? new Date(v).toISOString() : undefined;
 
 export const PaginatedTable = ({
   title,

@@ -132,9 +132,9 @@ function AssetRow({
 function RoleCard({ block }: { block: RoleBalanceBlock }) {
   const entries = Object.entries(block.balances ?? {});
   return (
-    <Card className="bg-sidebar">
+    <Card className="bg-sidebar rounded-2xl">
       <CardHeader>
-        <CardTitle className="flex items-center justify-between">
+        <CardTitle className="flex text-lg font-semibold items-center justify-between">
           <span>{ROLE_LABEL[block.role as RoleKey] ?? block.role}</span>
           <TinyId id={block.accountId} />
         </CardTitle>
@@ -171,8 +171,8 @@ function SummaryCard({
   if (!rows.length) return null;
 
   return (
-    <Card className="bg-sidebar">
-      <CardHeader>
+    <Card className="bg-sidebar rounded-2xl">
+      <CardHeader className="text-lg">
         <CardTitle>{title}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
@@ -216,8 +216,8 @@ function FundingNeedsCard({
   if (!needs) return null;
   const rows = Object.entries(needs.byAsset ?? {});
   return (
-    <Card className="bg-sidebar">
-      <CardHeader>
+    <Card className="bg-sidebar rounded-2xl">
+      <CardHeader className="text-lg">
         <CardTitle>Poll Funding Needs</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -431,7 +431,7 @@ export default function SystemReportPage() {
   const summary = report?.balances?.summary?.byAsset;
   if (isFetching) return <SystemReportSkeleton />;
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-7">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold">System Report</h1>
@@ -452,7 +452,7 @@ export default function SystemReportPage() {
       </div>
 
       {/* Role cards */}
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-7 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
         {isFetching && !report ? (
           <>
             <Card>
@@ -486,7 +486,7 @@ export default function SystemReportPage() {
       </div>
 
       {/* Summary + Funding Needs */}
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+      <div className="grid gap-7 grid-cols-1 lg:grid-cols-2">
         <SummaryCard byAsset={summary} />
         <FundingNeedsCard needs={report?.pollFundingNeeds} />
       </div>
