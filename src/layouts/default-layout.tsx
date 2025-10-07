@@ -36,7 +36,7 @@ export default function DefaultLayout({ children }: { children: ReactNode }) {
                 />
               </div>
 
-              <div className="min-h-[97.7dvh] max-h-[97.7dvh] overflow-y-auto relative px-16 py-8">
+              <div className="min-h-[97.7dvh] max-h-[97.7dvh] overflow-y-auto relative p-4">
                 {children}
               </div>
             </div>

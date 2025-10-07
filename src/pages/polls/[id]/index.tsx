@@ -1,7 +1,7 @@
 import { useMemo, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
-import { useForm } from "react-hook-form";
+import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { endpoints } from "@/api/endpoints";
@@ -11,7 +11,14 @@ import { queryClient } from "@/api/queryClient";
 import { appToast } from "@/utils/toast";
 
 import { Button } from "@/components/ui/button";
-import { Edit, Pencil, PlusSquare, Recycle, Trash2 } from "lucide-react";
+import {
+  Edit,
+  Loader2,
+  Pencil,
+  PlusSquare,
+  Recycle,
+  Trash2,
+} from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   Tooltip,
@@ -44,6 +51,10 @@ import ExpireRewardAtPicker from "@/components/polling/editors/ExpireRewardAtPic
 import TargetGeoEditor from "@/components/polling/editors/TargetGeoEditor";
 import { useImageUpload } from "@/hooks/upload/useAssetUpload";
 import { extractYouTubeId } from "@/utils/youtube";
+import { FormCard } from "@/components/form/form-card";
+import TwoPane from "@/layouts/TwoPane";
+import RewardDetailPanel from "@/components/polling/editors/RewardDetailPanel";
+import RewardsList from "@/components/polling/editors/RewardsList";
 
 /* ---------- constants ---------- */
 const TOTAL_LEVELS = 10 as const;
@@ -206,6 +217,9 @@ function toComparableAssets(arr?: OutputResourceAsset[]) {
 export default function PollShowPage() {
   const navigate = useNavigate();
   const { id = "" } = useParams<{ id: string }>();
+  const [activeRewardIndex, setActiveRewardIndex] = useState<number | null>(
+    null
+  );
 
   const showRoute = (endpoints.entities as any)?.polls?.getById
     ? (endpoints.entities as any).polls.getById(id)
@@ -242,7 +256,10 @@ export default function PollShowPage() {
   const { control, handleSubmit, reset, getValues, setValue, watch } = form;
 
   const { uploadImage, loading: isUploading } = useImageUpload();
-
+  const { fields, append, remove, update } = useFieldArray({
+    control,
+    name: "rewards",
+  });
   // hydrate form when poll loads
   useEffect(() => {
     if (!poll) return;
@@ -500,416 +517,478 @@ export default function PollShowPage() {
       : poll.media
       ? [{ type: "image", value: poll.media }]
       : [];
-
+  const isBusy = isLoading || isUploading || isSaving;
   return (
-    <div className="p-4 space-y-6 max-w-4xl">
+    <div className="space-y-6">
       {isEditing ? (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
+        <div className="p-6 space-y-8 w-full">
+          {/* Header */}
+          <div className="flex justify-between items-center w-full">
+            <h1 className="text-2xl tracking-wider">Edit Poll</h1>
+            <Button
+              type="submit"
+              form="poll-form"
+              disabled={isBusy}
+              className="text-base font-light tracking-wide"
+            >
+              {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Edit Poll
-              {/* {isTrialPoll && (
-                <span className="text-xs rounded px-2 py-0.5 bg-muted">
-                  Trial poll — Target Geo managed by Trial
-                </span>
-              )} */}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form className="space-y-6" onSubmit={onSubmitEdit}>
-                {/* Title (same as create) */}
-                <FormField
-                  control={control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs text-muted-foreground">
-                        Title
-                      </FormLabel>
-                      <FormControl>
-                        <input
-                          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                          placeholder="Poll title"
-                          required
-                          {...field}
+            </Button>
+          </div>
+          <Form {...form}>
+            <form className="space-y-6" onSubmit={onSubmitEdit}>
+              <TwoPane
+                isRightOpen={activeRewardIndex !== null}
+                right={
+                  activeRewardIndex !== null && (
+                    <RewardDetailPanel
+                      index={activeRewardIndex}
+                      assetOptions={ASSET_OPTIONS as any}
+                      totalLevels={TOTAL_LEVELS}
+                      onClose={() => setActiveRewardIndex(null)}
+                      rewards={fields}
+                      append={append}
+                      update={update}
+                    />
+                  )
+                }
+                left={
+                  <div className="flex flex-col gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <FormCard title="Basic Info">
+                        <FormField
+                          control={control}
+                          name="title"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs text-muted-foreground">
+                                Title
+                              </FormLabel>
+                              <FormControl>
+                                <input
+                                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                  placeholder="Poll title"
+                                  required
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
                         />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
 
-                {/* Description (same as create) */}
-                <FormField
-                  control={control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs text-muted-foreground">
-                        Description
-                      </FormLabel>
-                      <FormControl>
-                        <textarea
-                          placeholder="Short description"
-                          className="flex h-28 w-full rounded-md border border-input bg-transparent text-foreground px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                          {...field}
+                        {/* Description (same as create) */}
+                        <FormField
+                          control={control}
+                          name="description"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs text-muted-foreground">
+                                Description
+                              </FormLabel>
+                              <FormControl>
+                                <textarea
+                                  placeholder="Short description"
+                                  className="flex h-28 w-full rounded-md border border-input bg-transparent text-foreground px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
                         />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                      </FormCard>
 
-                {/* Resource Assets (same as create) */}
-                <ResourceAssetsEditor
-                  control={control}
-                  name="resourceAssets"
-                  label="Media (Images / YouTube)"
-                />
-
-                {/* Rewards (same as create) */}
-                {!isTrialPoll && (
-                  <RewardsEditor
-                    control={control}
-                    name="rewards"
-                    assetOptions={ASSET_OPTIONS}
-                    includeRewardType
-                    showCurvePreview
-                    totalLevelsForPreview={TOTAL_LEVELS}
-                    label="Rewards"
-                  />
-                )}
-
-                {/* Expire Reward At (same as create) */}
-                {!isTrialPoll && (
-                  <ExpireRewardAtPicker
-                    control={control}
-                    name="expireRewardAt"
-                  />
-                )}
-
-                {/* Target Geo (hidden for trial polls) */}
-                {!isTrialPoll && (
-                  <TargetGeoEditor
-                    control={control}
-                    watch={watch}
-                    setValue={setValue}
-                    basePath="targetGeo"
-                    label="Target Geo"
-                  />
-                )}
-
-                <div className="flex items-center gap-2 pt-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      if (!poll) return;
-
-                      // Reset to server state
-                      const initialAssets: EditValues["resourceAssets"] =
-                        Array.isArray(poll.resourceAssets) &&
-                        poll.resourceAssets.length > 0
-                          ? poll.resourceAssets.map((a) =>
-                              a.type === "image"
-                                ? { type: "image", value: [a.value] }
-                                : {
-                                    type: "youtube",
-                                    value: extractYouTubeId(a.value),
+                      {/* Resource Assets (same as create) */}
+                      <FormCard title="Resource Assets" subtitle="Max.: 3">
+                        <ResourceAssetsEditor
+                          control={control}
+                          name="resourceAssets"
+                          label="Media (Images / YouTube)"
+                        />
+                      </FormCard>
+                    </div>
+                    <FormCard title="Add Options">
+                      {/* ===== Options card (kept at bottom exactly as before) ===== */}
+                      <Card>
+                        <CardHeader className="flex flex-row items-center justify-between">
+                          <CardTitle>Options</CardTitle>
+                          <TooltipProvider delayDuration={0}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  className={`rounded-md p-1 hover:bg-foreground/10 ${
+                                    !canAddOption
+                                      ? "opacity-50 cursor-not-allowed"
+                                      : ""
+                                  }`}
+                                  onClick={() => {
+                                    if (!canAddOption) return;
+                                    setIsAddOption({
+                                      pollId: (poll as any)._id,
+                                    });
+                                  }}
+                                  aria-label="Add option"
+                                  title={
+                                    canAddOption
+                                      ? "Add option"
+                                      : "Max 4 active options"
                                   }
-                            )
-                          : poll.media
-                          ? [{ type: "image", value: [poll.media] }]
-                          : [];
+                                  disabled={!canAddOption}
+                                >
+                                  <PlusSquare className="w-4 h-4" />
+                                </button>
+                              </TooltipTrigger>
+                              {!canAddOption && (
+                                <TooltipContent>
+                                  Maximum of 4 active options
+                                </TooltipContent>
+                              )}
+                            </Tooltip>
+                          </TooltipProvider>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          {poll?.options?.length ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              {(poll.options ?? []).map((opt) => {
+                                const isArchived = !!opt.archivedAt;
+                                return (
+                                  <div
+                                    key={opt._id}
+                                    className={cn(
+                                      "relative border rounded-lg p-3 hover:bg-muted/30",
+                                      isArchived &&
+                                        "opacity-50 cursor-not-allowed"
+                                    )}
+                                  >
+                                    <div className="absolute right-2 top-2 flex items-center gap-2">
+                                      {!isArchived && (
+                                        <button
+                                          className="rounded-md p-1 hover:bg-foreground/10"
+                                          onClick={() =>
+                                            setIsEditOption({
+                                              pollId: (poll as any)._id,
+                                              optionId: opt._id,
+                                              oldText: opt.text,
+                                            })
+                                          }
+                                          aria-label="Edit option"
+                                          title="Edit option"
+                                        >
+                                          <Pencil className="w-4 h-4" />
+                                        </button>
+                                      )}
 
-                      const initialRewards: EditValues["rewards"] =
-                        Array.isArray(poll.rewards) && poll.rewards.length > 0
-                          ? poll.rewards.map((r) => ({
-                              assetId: r.assetId as any,
-                              amount: Number(r.amount), // convert
-                              rewardAmountCap: Number(r.rewardAmountCap), // convert
-                              rewardType: r.rewardType as "max" | "min",
-                            }))
-                          : [
-                              {
-                                assetId: ASSET_OPTIONS[0].value as any,
-                                amount: 1,
-                                rewardAmountCap: 1,
-                                rewardType: "max",
-                              },
-                            ];
+                                      {isArchived &&
+                                      activeCount + 1 > MAX_OPTIONS ? null : (
+                                        <button
+                                          className="rounded-md p-1 hover:bg-foreground/10"
+                                          onClick={() => {
+                                            console.log(
+                                              "is reaching archiving"
+                                            );
+                                            setIsArchiveToggleOption({
+                                              pollId: (poll as any)._id,
+                                              optionId: opt._id,
+                                              shouldArchive: !isArchived,
+                                            });
+                                          }}
+                                          aria-label={`Delete option ${opt.text}`}
+                                          title="Delete option"
+                                        >
+                                          {!isArchived ? (
+                                            <>
+                                              <Trash2
+                                                className={`w-4 h-4 text-red-600`}
+                                              />
+                                            </>
+                                          ) : (
+                                            <Recycle
+                                              className={`w-4 h-4 text-white`}
+                                            />
+                                          )}
+                                        </button>
+                                      )}
+                                    </div>
 
-                      reset({
-                        title: poll.title ?? "",
-                        description: poll.description ?? "",
-                        resourceAssets: initialAssets,
-                        rewards: isTrialPoll ? [] : initialRewards,
-                        targetGeo: {
-                          countries: Array.isArray(poll.targetGeo?.countries)
-                            ? poll.targetGeo!.countries
-                            : [],
-                          states: Array.isArray(poll.targetGeo?.states)
-                            ? poll.targetGeo!.states
-                            : [],
-                          cities: Array.isArray(poll.targetGeo?.cities)
-                            ? poll.targetGeo!.cities
-                            : [],
-                        },
-                        expireRewardAt: isTrialPoll
-                          ? ""
-                          : poll.expireRewardAt ?? "",
-                      });
-                      setIsEditing(false);
-                    }}
-                    disabled={isSaving || isUploading}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={isSaving || isUploading}>
-                    {isSaving || isUploading ? "Saving…" : "Save"}
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
+                                    <div className="pr-10">
+                                      <div className="text-xs text-muted-foreground mb-1">
+                                        Option ID
+                                      </div>
+                                      <div className="font-mono text-xs break-all mb-2">
+                                        {opt._id}
+                                      </div>
+                                      <div
+                                        className={cn(
+                                          "text-sm",
+                                          isArchived &&
+                                            "line-through opacity-60"
+                                        )}
+                                      >
+                                        {opt.text}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground mt-2">
+                                        Archived:{" "}
+                                        {opt.archivedAt
+                                          ? fmt(opt.archivedAt)
+                                          : "-"}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="text-sm text-muted-foreground">
+                              No options were found on this poll.
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </FormCard>
+
+                    {/* Rewards (same as create) */}
+                    {!isTrialPoll && (
+                      // <RewardsEditor
+                      //   control={control}
+                      //   name="rewards"
+                      //   assetOptions={ASSET_OPTIONS}
+                      //   includeRewardType
+                      //   showCurvePreview
+                      //   totalLevelsForPreview={TOTAL_LEVELS}
+                      //   label="Rewards"
+                      // />
+                      <FormCard title="Rewards">
+                        <RewardsList
+                          fields={fields}
+                          assetOptions={ASSET_OPTIONS as any}
+                          onEdit={setActiveRewardIndex}
+                          onAdd={() => setActiveRewardIndex(-1)}
+                          remove={remove}
+                          allAssets={ASSET_OPTIONS.map((a) => a.value)}
+                        />
+                      </FormCard>
+                    )}
+
+                    {/* Expire Reward At (same as create) */}
+                    {!isTrialPoll && (
+                      <ExpireRewardAtPicker
+                        control={control}
+                        name="expireRewardAt"
+                      />
+                    )}
+
+                    {/* Target Geo (hidden for trial polls) */}
+                    {!isTrialPoll && (
+                      <TargetGeoEditor
+                        control={control}
+                        watch={watch}
+                        setValue={setValue}
+                        basePath="targetGeo"
+                        label="Target Geo"
+                      />
+                    )}
+
+                    <div className="flex items-center gap-2 pt-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          if (!poll) return;
+
+                          // Reset to server state
+                          const initialAssets: EditValues["resourceAssets"] =
+                            Array.isArray(poll.resourceAssets) &&
+                            poll.resourceAssets.length > 0
+                              ? poll.resourceAssets.map((a) =>
+                                  a.type === "image"
+                                    ? { type: "image", value: [a.value] }
+                                    : {
+                                        type: "youtube",
+                                        value: extractYouTubeId(a.value),
+                                      }
+                                )
+                              : poll.media
+                              ? [{ type: "image", value: [poll.media] }]
+                              : [];
+
+                          const initialRewards: EditValues["rewards"] =
+                            Array.isArray(poll.rewards) &&
+                            poll.rewards.length > 0
+                              ? poll.rewards.map((r) => ({
+                                  assetId: r.assetId as any,
+                                  amount: Number(r.amount), // convert
+                                  rewardAmountCap: Number(r.rewardAmountCap), // convert
+                                  rewardType: r.rewardType as "max" | "min",
+                                }))
+                              : [
+                                  {
+                                    assetId: ASSET_OPTIONS[0].value as any,
+                                    amount: 1,
+                                    rewardAmountCap: 1,
+                                    rewardType: "max",
+                                  },
+                                ];
+
+                          reset({
+                            title: poll.title ?? "",
+                            description: poll.description ?? "",
+                            resourceAssets: initialAssets,
+                            rewards: isTrialPoll ? [] : initialRewards,
+                            targetGeo: {
+                              countries: Array.isArray(
+                                poll.targetGeo?.countries
+                              )
+                                ? poll.targetGeo!.countries
+                                : [],
+                              states: Array.isArray(poll.targetGeo?.states)
+                                ? poll.targetGeo!.states
+                                : [],
+                              cities: Array.isArray(poll.targetGeo?.cities)
+                                ? poll.targetGeo!.cities
+                                : [],
+                            },
+                            expireRewardAt: isTrialPoll
+                              ? ""
+                              : poll.expireRewardAt ?? "",
+                          });
+                          setIsEditing(false);
+                        }}
+                        disabled={isSaving || isUploading}
+                      >
+                        Cancel
+                      </Button>
+                      <Button type="submit" disabled={isSaving || isUploading}>
+                        {isSaving || isUploading ? "Saving…" : "Save"}
+                      </Button>
+                    </div>
+                  </div>
+                }
+              />
+            </form>
+          </Form>
+        </div>
       ) : (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              Poll
-              {/* {isTrialPoll && (
-                <span className="text-xs rounded px-2 py-0.5 bg-muted">
-                  Trial poll — Target Geo is controlled by Trial
-                </span>
-              )} */}
-            </CardTitle>
-            <button
-              className="rounded-md p-1 hover:bg-foreground/10"
+        <>
+          <section className="flex justify-between items-center w-full">
+            <h1 className="text-2xl tracking-wider">Poll</h1>
+            <Button
+              className="rounded-md p-1"
               onClick={() => setIsEditing(true)}
               aria-label="Edit poll"
               title="Edit poll"
             >
+              {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               <Edit className="w-4 h-4" />
-            </button>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <div className="text-xs text-muted-foreground">ID</div>
-              <div className="font-mono break-all">{poll._id}</div>
-            </div>
-
-            <div>
-              <div className="text-xs text-muted-foreground">Title</div>
-              <div className="font-medium">{poll.title}</div>
-            </div>
-
-            <div>
-              <div className="text-xs text-muted-foreground">Description</div>
-              <div>{poll.description || "-"}</div>
-            </div>
-
-            {/* Resource Assets view */}
-            <div>
-              <div className="text-xs text-muted-foreground">Media</div>
-              {viewAssets.length ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
-                  {viewAssets.map((a, i) => {
-                    console.log("a", a);
-                    return a.type === "youtube" ? (
-                      <div
-                        key={`yt-${i}`}
-                        className="flex items-center justify-between rounded-md border p-3"
-                      >
-                        <div className="flex min-w-0 flex-col">
-                          <div className="text-xs text-muted-foreground">
-                            YouTube
-                          </div>
-                          <div className="truncate text-sm font-medium">
-                            {extractYouTubeId(a.value)}
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div
-                        key={`img-${i}`}
-                        className="flex items-center justify-between gap-3 rounded-md border p-3"
-                      >
-                        <div className="flex items-center gap-3">
-                          <img
-                            src={a.value}
-                            alt="image"
-                            className="h-16 w-16 rounded object-cover"
-                          />
-                          <div className="text-xs text-muted-foreground">
-                            Image
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+            </Button>
+          </section>
+          <section className="space-y-7">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FormCard title="Basic Info">
+                <div>
+                  <div className="text-xs text-muted-foreground">ID</div>
+                  <div className="font-mono break-all">{poll._id}</div>
                 </div>
-              ) : (
-                <div className="text-sm text-muted-foreground">-</div>
-              )}
+                <div>
+                  <div className="text-xs text-muted-foreground">Title</div>
+                  <div className="font-medium">{poll.title}</div>
+                </div>
+
+                <div>
+                  <div className="text-xs text-muted-foreground">
+                    Description
+                  </div>
+                  <div>{poll.description || "-"}</div>
+                </div>
+              </FormCard>
+
+              <FormCard title="Resource Assets" subtitle="Max.: 3">
+                <div className="text-xs text-muted-foreground">Media</div>
+                {viewAssets.length ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                    {viewAssets.map((a, i) => {
+                      console.log("a", a);
+                      return a.type === "youtube" ? (
+                        <div
+                          key={`yt-${i}`}
+                          className="flex items-center justify-between rounded-md border p-3"
+                        >
+                          <div className="flex min-w-0 flex-col">
+                            <div className="text-xs text-muted-foreground">
+                              YouTube
+                            </div>
+                            <div className="truncate text-sm font-medium">
+                              {extractYouTubeId(a.value)}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div
+                          key={`img-${i}`}
+                          className="flex items-center justify-between gap-3 rounded-md border p-3"
+                        >
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={a.value}
+                              alt="image"
+                              className="h-16 w-16 rounded object-cover"
+                            />
+                            <div className="text-xs text-muted-foreground">
+                              Image
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">-</div>
+                )}
+              </FormCard>
             </div>
 
             {/* Hide Target Geo block entirely for trial polls */}
             {!isTrialPoll && (
-              <div>
-                <div className="text-xs text-muted-foreground">Target Geo</div>
-                <h2 className="break-all">
-                  Countries –{" "}
-                  {Array.isArray(poll.targetGeo?.countries)
-                    ? poll.targetGeo!.countries.join(", ")
-                    : "-"}
-                </h2>
-                <h2 className="break-all">
-                  States –{" "}
-                  {Array.isArray(poll.targetGeo?.states)
-                    ? poll.targetGeo!.states.join(", ")
-                    : "-"}
-                </h2>
-                <h2 className="break-all">
-                  Cities –{" "}
-                  {Array.isArray(poll.targetGeo?.cities)
-                    ? poll.targetGeo!.cities.join(", ")
-                    : "-"}
-                </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormCard title="Target Geo">
+                  <h2 className="break-all">
+                    Countries –{" "}
+                    {Array.isArray(poll.targetGeo?.countries)
+                      ? poll.targetGeo!.countries.join(", ")
+                      : "-"}
+                  </h2>
+                  <h2 className="break-all">
+                    States –{" "}
+                    {Array.isArray(poll.targetGeo?.states)
+                      ? poll.targetGeo!.states.join(", ")
+                      : "-"}
+                  </h2>
+                  <h2 className="break-all">
+                    Cities –{" "}
+                    {Array.isArray(poll.targetGeo?.cities)
+                      ? poll.targetGeo!.cities.join(", ")
+                      : "-"}
+                  </h2>
+                </FormCard>
+                <FormCard title="Details">
+                  <section className="flex items-center gap-2">
+                    <h2>Created At - </h2>
+                    <p className="text-xs text-muted-foreground">
+                      {fmt(poll.createdAt)}
+                    </p>
+                  </section>
+                  <section className="flex items-center gap-2">
+                    <h2>Archived At - </h2>
+                    <p className="text-xs text-muted-foreground">
+                      {fmt(poll.archivedAt)}
+                    </p>
+                  </section>
+                </FormCard>
               </div>
             )}
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <div className="text-xs text-muted-foreground">Created At</div>
-                <div>{fmt(poll.createdAt)}</div>
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground">Archived At</div>
-                <div>{fmt(poll.archivedAt)}</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          </section>
+        </>
       )}
-
-      {/* ===== Options card (kept at bottom exactly as before) ===== */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Options</CardTitle>
-
-          <TooltipProvider delayDuration={0}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  className={`rounded-md p-1 hover:bg-foreground/10 ${
-                    !canAddOption ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
-                  onClick={() => {
-                    if (!canAddOption) return;
-                    setIsAddOption({ pollId: (poll as any)._id });
-                  }}
-                  aria-label="Add option"
-                  title={canAddOption ? "Add option" : "Max 4 active options"}
-                  disabled={!canAddOption}
-                >
-                  <PlusSquare className="w-4 h-4" />
-                </button>
-              </TooltipTrigger>
-              {!canAddOption && (
-                <TooltipContent>Maximum of 4 active options</TooltipContent>
-              )}
-            </Tooltip>
-          </TooltipProvider>
-        </CardHeader>
-
-        <CardContent className="space-y-4">
-          {poll?.options?.length ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {(poll.options ?? []).map((opt) => {
-                const isArchived = !!opt.archivedAt;
-                return (
-                  <div
-                    key={opt._id}
-                    className={cn(
-                      "relative border rounded-lg p-3 hover:bg-muted/30",
-                      isArchived && "opacity-50 cursor-not-allowed"
-                    )}
-                  >
-                    <div className="absolute right-2 top-2 flex items-center gap-2">
-                      {!isArchived && (
-                        <button
-                          className="rounded-md p-1 hover:bg-foreground/10"
-                          onClick={() =>
-                            setIsEditOption({
-                              pollId: (poll as any)._id,
-                              optionId: opt._id,
-                              oldText: opt.text,
-                            })
-                          }
-                          aria-label="Edit option"
-                          title="Edit option"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                      )}
-
-                      {isArchived && activeCount + 1 > MAX_OPTIONS ? null : (
-                        <button
-                          className="rounded-md p-1 hover:bg-foreground/10"
-                          onClick={() => {
-                            console.log("is reaching archiving");
-                            setIsArchiveToggleOption({
-                              pollId: (poll as any)._id,
-                              optionId: opt._id,
-                              shouldArchive: !isArchived,
-                            });
-                          }}
-                          aria-label={`Delete option ${opt.text}`}
-                          title="Delete option"
-                        >
-                          {!isArchived ? (
-                            <>
-                              <Trash2 className={`w-4 h-4 text-red-600`} />
-                            </>
-                          ) : (
-                            <Recycle className={`w-4 h-4 text-white`} />
-                          )}
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="pr-10">
-                      <div className="text-xs text-muted-foreground mb-1">
-                        Option ID
-                      </div>
-                      <div className="font-mono text-xs break-all mb-2">
-                        {opt._id}
-                      </div>
-                      <div
-                        className={cn(
-                          "text-sm",
-                          isArchived && "line-through opacity-60"
-                        )}
-                      >
-                        {opt.text}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-2">
-                        Archived: {opt.archivedAt ? fmt(opt.archivedAt) : "-"}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="text-sm text-muted-foreground">
-              No options were found on this poll.
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       {isAddOption && <AddOptionModal />}
       {isEditOption && <EditOptionModal />}

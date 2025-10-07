@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState } from "react";
 
 type ConnState = {
   connecting: boolean;
@@ -17,7 +17,12 @@ interface AptosConnectProps {
   onDisconnected?: () => void;
 }
 
-export default function AptosConnect({ className = '', address, onConnected, onDisconnected }: AptosConnectProps) {
+export default function AptosConnect({
+  className = "",
+  address,
+  onConnected,
+  onDisconnected,
+}: AptosConnectProps) {
   const [aptos, setAptos] = useState<ConnState>(initial);
   const isConnected = !!address || aptos.connected;
   const displayAddress = address || aptos.address;
@@ -29,10 +34,14 @@ export default function AptosConnect({ className = '', address, onConnected, onD
       const base = import.meta.env.VITE_APTOS_CONNECT_URL;
       const returnUrl = window.location.href;
       const url = new URL(base);
-      url.searchParams.set('return', returnUrl);
+      url.searchParams.set("return", returnUrl);
       window.location.href = url.toString();
     } catch (e: any) {
-      setAptos({ connecting: false, connected: false, error: String(e?.message ?? e) });
+      setAptos({
+        connecting: false,
+        connected: false,
+        error: String(e?.message ?? e),
+      });
     }
   }, []);
 
@@ -41,21 +50,25 @@ export default function AptosConnect({ className = '', address, onConnected, onD
       const base = import.meta.env.VITE_APTOS_CONNECT_URL;
       const returnUrl = window.location.href;
       const url = new URL(base);
-      url.searchParams.set('return', returnUrl);
-      url.searchParams.set('disconnect', '1');
+      url.searchParams.set("return", returnUrl);
+      url.searchParams.set("disconnect", "1");
       window.location.href = url.toString();
     } catch {
       // no-op
     } finally {
       setAptos({ ...initial });
-      try { onDisconnected?.(); } catch {}
+      try {
+        onDisconnected?.();
+      } catch {}
     }
   }, [onDisconnected]);
 
   return (
-    <section className={`rounded-xl border border-black/10 p-4 bg-white/50 ${className}`}>
+    <section
+      className={`rounded-xl border border-black/10 p-4 bg-sidebar ${className}`}
+    >
       <h2 className="font-medium mb-2">Connect Aptos Wallet</h2>
-      <div className="text-sm text-black/70 min-h-6 mb-3">
+      <div className="text-sm min-h-6 mb-3">
         {isConnected && displayAddress ? (
           <div className="flex items-center space-x-1">
             <span>Connected: </span>
@@ -71,14 +84,14 @@ export default function AptosConnect({ className = '', address, onConnected, onD
           <span>Not connected</span>
         )}
       </div>
-      <div className="flex gap-2">
+      <div className="flex gap-2 text-black">
         {!isConnected ? (
           <button
             onClick={connectAptos}
             disabled={aptos.connecting}
-            className="px-3 py-2 rounded-md bg-black text-white text-sm disabled:opacity-60"
+            className="px-3 py-2 rounded-md bg-foreground text-background text-sm disabled:opacity-60"
           >
-            {aptos.connecting ? 'Connecting…' : 'Connect'}
+            {aptos.connecting ? "Connecting…" : "Connect"}
           </button>
         ) : (
           <button
