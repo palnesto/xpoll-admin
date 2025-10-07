@@ -21,13 +21,13 @@ type Meta = {
 type PaginatedTableProps<T> = Exclude<TablePageProps<T>, "data"> & {
   tableData: T[];
 } & {
-  // Additional properties for pagination
   data: any;
   isFetching: boolean;
   page: number;
   setPage: (p: number) => void;
   pageSize?: any;
 };
+
 export const fmt = (v?: string | null) =>
   v ? new Date(v).toLocaleString() : "-";
 
@@ -45,42 +45,80 @@ export const PaginatedTable = ({
 }: PaginatedTableProps<any>) => {
   const btnCss = "aspect-square h-8 px-2";
   const iconSize = 16;
-  const handlePageChange = (p: number) => {
-    const next = Math.max(1, Math.min(totalPages, p));
-    setPage(next); // triggers refetch via changed URL
-  };
+
+  // API returns: { data: { items, page, pageSize, total, totalPages } }
+  const payload = data?.data?.data;
+
   const meta: Meta = useMemo(
     () => ({
-      total: Number(data?.data?.data?.meta?.total ?? 0),
-      page: Number(data?.data?.data?.meta?.page ?? page),
-      pageSize: Number(data?.data?.data?.meta?.pageSize ?? pageSize),
+      total: Number(payload?.total ?? 0),
+      page: Number(payload?.page ?? page),
+      pageSize: Number(payload?.pageSize ?? pageSize ?? DEFAULT_PAGE_SIZE),
     }),
-    [data, page, pageSize]
+    [payload, page, pageSize]
   );
-  const totalPages = Math.max(
+
+  const computedTotalPages = Math.max(
     1,
     Math.ceil((meta.total || 0) / (meta.pageSize || DEFAULT_PAGE_SIZE))
   );
-  const getPageNumbers = (): Array<number | string> => {
-    if (totalPages <= 1) return [];
-    const current = meta.page || page;
+  const totalPages =
+    Number.isFinite(payload?.totalPages) && payload?.totalPages > 0
+      ? Number(payload.totalPages)
+      : computedTotalPages;
 
-    const pages: Array<number | string> = [1];
-    const start = Math.max(2, current - 1);
-    const end = Math.min(totalPages - 1, current + 1);
+  const currentPage = meta.page || page;
 
-    if (start > 2) pages.push("...");
-    for (let i = start; i <= end; i++) pages.push(i);
-    if (end < totalPages - 1) pages.push("...");
-    pages.push(totalPages);
-
-    return pages;
+  const handlePageChange = (p: number) => {
+    const next = Math.max(1, Math.min(totalPages, p));
+    if (next === currentPage) return;
+    setPage(next);
   };
+
+  // Build a compact page list including: 1, current-1..current+1, mid, last
+  const pageItems: Array<number | string> = useMemo(() => {
+    if (totalPages <= 1) return [];
+
+    const mid = Math.floor((1 + totalPages) / 2);
+
+    const set = new Set<number>();
+    set.add(1);
+    set.add(totalPages);
+
+    // neighbors of current
+    for (const n of [currentPage - 1, currentPage, currentPage + 1]) {
+      if (n >= 1 && n <= totalPages) set.add(n);
+    }
+
+    // mid page (if meaningful)
+    if (mid !== 1 && mid !== totalPages) set.add(mid);
+
+    // turn into sorted array
+    const nums = Array.from(set).sort((a, b) => a - b);
+
+    // insert ellipses for gaps
+    const out: Array<number | string> = [];
+    for (let i = 0; i < nums.length; i++) {
+      const n = nums[i];
+      if (i === 0) {
+        out.push(n);
+        continue;
+      }
+      const prev = nums[i - 1];
+      if (n === prev + 1) {
+        out.push(n);
+      } else {
+        out.push("…", n);
+      }
+    }
+
+    return out;
+  }, [currentPage, totalPages]);
 
   return (
     <>
-      {/* Pass ONLY the current page's rows; TablePage renders them as-is */}
-      <TablePage<PollRow & { tableOptions: React.ReactNode }>
+      {/* Render only current page’s rows */}
+      <TablePage
         title={title}
         createButtonText={createButtonText}
         onCreate={onCreate}
@@ -93,20 +131,20 @@ export const PaginatedTable = ({
         <Button
           variant="outline"
           className={cn(btnCss)}
-          onClick={() => handlePageChange((meta.page || page) - 1)}
-          disabled={(meta.page || page) <= 1 || isFetching}
+          onClick={() => handlePageChange(currentPage - 1)}
+          disabled={currentPage <= 1}
+          aria-label="Previous page"
         >
           <ChevronLeft size={iconSize} />
         </Button>
 
-        {getPageNumbers().map((p, idx) =>
+        {pageItems.map((p, idx) =>
           typeof p === "number" ? (
             <Button
               key={`page-${p}`}
-              variant={p === (meta.page || page) ? "default" : "outline"}
+              variant={p === currentPage ? "default" : "outline"}
               className={cn(btnCss, "w-8")}
               onClick={() => handlePageChange(p)}
-              disabled={isFetching}
             >
               {p}
             </Button>
@@ -116,8 +154,9 @@ export const PaginatedTable = ({
               variant="ghost"
               className={cn(btnCss)}
               disabled
+              tabIndex={-1}
             >
-              …
+              {p}
             </Button>
           )
         )}
@@ -125,8 +164,9 @@ export const PaginatedTable = ({
         <Button
           variant="outline"
           className={cn(btnCss)}
-          onClick={() => handlePageChange((meta.page || page) + 1)}
-          disabled={(meta.page || page) >= totalPages || isFetching}
+          onClick={() => handlePageChange(currentPage + 1)}
+          disabled={currentPage >= totalPages}
+          aria-label="Next page"
         >
           <ChevronRight size={iconSize} />
         </Button>
@@ -135,7 +175,7 @@ export const PaginatedTable = ({
       {/* Loading hint */}
       {isFetching && (
         <div className="px-4 py-2 text-sm text-muted-foreground text-center">
-          Loading page {meta.page || page}…
+          Loading page {currentPage}…
         </div>
       )}
     </>

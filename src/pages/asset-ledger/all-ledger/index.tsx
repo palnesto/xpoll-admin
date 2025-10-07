@@ -14,7 +14,8 @@ export const AllLedgerTable = () => {
 
   const url = `${endpoints.entities.assetLedger.all}?page=${page}&pageSize=${pageSize}`;
   const { data, isFetching } = useApiQuery(url, { keepPreviousData: true });
-  console.log("data", data);
+
+  // Items already read from the correct location
   const entries = useMemo(() => data?.data?.data?.items ?? [], [data]);
 
   const tableData = useMemo(
@@ -40,6 +41,7 @@ export const AllLedgerTable = () => {
     },
   ] as const;
 
+  console.log("data", { page, data });
   return (
     <div>
       <PaginatedTable
