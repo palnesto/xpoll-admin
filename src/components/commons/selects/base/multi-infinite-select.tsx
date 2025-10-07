@@ -1,3 +1,4 @@
+// src/components/MultiInfiniteSelect.tsx
 import { useApiInfiniteQuery } from "@/hooks/useApiInfiniteQuery";
 import React from "react";
 import Select, {
@@ -33,6 +34,8 @@ export type MultiInfiniteSelectProps<
   debounceMs?: number;
   minChars?: number;
   fetchThresholdPx?: number;
+  /** When to start fetching data: "open" (on menu open) or "type" (after typing minChars). */
+  fetchTrigger?: "open" | "type";
 };
 
 export default function MultiInfiniteSelect<
@@ -51,23 +54,36 @@ export default function MultiInfiniteSelect<
   debounceMs = 300,
   minChars = 0,
   fetchThresholdPx = 120,
+  fetchTrigger = "open",
 }: MultiInfiniteSelectProps<T, F>) {
   const [input, setInput] = React.useState("");
   const [search, setSearch] = React.useState("");
+  const [isOpen, setIsOpen] = React.useState(false);
 
+  // Debounce the user's input into "search"
   React.useEffect(() => {
     const id = window.setTimeout(() => setSearch(input), debounceMs);
     return () => window.clearTimeout(id);
   }, [input, debounceMs]);
 
   const effectiveSearch = search.length >= minChars ? search : "";
+
+  // Keep an empty filters object stable to avoid changing the queryKey unnecessarily
+  const emptyFiltersRef = React.useRef({} as F);
   const filters = React.useMemo(
-    () => (getFilters ? getFilters(effectiveSearch) : ({} as F)),
+    () => (getFilters ? getFilters(effectiveSearch) : emptyFiltersRef.current),
     [getFilters, effectiveSearch]
   );
 
+  // Only enable the query when the user is "using" the select
+  const enabled =
+    fetchTrigger === "open" ? isOpen : isOpen && effectiveSearch.length > 0;
+
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
-    useApiInfiniteQuery<T, unknown, F>(route, filters, pageSize);
+    useApiInfiniteQuery<T, unknown, F>(route, filters, pageSize, {
+      enabled,
+      keepPreviousData: true,
+    });
 
   const options = React.useMemo(() => {
     const pages = data?.pages ?? [];
@@ -93,6 +109,7 @@ export default function MultiInfiniteSelect<
     []
   );
 
+  // Throttled infinite scroll fetcher
   const lastFetchTsRef = React.useRef(0);
   const tryFetchNext = React.useCallback(() => {
     const now = Date.now();
@@ -120,7 +137,7 @@ export default function MultiInfiniteSelect<
   }, [fetchThresholdPx, tryFetchNext]);
 
   return (
-    <Select<BaseOption<T>, true>
+    <Select<BaseOption<T>, true, GroupBase<BaseOption<T>>>
       isMulti
       placeholder={placeholder}
       isClearable={isClearable}
@@ -131,14 +148,23 @@ export default function MultiInfiniteSelect<
       onChange={handleChange}
       maxMenuHeight={260}
       filterOption={() => true}
-      isLoading={isLoading || isFetchingNextPage}
-      noOptionsMessage={() =>
-        isLoading
-          ? "Loading..."
-          : input && input.length < minChars
-          ? `Type at least ${minChars} characters`
-          : "No options"
-      }
+      // Only show spinner once fetching is actually enabled
+      isLoading={enabled && (isLoading || isFetchingNextPage)}
+      noOptionsMessage={() => {
+        if (!enabled) {
+          if (fetchTrigger === "type" && input.length < minChars) {
+            return `Type at least ${minChars} characters`;
+          }
+          return "Open the menu to load options";
+        }
+        if (isLoading) return "Loading...";
+        if (fetchTrigger === "type" && input.length < minChars) {
+          return `Type at least ${minChars} characters`;
+        }
+        return "No options";
+      }}
+      onMenuOpen={() => setIsOpen(true)}
+      onMenuClose={() => setIsOpen(false)}
       menuPortalTarget={selectProps?.menuPortalTarget}
       menuShouldScrollIntoView={false}
       components={{ MenuList, ...(selectProps?.components || {}) }}
