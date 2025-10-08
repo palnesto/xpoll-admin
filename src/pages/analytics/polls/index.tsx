@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -28,18 +28,20 @@ import { useNavigate } from "react-router-dom";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { endpoints } from "@/api/endpoints";
 import { usePollFilters, Tri, Opt } from "@/stores/usePollFilters";
-
+import { Switch } from "@/components/ui/switch";
 import AssetMultiSelect from "@/components/commons/selects/asset-multi-select";
-
 import { Plus, X } from "lucide-react";
 import CountrySelect from "@/components/commons/selects/country-select";
 import StateSelect from "@/components/commons/selects/state-select";
 import CitySelect from "@/components/commons/selects/city-select";
-
+type TrendingWindow = "hour" | "day" | "week" | "month" | "quarter" | "year";
 const PAGE_SIZE = 10;
 
 const MemoPolls = () => {
   const navigate = useNavigate();
+
+  const [trendingOn, setTrendingOn] = useState(false);
+  const [trendingWindow, setTrendingWindow] = useState<TrendingWindow>("year");
 
   const {
     search,
@@ -77,6 +79,7 @@ const MemoPolls = () => {
 
     if (expired !== "all") p.expired = expired === "true";
     if (exhausted !== "all") p.exhausted = exhausted === "true";
+    if (trendingOn) p.sortedByHighestVotes = trendingWindow;
 
     return p;
   }, [
@@ -88,6 +91,8 @@ const MemoPolls = () => {
     assetOpts,
     expired,
     exhausted,
+    trendingOn,
+    trendingWindow,
   ]);
 
   const urlWithQuery = useMemo(() => {
@@ -114,7 +119,7 @@ const MemoPolls = () => {
   const payload = data?.data?.data ?? {};
   const meta = payload?.meta ?? {};
   const entries: any[] = Array.isArray(payload.entries) ? payload.entries : [];
-
+  console.log("entries", entries);
   const total: number =
     typeof meta.total === "number" ? meta.total : entries.length ?? 0;
 
@@ -154,13 +159,12 @@ const MemoPolls = () => {
   };
 
   const handleResetAll = () => {
-    // Clear persisted storage entry
     usePollFilters.persist?.clearStorage?.();
-    // Reset store & bump uiNonce so selects fully clear
     reset();
+    setTrendingOn(false);
+    setTrendingWindow("day");
   };
 
-  // ---- Chips (active filters) ----
   const Chip = ({
     label,
     onRemove,
@@ -255,6 +259,17 @@ const MemoPolls = () => {
           onRemove={() => patch({ page: 1, search: "" })}
         />
       )}
+      {/* Trending */}
+      {trendingOn && (
+        <Chip
+          label={`Trending: ${trendingWindow}`}
+          onRemove={() => {
+            setTrendingOn(false);
+            // setTrendingPopoverOpen(false);
+            patch({ page: 1 });
+          }}
+        />
+      )}
     </div>
   );
 
@@ -290,7 +305,7 @@ const MemoPolls = () => {
         </div>
 
         {/* Filters row */}
-        <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+        <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
           <section className="flex flex-col gap-1">
             <label className="text-sm text-muted-foreground">Countries</label>
             <CountrySelect
@@ -363,9 +378,45 @@ const MemoPolls = () => {
               </SelectContent>
             </Select>
           </section>
+          <section className="flex flex-col gap-1">
+            <label className="text-sm text-muted-foreground flex items-center gap-2">
+              Trending
+              <Switch
+                checked={trendingOn}
+                onCheckedChange={(v) => {
+                  setTrendingOn(v);
+                  if (v) patch({ page: 1 });
+                }}
+                aria-label="Toggle Trending"
+              />
+            </label>
+
+            {trendingOn ? (
+              <Select
+                value={trendingWindow}
+                onValueChange={(v: TrendingWindow) => {
+                  setTrendingWindow(v);
+                  patch({ page: 1 });
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select window" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="hour">Hour</SelectItem>
+                  <SelectItem value="day">Day</SelectItem>
+                  <SelectItem value="week">Week</SelectItem>
+                  <SelectItem value="month">Month</SelectItem>
+                  <SelectItem value="quarter">Quarter</SelectItem>
+                  <SelectItem value="year">Year</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="h-9" />
+            )}
+          </section>
         </section>
 
-        {/* Active filter chips */}
         {chipBar}
       </section>
 
