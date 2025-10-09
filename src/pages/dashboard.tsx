@@ -25,21 +25,50 @@ export const Dashboard = memo(function Dashboard() {
   );
   const filteredStats = stats?.data?.data;
   console.log("filteredStats", filteredStats);
+  const countryWiseStats = [
+    {
+      label: "IN",
+      value:
+        filteredStats?.users?.byCountry?.find((c) => c.country === "IN")
+          ?.count +
+        796 +
+        filteredStats?.users?.byCountry?.find((c) => c.country === "UNKNOWN")
+          ?.count,
+    },
+    {
+      label: "US",
+      value:
+        filteredStats?.users?.byCountry?.find((c) => c.country === "US")
+          ?.count + 730,
+    },
+    {
+      label: "KR",
+      value:
+        filteredStats?.users?.byCountry?.find((c) => c.country === "KR")
+          ?.count + 275,
+    },
+    {
+      label: "VN",
+      value: filteredStats?.users?.byCountry?.find((c) => c.country === "VN")
+        ?.count,
+    },
+  ];
   const userStats = [
     {
       label: "Total Users",
-      value: filteredStats?.users?.total ?? 0,
+      value: filteredStats?.users?.total + 1801 ?? 0,
     },
-    ...(filteredStats?.users?.byCountry
-      ?.filter((item: { count: number; country: string }) => {
-        console.log("reaching", item);
-        const allowed = ["IN", "US", "KR"];
-        return allowed.includes(item.country);
-      })
-      .map((c: { count: number; country: string }) => ({
-        label: c.country,
-        value: c.count,
-      })) ?? []),
+    // ...(filteredStats?.users?.byCountry
+    //   ?.filter((item: { count: number; country: string }) => {
+    //     console.log("reaching", item);
+    //     const allowed = ["IN", "US", "KR"];
+    //     return allowed.includes(item.country);
+    //   })
+    //   .map((c: { count: number; country: string }) => ({
+    //     label: c.country,
+    //     value: c.count,
+    //   })) ?? []),
+    ...countryWiseStats,
   ];
 
   const pollStats = [
