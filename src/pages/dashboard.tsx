@@ -29,36 +29,17 @@ export const Dashboard = memo(function Dashboard() {
     {
       label: "Total Users",
       value: filteredStats?.users?.total ?? 0,
-      // value: 3277,
     },
-    ...(filteredStats?.users?.byCountry ||
-      ([
-        {
-          count: 1586,
-          country: "IN",
-        },
-        {
-          count: 1136,
-          country: "US",
-        },
-        {
-          count: 555,
-          country: "KR",
-        },
-        {
-          count: 4,
-          country: "UNKNOWN",
-        },
-      ]
-        ?.filter((item) => {
-          const allowed = ["IN", "US", "KR"];
-          return allowed.includes(item.country);
-        })
-        .map((c) => ({
-          label: c.country,
-          value: c.count,
-        })) ??
-        [])),
+    ...(filteredStats?.users?.byCountry
+      ?.filter((item: { count: number; country: string }) => {
+        console.log("reaching", item);
+        const allowed = ["IN", "US", "KR"];
+        return allowed.includes(item.country);
+      })
+      .map((c: { count: number; country: string }) => ({
+        label: c.country,
+        value: c.count,
+      })) ?? []),
   ];
 
   const pollStats = [
@@ -133,8 +114,9 @@ export const Dashboard = memo(function Dashboard() {
   return (
     <section className="p-4 space-y-4 @container/main flex flex-1 flex-col">
       <h1 className="text-2xl font-semibold">XP Intelligence</h1>
+      {console.log("userStats", userStats)}
       <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
-        {userStats.map((data) => (
+        {userStats?.map((data) => (
           <SectionCards data={data} />
         ))}
       </div>
@@ -168,6 +150,7 @@ export const Dashboard = memo(function Dashboard() {
 });
 
 export function SectionCards({ data }) {
+  console.log("sectionCard", data);
   const { label, value, filter } = data;
   const cardClass = filter ? "flex-1 md:col-span-2" : "";
   return (
