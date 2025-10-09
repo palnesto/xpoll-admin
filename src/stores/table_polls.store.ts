@@ -1,5 +1,9 @@
 import { create } from "zustand";
 
+type DeletePollsState = {
+  pollId: string;
+  title: string;
+};
 type TablePollsId = string;
 type StateType = TablePollsId | null;
 
@@ -8,8 +12,8 @@ type TablePollsStoreType = {
   setIsCreating: (isCreating: StateType) => void;
   isEditing: StateType;
   setIsEditing: (isEditing: StateType) => void;
-  isDeleting: null | Array<string>;
-  setIsDeleting: (isDeleting: null | Array<string>) => void;
+  isDeleting: null | Array<DeletePollsState>;
+  setIsDeleting: (isDeleting: null | Array<DeletePollsState>) => void;
   onClose: () => void;
 };
 
@@ -19,6 +23,7 @@ export const useTablePollsStore = create<TablePollsStoreType>()((set) => ({
   isEditing: null,
   setIsEditing: (isEditing) => set({ isEditing }),
   isDeleting: null,
-  setIsDeleting: (isDeleting: Array<string> | null) => set({ isDeleting }),
+  setIsDeleting: (isDeleting: Array<DeletePollsState> | null) =>
+    set({ isDeleting }),
   onClose: () => set({ isCreating: null, isEditing: null, isDeleting: null }),
 }));

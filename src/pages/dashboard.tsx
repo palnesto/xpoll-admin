@@ -28,36 +28,37 @@ export const Dashboard = memo(function Dashboard() {
   const userStats = [
     {
       label: "Total Users",
-      // value: filteredStats?.users?.total ?? 0,
-      value: 3277,
+      value: filteredStats?.users?.total ?? 0,
+      // value: 3277,
     },
-    ...//filteredStats?.users?.byCountry ||
-    ([
-      {
-        count: 1586,
-        country: "IN",
-      },
-      {
-        count: 1136,
-        country: "US",
-      },
-      {
-        count: 555,
-        country: "KR",
-      },
-      {
-        count: 4,
-        country: "UNKNOWN",
-      },
-    ]
-      ?.filter((item) => {
-        const allowed = ["IN", "US", "KR"];
-        return allowed.includes(item.country);
-      })
-      .map((c) => ({
-        label: c.country,
-        value: c.count,
-      })) ?? []),
+    ...(filteredStats?.users?.byCountry ||
+      ([
+        {
+          count: 1586,
+          country: "IN",
+        },
+        {
+          count: 1136,
+          country: "US",
+        },
+        {
+          count: 555,
+          country: "KR",
+        },
+        {
+          count: 4,
+          country: "UNKNOWN",
+        },
+      ]
+        ?.filter((item) => {
+          const allowed = ["IN", "US", "KR"];
+          return allowed.includes(item.country);
+        })
+        .map((c) => ({
+          label: c.country,
+          value: c.count,
+        })) ??
+        [])),
   ];
 
   const pollStats = [
