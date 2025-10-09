@@ -55,5 +55,3 @@ export default tseslint.config({
   },
 })
 ````
-
-<!-- test -->
