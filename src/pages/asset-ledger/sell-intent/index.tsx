@@ -16,12 +16,12 @@ import { Transaction } from "@mysten/sui/transactions";
 import { endpoints } from "@/api/endpoints";
 import { amount, unwrapString } from "@/utils/currency-assets/base";
 import { cn } from "@/lib/utils";
-import { assetSpecs } from "@/utils/asset";
-import { CustomModal } from "@/components/modals/custom-modal";
 import { useApiQuery } from "@/hooks/useApiQuery";
+import { assetSpecs } from "@/utils/currency-assets/asset";
 import { ThreeDotMenu } from "@/components/commons/three-dot-menu";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { Send } from "lucide-react";
+import { CustomModal } from "@/components/modals/custom-modal";
 
 export const generateStatus = (status: string) => {
   return (
@@ -900,7 +900,7 @@ export default function SellIntent() {
   }, [batchTransfer]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-[80vw] mx-auto">
       <h1 className="text-xl font-semibold">Sell Intent</h1>
 
       {/* Admin wallet connections */}
@@ -911,9 +911,9 @@ export default function SellIntent() {
         />
         <ErrorBoundary
           fallback={
-            <section className="rounded-xl border border-black/10 p-4 bg-white/50">
+            <section className="rounded-xl border p-4 bg-sidebar">
               <h2 className="font-medium mb-2">Connect Sui Wallet</h2>
-              <p className="text-sm text-black/70">
+              <p className="text-sm">
                 Sui wallet UI unavailable. Ensure Sui providers are configured.
               </p>
             </section>
@@ -932,7 +932,7 @@ export default function SellIntent() {
       </div>
 
       {/* Connection summary */}
-      <div className="rounded-xl border border-black/10 p-4 bg-white/50">
+      <div className="rounded-xl p-4 bg-sidebar">
         <h2 className="font-medium mb-3">Admin Wallet Status</h2>
         <div className="flex flex-col gap-3 text-sm md:flex-row md:items-center md:gap-6">
           <WalletStatus
@@ -957,9 +957,9 @@ export default function SellIntent() {
       </div>
 
       {/* Network filter */}
-      <div className="rounded-xl border border-black/10 bg-white/50 p-4">
+      <div className="rounded-xl border border-black/10 bg-sidebar p-4">
         <h2 className="font-medium">Filter by Network</h2>
-        <p className="text-sm text-black/60 mb-3">
+        <p className="text-sm mb-3 text-zinc-500">
           Select a network to show matching sell intent requests.
         </p>
         <div className="flex flex-wrap gap-2">
@@ -983,20 +983,18 @@ export default function SellIntent() {
       </div>
 
       {/* Dummy requests table */}
-      <div className="rounded-xl border border-black/10 overflow-hidden">
-        <div className="flex flex-col gap-4 bg-white/70 px-6 py-5 md:flex-row md:items-center md:justify-between">
+      <div className="rounded-xl overflow-hidden">
+        <div className="flex flex-col gap-4 bg-sidebar px-6 py-5 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="text-2xl font-semibold text-black">
-              Pending Withdrawals
-            </h2>
-            <p className="mt-1 text-base text-black/70 max-w-2xl">
+            <h2 className="text-2xl font-semibold">Pending Withdrawals</h2>
+            <p className="mt-1 text-base max-w-2xl text-zinc-500">
               {selectedNetwork
                 ? `Approve transfers for ${selectedNetwork} sell intents using the connected admin wallet.`
                 : "Select a network to review pending sell intent requests."}
             </p>
           </div>
-          <div className="flex items-center gap-4 text-base text-black/70">
-            <span className="rounded-full bg-black/5 px-4 py-1.5">
+          <div className="flex items-center gap-4 text-base">
+            <span className="rounded-full px-4 py-1.5 bg-secondary">
               {anyPending
                 ? `${pendingFiltered.length} pending`
                 : "All processed"}
@@ -1004,7 +1002,7 @@ export default function SellIntent() {
             {selectedNetwork && pendingFiltered.length > 0 && (
               <button
                 onClick={() => setConfirmTransferOpen(true)}
-                className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-black px-5 py-2.5 text-base font-medium text-white shadow-sm transition hover:bg-black/90 disabled:cursor-not-allowed disabled:border-black/5 disabled:bg-black/30"
+                className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-base font-medium text-white shadow-sm transition hover:bg-black/90 disabled:cursor-not-allowed disabled:border-black/5 disabled:bg-black/30"
                 disabled={isBatchProcessing || !!processingId}
               >
                 <Send className="h-4 w-4" />
@@ -1015,11 +1013,11 @@ export default function SellIntent() {
             )}
           </div>
         </div>
-        <div className="overflow-x-auto bg-white/40">
+        <div className="overflow-x-auto bg-sidebar/60">
           <table className="min-w-full text-sm">
-            <thead className="bg-gray-50 text-left text-black/70">
+            <thead className="bg-secondary text-left ">
               <tr>
-                <th className="px-4 py-2">ID</th>
+                {/* <th className="px-4 py-2">ID</th> */}
                 <th className="px-4 py-2">User</th>
                 <th className="px-4 py-2">Wallet</th>
                 <th className="px-4 py-2">Address</th>
@@ -1032,11 +1030,11 @@ export default function SellIntent() {
               {selectedNetwork &&
                 filteredRequests.map((r) => (
                   <tr key={r.id} className="border-t border-gray-100">
-                    <td className="px-4 py-2 font-mono text-xs">{r._id}</td>
+                    {/* <td className="px-4 py-2 font-mono text-xs">{r._id}</td> */}
                     <td className="px-4 py-2">{r.metadata.username}</td>
                     <td className="px-4 py-2">
                       <span className="inline-flex items-center gap-2">
-                        <span className="rounded px-2 py-0.5 bg-gray-100 text-xs">
+                        <span className="rounded px-2 py-0.5 text-xs">
                           {r.metadata.chain}
                         </span>
                       </span>
@@ -1059,27 +1057,21 @@ export default function SellIntent() {
                         <span className="text-red-600">Rejected</span>
                       )}
                     </td>
-                    <td className="px-4 py-2 font-mono text-xs break-all text-black/80">
+                    <td className="px-4 py-2 font-mono text-xs break-all ">
                       {r.metadata.txHash ? r.metadata.txHash : "—"}
                     </td>
                   </tr>
                 ))}
               {selectedNetwork && !filteredRequests.length && (
                 <tr>
-                  <td
-                    colSpan={9}
-                    className="px-4 py-6 text-center text-black/60"
-                  >
+                  <td colSpan={9} className="px-4 py-6 text-center ">
                     No {selectedNetwork} requests
                   </td>
                 </tr>
               )}
               {!selectedNetwork && (
                 <tr>
-                  <td
-                    colSpan={9}
-                    className="px-4 py-6 text-center text-black/60"
-                  >
+                  <td colSpan={9} className="px-4 py-6 text-center ">
                     Select a network above to view sell intent requests
                   </td>
                 </tr>
@@ -1087,7 +1079,7 @@ export default function SellIntent() {
             </tbody>
           </table>
         </div>
-        <div className="p-3 bg-white/60 text-xs text-black/60">
+        <div className="p-3 bg-sidebar text-xs ">
           {!selectedNetwork
             ? "No network selected"
             : filteredRequests.length
@@ -1275,24 +1267,24 @@ function WalletStatus({
   return (
     <div className="flex flex-col md:flex-1">
       <div className="flex items-center gap-2">
-        <span className="text-black/70">{label}:</span>
-        <span className={isConnected ? "text-green-700" : "text-black/60"}>
+        <span>{label}:</span>
+        <span className={isConnected ? "text-green-700" : "text-red-700"}>
           {isConnected ? "Connected" : "Not connected"}
         </span>
       </div>
       {connectedAddress && (
-        <div className="mt-1 text-black/70">
+        <div className="mt-1">
           Connected
           <div>
-            <code className="font-mono bg-gray-100 px-2 py-0.5 rounded inline-block mt-0.5">
+            <code className="font-mono bg-gray-100 px-2 py-0.5 rounded inline-block mt-0.5 ">
               {connectedAddress.slice(0, 6)}...{connectedAddress.slice(-4)}
             </code>
           </div>
         </div>
       )}
-      <div className="mt-1 text-black/70">Admin</div>
-      <code className="font-mono bg-gray-100 px-2 py-0.5 rounded inline-block mt-0.5">
-        {adminAddress}
+      <div className="mt-1">Admin</div>
+      <code className="font-mono bg-black/50 px-2 py-0.5 rounded inline-block mt-0.5">
+        {adminAddress.slice(0, 30)}...
       </code>
     </div>
   );
