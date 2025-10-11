@@ -3,6 +3,8 @@ import { endpoints } from "@/api/endpoints";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { DEFAULT_PAGE_SIZE } from "@/constants";
 import { fmt, PaginatedTable } from "@/components/paginated-table";
+import { amount, unwrapString } from "@/utils/currency-assets/base";
+import { assetSpecs } from "@/utils/currency-assets/asset";
 
 export default function AllLedgerPage() {
   return <AllLedgerTable />;
@@ -20,25 +22,52 @@ export const AllLedgerTable = () => {
 
   const tableData = useMemo(
     () =>
-      entries.map((r: any) => ({
-        ...r,
-      })),
+      entries.map((r: any) => {
+        const meta = r.metadata || {};
+        const parentAmountVal = meta.amount
+          ? unwrapString(
+              amount({
+                op: "toParent",
+                assetId: meta.assetId,
+                value: meta.amount,
+                output: "string",
+                trim: true,
+                group: false,
+              })
+            )
+          : "--";
+        return {
+          ...r,
+          username: meta.username ?? "--",
+          chain: meta.chain ?? "--",
+          assetId:
+            assetSpecs[meta.assetId]?.parentSymbol ?? meta.assetId ?? "—",
+          parentAmountVal,
+        };
+      }),
     [entries]
   );
 
   const columns = [
-    { key: "_id", header: "ID", canFilter: true },
+    // { key: "_id", header: "ID", canFilter: true },
+    { key: "username", header: "Username", canFilter: true },
     { key: "action", header: "Action", canFilter: true },
+    { key: "chain", header: "Chain", canFilter: true },
+    {
+      key: "parentAmountVal",
+      header: "Amount",
+      canFilter: true,
+    },
     {
       key: "createdAt",
       header: "Created At",
       render: (val: any) => <span>{fmt(val)}</span>,
     },
-    {
-      key: "archivedAt",
-      header: "Archived At",
-      render: (val: any) => <span>{fmt(val)}</span>,
-    },
+    // {
+    //   key: "archivedAt",
+    //   header: "Archived At",
+    //   render: (val: any) => <span>{fmt(val)}</span>,
+    // },
   ] as const;
 
   console.log("data", { page, data });

@@ -3,6 +3,8 @@ import { Card } from "@/components/ui/card";
 import { assetSpecs } from "@/utils/asset";
 import { capitalize } from "lodash";
 import { Pencil, Trash } from "lucide-react";
+import { useState } from "react";
+import { useLocation } from "react-router";
 
 type Reward = {
   id?: string;
@@ -31,20 +33,24 @@ export default function RewardsList({
 }: Props) {
   const takenAssets = fields.map((f) => f.assetId);
   const canAdd = takenAssets.length < allAssets.length;
-
+  const location = useLocation() || {};
+  const isNavigationEditing = location?.state?.isNavigationEditing;
+  const [isEditing, setIsEditing] = useState(isNavigationEditing ?? false);
   return (
     <>
       <div className="space-y-3">
-        {/* Header */}
-        <div className="flex justify-between items-center">
-          <label className="text-sm font-medium">
-            Rewards ({fields.length})
-          </label>
-          <Button type="button" size="sm" onClick={onAdd} disabled={!canAdd}>
-            + Add Reward
-          </Button>
-        </div>
-
+        {isEditing ? (
+          <div className="flex justify-between items-center">
+            <label className="text-sm font-medium">
+              Rewards ({fields.length})
+            </label>
+            <Button type="button" size="sm" onClick={onAdd} disabled={!canAdd}>
+              + Add Reward
+            </Button>
+          </div>
+        ) : (
+          <></>
+        )}
         {/* List */}
         {fields.map((field, idx) => {
           const assetLabel =
@@ -72,25 +78,28 @@ export default function RewardsList({
                     </div>
                     <p>{assetSpecs[assetId]?.parentSymbol}</p>
                   </div>
-                  {/* right edit, trash button */}
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      type="button"
-                      size="sm"
-                      onClick={() => onEdit(idx)}
-                    >
-                      <Pencil />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      type="button"
-                      size="sm"
-                      onClick={() => remove(idx)}
-                    >
-                      <Trash className="text-red-500" />
-                    </Button>
-                  </div>
+                  {isEditing ? (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        type="button"
+                        size="sm"
+                        onClick={() => onEdit(idx)}
+                      >
+                        <Pencil />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        type="button"
+                        size="sm"
+                        onClick={() => remove(idx)}
+                      >
+                        <Trash className="text-red-500" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <></>
+                  )}
                 </div>
                 {/* cards */}
                 <div className="flex gap-3 justify-center">
