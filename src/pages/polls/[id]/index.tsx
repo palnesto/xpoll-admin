@@ -43,7 +43,9 @@ import { EditOptionModal } from "@/components/modals/table_polls/edit-option";
 import { ArchiveToggleOptionModal } from "@/components/modals/table_polls/archive-toggle-option";
 import { cn } from "@/lib/utils";
 
-import ResourceAssetsEditor from "@/components/polling/editors/ResourceAssetsEditor";
+import ResourceAssetsEditor, {
+  getYTImageUrl,
+} from "@/components/polling/editors/ResourceAssetsEditor";
 import { type AssetOption } from "@/components/polling/editors/RewardsEditor";
 import ExpireRewardAtPicker from "@/components/polling/editors/ExpireRewardAtPicker";
 import TargetGeoEditor from "@/components/polling/editors/TargetGeoEditor";
@@ -53,6 +55,7 @@ import { FormCard } from "@/components/form/form-card";
 import TwoPane from "@/layouts/TwoPane";
 import RewardDetailPanel from "@/components/polling/editors/RewardDetailPanel";
 import RewardsList from "@/components/polling/editors/RewardsList";
+import ResourceAssetsPreview from "@/components/polling/editors/ResourceAssetsPreview";
 
 /* ---------- constants ---------- */
 const TOTAL_LEVELS = 10 as const;
@@ -70,7 +73,7 @@ type PollOption = {
   archivedAt?: string | null;
 };
 
-type ResourceAsset = { type: "image" | "youtube"; value: string };
+export type ResourceAsset = { type: "image" | "youtube"; value: string };
 
 type RewardRow = {
   assetId: "xOcta" | "xMYST" | "xDrop" | "xPoll";
@@ -525,15 +528,15 @@ export default function PollShowPage() {
           {/* Header */}
           <div className="flex justify-between items-center w-full">
             <h1 className="text-2xl tracking-wider">Edit Poll</h1>
-            <Button
+            {/* <Button
               type="submit"
               form="poll-form"
               disabled={isBusy}
-              className="text-base font-light tracking-wide"
+              className="text-base tracking-wide"
             >
               {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Edit Poll
-            </Button>
+            </Button> */}
           </div>
           <Form {...form}>
             <form className="space-y-6" onSubmit={onSubmitEdit}>
@@ -605,6 +608,7 @@ export default function PollShowPage() {
                           control={control}
                           name="resourceAssets"
                           label="Media (Images / YouTube)"
+                          isEditing={true}
                         />
                       </FormCard>
                     </div>
@@ -767,14 +771,6 @@ export default function PollShowPage() {
                       </FormCard>
                     )}
 
-                    {/* Expire Reward At (same as create) */}
-                    {!isTrialPoll && (
-                      <ExpireRewardAtPicker
-                        control={control}
-                        name="expireRewardAt"
-                      />
-                    )}
-
                     {/* Target Geo (hidden for trial polls) */}
                     {!isTrialPoll && (
                       <TargetGeoEditor
@@ -786,79 +782,93 @@ export default function PollShowPage() {
                       />
                     )}
 
-                    <div className="flex items-center gap-2 pt-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          if (!poll) return;
+                    <section className="flex items-end justify-between">
+                      {/* Expire Reward At (same as create) */}
+                      {!isTrialPoll && (
+                        <ExpireRewardAtPicker
+                          control={control}
+                          name="expireRewardAt"
+                        />
+                      )}
+                      <div className="flex items-center gap-2">
+                        <Button
+                          className="text-lg font-bold px-6 py-5"
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            if (!poll) return;
 
-                          // Reset to server state
-                          const initialAssets: EditValues["resourceAssets"] =
-                            Array.isArray(poll.resourceAssets) &&
-                            poll.resourceAssets.length > 0
-                              ? poll.resourceAssets.map((a) =>
-                                  a.type === "image"
-                                    ? { type: "image", value: [a.value] }
-                                    : {
-                                        type: "youtube",
-                                        value: extractYouTubeId(a.value),
-                                      }
+                            // Reset to server state
+                            const initialAssets: EditValues["resourceAssets"] =
+                              Array.isArray(poll.resourceAssets) &&
+                              poll.resourceAssets.length > 0
+                                ? poll.resourceAssets.map((a) =>
+                                    a.type === "image"
+                                      ? { type: "image", value: [a.value] }
+                                      : {
+                                          type: "youtube",
+                                          value: extractYouTubeId(a.value),
+                                        }
+                                  )
+                                : poll.media
+                                ? [{ type: "image", value: [poll.media] }]
+                                : [];
+
+                            const initialRewards: EditValues["rewards"] =
+                              Array.isArray(poll.rewards) &&
+                              poll.rewards.length > 0
+                                ? poll.rewards.map((r) => ({
+                                    assetId: r.assetId as any,
+                                    amount: Number(r.amount), // convert
+                                    rewardAmountCap: Number(r.rewardAmountCap), // convert
+                                    rewardType: r.rewardType as "max" | "min",
+                                  }))
+                                : [
+                                    {
+                                      assetId: ASSET_OPTIONS[0].value as any,
+                                      amount: 1,
+                                      rewardAmountCap: 1,
+                                      rewardType: "max",
+                                    },
+                                  ];
+
+                            reset({
+                              title: poll.title ?? "",
+                              description: poll.description ?? "",
+                              resourceAssets: initialAssets,
+                              rewards: isTrialPoll ? [] : initialRewards,
+                              targetGeo: {
+                                countries: Array.isArray(
+                                  poll.targetGeo?.countries
                                 )
-                              : poll.media
-                              ? [{ type: "image", value: [poll.media] }]
-                              : [];
-
-                          const initialRewards: EditValues["rewards"] =
-                            Array.isArray(poll.rewards) &&
-                            poll.rewards.length > 0
-                              ? poll.rewards.map((r) => ({
-                                  assetId: r.assetId as any,
-                                  amount: Number(r.amount), // convert
-                                  rewardAmountCap: Number(r.rewardAmountCap), // convert
-                                  rewardType: r.rewardType as "max" | "min",
-                                }))
-                              : [
-                                  {
-                                    assetId: ASSET_OPTIONS[0].value as any,
-                                    amount: 1,
-                                    rewardAmountCap: 1,
-                                    rewardType: "max",
-                                  },
-                                ];
-
-                          reset({
-                            title: poll.title ?? "",
-                            description: poll.description ?? "",
-                            resourceAssets: initialAssets,
-                            rewards: isTrialPoll ? [] : initialRewards,
-                            targetGeo: {
-                              countries: Array.isArray(
-                                poll.targetGeo?.countries
-                              )
-                                ? poll.targetGeo!.countries
-                                : [],
-                              states: Array.isArray(poll.targetGeo?.states)
-                                ? poll.targetGeo!.states
-                                : [],
-                              cities: Array.isArray(poll.targetGeo?.cities)
-                                ? poll.targetGeo!.cities
-                                : [],
-                            },
-                            expireRewardAt: isTrialPoll
-                              ? ""
-                              : poll.expireRewardAt ?? "",
-                          });
-                          setIsEditing(false);
-                        }}
-                        disabled={isSaving || isUploading}
-                      >
-                        Cancel
-                      </Button>
-                      <Button type="submit" disabled={isSaving || isUploading}>
-                        {isSaving || isUploading ? "Saving…" : "Save"}
-                      </Button>
-                    </div>
+                                  ? poll.targetGeo!.countries
+                                  : [],
+                                states: Array.isArray(poll.targetGeo?.states)
+                                  ? poll.targetGeo!.states
+                                  : [],
+                                cities: Array.isArray(poll.targetGeo?.cities)
+                                  ? poll.targetGeo!.cities
+                                  : [],
+                              },
+                              expireRewardAt: isTrialPoll
+                                ? ""
+                                : poll.expireRewardAt ?? "",
+                            });
+                            setIsEditing(false);
+                          }}
+                          disabled={isSaving || isUploading}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="submit"
+                          disabled={isSaving || isUploading}
+                          className="text-lg font-bold px-6 py-5"
+                        >
+                          {isSaving || isUploading ? "Saving…" : "Save"}
+                        </Button>
+                      </div>
+                    </section>
                   </div>
                 }
               />
@@ -900,39 +910,30 @@ export default function PollShowPage() {
               </FormCard>
 
               <FormCard title="Resource Assets" subtitle="Max.: 3">
-                <div className="text-xs text-muted-foreground">Media</div>
                 {viewAssets.length ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
                     {viewAssets.map((a, i) => {
                       return a.type === "youtube" ? (
-                        <div
-                          key={`yt-${i}`}
-                          className="flex items-center justify-between rounded-md border p-3"
-                        >
-                          <div className="flex min-w-0 flex-col">
-                            <div className="text-xs text-muted-foreground">
-                              YouTube
-                            </div>
-                            <div className="truncate text-sm font-medium">
-                              {extractYouTubeId(a.value)}
-                            </div>
+                        <>
+                          <div
+                            key={`yt-${i}`}
+                            className="flex items-center justify-between rounded-md border p-1 h-16 w-full"
+                          >
+                            <ResourceAssetsPreview
+                              src={getYTImageUrl(extractYouTubeId(a.value))}
+                              label={`youtube ${i + 1}`}
+                            />
                           </div>
-                        </div>
+                        </>
                       ) : (
                         <div
                           key={`img-${i}`}
-                          className="flex items-center justify-between gap-3 rounded-md border p-3"
+                          className="flex items-center h-16 justify-between gap-3 rounded-md border p-1 w-full"
                         >
-                          <div className="flex items-center gap-3">
-                            <img
-                              src={a.value}
-                              alt="image"
-                              className="h-16 w-16 rounded object-cover"
-                            />
-                            <div className="text-xs text-muted-foreground">
-                              Image
-                            </div>
-                          </div>
+                          <ResourceAssetsPreview
+                            src={a.value}
+                            label={`youtube ${i + 1}`}
+                          />
                         </div>
                       );
                     })}
@@ -942,7 +943,63 @@ export default function PollShowPage() {
                 )}
               </FormCard>
             </div>
-
+            <FormCard title="Options">
+              <Card>
+                <CardContent className="space-y-4">
+                  {poll?.options?.length ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {(poll.options ?? []).map((opt) => {
+                        const isArchived = !!opt.archivedAt;
+                        return (
+                          <div
+                            key={opt._id}
+                            className={cn(
+                              "relative border rounded-lg p-3 hover:bg-muted/30",
+                              isArchived && "opacity-50 cursor-not-allowed"
+                            )}
+                          >
+                            <div className="pr-10">
+                              <div className="text-xs text-muted-foreground mb-1">
+                                Option ID
+                              </div>
+                              <div className="font-mono text-xs break-all mb-2">
+                                {opt._id}
+                              </div>
+                              <div
+                                className={cn(
+                                  "text-sm",
+                                  isArchived && "line-through opacity-60"
+                                )}
+                              >
+                                {opt.text}
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-2">
+                                Archived:{" "}
+                                {opt.archivedAt ? fmt(opt.archivedAt) : "-"}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">
+                      No options were found on this poll.
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </FormCard>
+            <FormCard title="Rewards">
+              <RewardsList
+                fields={fields}
+                assetOptions={ASSET_OPTIONS as any}
+                onEdit={setActiveRewardIndex}
+                onAdd={() => setActiveRewardIndex(-1)}
+                remove={remove}
+                allAssets={ASSET_OPTIONS.map((a) => a.value)}
+              />
+            </FormCard>
             {/* Hide Target Geo block entirely for trial polls */}
             {!isTrialPoll && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -951,19 +1008,19 @@ export default function PollShowPage() {
                     Countries –{" "}
                     {Array.isArray(poll.targetGeo?.countries)
                       ? poll.targetGeo!.countries.join(", ")
-                      : "-"}
+                      : ""}
                   </h2>
                   <h2 className="break-all">
                     States –{" "}
                     {Array.isArray(poll.targetGeo?.states)
                       ? poll.targetGeo!.states.join(", ")
-                      : "-"}
+                      : ""}
                   </h2>
                   <h2 className="break-all">
                     Cities –{" "}
                     {Array.isArray(poll.targetGeo?.cities)
                       ? poll.targetGeo!.cities.join(", ")
-                      : "-"}
+                      : ""}
                   </h2>
                 </FormCard>
                 <FormCard title="Details">

@@ -8,7 +8,6 @@ import aptos from "@/assets/aptos.png";
 import xrp from "@/assets/xrp.png";
 import sui from "@/assets/sui.png";
 import xpoll from "@/assets/xpoll.png";
-import toast from "react-hot-toast";
 import { memo } from "react";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { endpoints } from "@/api/endpoints";
@@ -131,20 +130,16 @@ export const Dashboard = memo(function Dashboard() {
       };
     }) ?? [];
 
-  const exchangeRequest = {
-    count: `${filteredStats?.sellIntents?.pendingCount ?? 0} New Request`,
-  };
-
-  const handleViewMore = () => {
-    toast("Feature coming soon!");
-  };
+  // const exchangeRequest = {
+  //   count: `${filteredStats?.sellIntents?.pendingCount ?? 0} New Request`,
+  // };
 
   if (isLoading) return <SystemReportSkeleton />;
   return (
     <section className="p-4 space-y-4 @container/main flex flex-1 flex-col">
       <h1 className="text-2xl font-semibold">XP Intelligence</h1>
       {console.log("userStats", userStats)}
-      <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+      <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs @xl/main:grid-cols-2 @5xl/main:grid-cols-5">
         {userStats?.map((data) => (
           <SectionCards data={data} />
         ))}
