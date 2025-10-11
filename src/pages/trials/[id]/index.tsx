@@ -260,6 +260,18 @@ export default function TrialShowPage() {
       navigate("/trials");
     },
   });
+  // near the top of the component (inside TrialShowPage)
+  const handleDelete = async () => {
+    if (!id || isDeleting) return;
+    // (optional) quick confirm
+    // if (!window.confirm("Delete this trial?")) return;
+
+    try {
+      await doDelete({ ids: [id] }); // 👈 sends { ids: [id] }
+    } catch (e) {
+      appToast.error("Failed to delete trial");
+    }
+  };
 
   /* ===== Helpers (unchanged) ===== */
   const normalizeAssetsForSave = async (
@@ -595,11 +607,16 @@ export default function TrialShowPage() {
               </Button>
               <Button
                 variant="destructive"
-                onClick={() => setIsDeleteOpen(true)}
+                onClick={handleDelete}
+                disabled={isDeleting}
                 aria-label="Delete trial"
                 title="Delete trial"
               >
-                <Trash2 className="w-4 h-4" />
+                {isDeleting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
               </Button>
             </div>
           </section>
