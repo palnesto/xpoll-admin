@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { endpoints } from "@/api/endpoints";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { ThreeDotMenu } from "@/components/commons/three-dot-menu";
-import { Eye, Trash } from "lucide-react";
+import { ChartNoAxesCombined, Edit, Eye, Trash } from "lucide-react";
 import { DEFAULT_PAGE_SIZE } from "@/constants";
 import { fmt, PaginatedTable } from "@/components/paginated-table";
 import { useTablePollsStore } from "@/stores/table_polls.store";
@@ -26,7 +26,27 @@ export default function TrialPollTable({ trialId }: { trialId: string }) {
 
   const actions = useCallback(
     (id: string) => [
-      { name: "View", icon: Eye, onClick: () => navigate(`/polls/${id}`) },
+      {
+        name: "View",
+        icon: Eye,
+        onClick: () =>
+          navigate(`/polls/${id}`, {
+            state: { isNavigationEditing: false },
+          }),
+      },
+      {
+        name: "Edit",
+        icon: Edit,
+        onClick: () =>
+          navigate(`/polls/${id}`, {
+            state: { isNavigationEditing: true },
+          }),
+      },
+      {
+        name: "Analytics",
+        icon: ChartNoAxesCombined,
+        onClick: () => navigate(`/analytics/polls/${id}`),
+      },
       {
         name: "Delete",
         icon: Trash,
@@ -47,18 +67,19 @@ export default function TrialPollTable({ trialId }: { trialId: string }) {
   );
 
   const columns = [
-    { key: "_id", header: "ID", canFilter: true },
+    // { key: "_id", header: "ID", canFilter: true },
     { key: "title", header: "Title", canFilter: true },
+    { key: "description", header: "Description", canFilter: true },
     {
       key: "createdAt",
       header: "Created At",
       render: (v: any) => <span>{fmt(v)}</span>,
     },
-    {
-      key: "archivedAt",
-      header: "Archived At",
-      render: (v: any) => <span>{fmt(v)}</span>,
-    },
+    // {
+    //   key: "archivedAt",
+    //   header: "Archived At",
+    //   render: (v: any) => <span>{fmt(v)}</span>,
+    // },
     {
       key: "tableOptions",
       header: "...",

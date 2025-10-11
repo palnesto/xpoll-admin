@@ -27,7 +27,6 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { endpoints } from "@/api/endpoints";
-import { usePollFilters, Tri, Opt } from "@/stores/usePollFilters";
 import { Switch } from "@/components/ui/switch";
 import AssetMultiSelect from "@/components/commons/selects/asset-multi-select";
 import { ChartNoAxesCombined, Edit, Eye, Plus, X } from "lucide-react";
@@ -37,41 +36,46 @@ import CitySelect from "@/components/commons/selects/city-select";
 type TrendingWindow = "hour" | "day" | "week" | "month" | "quarter" | "year";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { useTablePollsStore } from "@/stores/table_polls.store";
-import { ConfirmDeletePollsModal } from "@/components/modals/table_polls/delete";
+import { useTableTrialsStore } from "@/stores/table_trials.store";
+import { Opt, Tri, useTrialFilters } from "@/stores/useTrialFilters";
+import { ConfirmDeleteTrialPollsModal } from "@/components/modals/table_trials/delete";
 
 const PAGE_SIZE = 10;
 
-export type SelectedPoll = { pollId: string; title: string };
+/* -----------------------------
+   Multi-select store (persisted)
+   Stores objects: { trialId, title }
+------------------------------*/
+export type SelectedTrial = { trialId: string; title: string };
 
 type SelectedState = {
-  selected: Record<string, SelectedPoll>; // keyed by pollId
-  toggle: (item: SelectedPoll) => void;
-  addMany: (items: SelectedPoll[]) => void;
+  selected: Record<string, SelectedTrial>; // keyed by trialId
+  toggle: (item: SelectedTrial) => void;
+  addMany: (items: SelectedTrial[]) => void;
   removeManyByIds: (ids: string[]) => void;
   clear: () => void;
   isSelected: (id: string) => boolean;
-  all: () => SelectedPoll[];
+  all: () => SelectedTrial[];
   allIds: () => string[];
   count: () => number;
 };
 
-export const useSelectedPolls = create<SelectedState>()(
+export const useSelectedTrials = create<SelectedState>()(
   persist(
     (set, get) => ({
       selected: {},
       toggle: (item) =>
         set((s) => {
           const next = { ...s.selected };
-          if (next[item.pollId]) delete next[item.pollId];
-          else next[item.pollId] = item;
+          if (next[item.trialId]) delete next[item.trialId];
+          else next[item.trialId] = item;
           return { selected: next };
         }),
       addMany: (items) =>
         set((s) => {
           if (!items?.length) return s;
           const next = { ...s.selected };
-          for (const it of items) next[it.pollId] = it;
+          for (const it of items) next[it.trialId] = it;
           return { selected: next };
         }),
       removeManyByIds: (ids) =>
@@ -87,15 +91,19 @@ export const useSelectedPolls = create<SelectedState>()(
       allIds: () => Object.keys(get().selected),
       count: () => Object.keys(get().selected).length,
     }),
-    { name: "polls-multiselect" }
+    { name: "trials-multiselect" }
   )
 );
 
+/* -----------------------------------
+   Configurable bulk operations (UI)
+   onClick receives Array<{trialId,title}>
+------------------------------------*/
 type BulkOp = {
   label: string;
   btnClassName?: string;
   onClick?: (
-    items: SelectedPoll[],
+    items: SelectedTrial[],
     api: {
       clear: () => void;
       removeByIds: (ids: string[]) => void;
@@ -104,12 +112,10 @@ type BulkOp = {
   ) => void;
 };
 
-const MemoPolls = () => {
+const MemoTrials = () => {
   const navigate = useNavigate();
-  const setIsDeleting = useTablePollsStore((s) => s.setIsDeleting);
-  const isDeleting = useTablePollsStore((s) => s.isDeleting);
-
-  console.log("current deleting", isDeleting);
+  const setIsDeleting = useTableTrialsStore((s) => s.setIsDeleting);
+  const isDeleting = useTableTrialsStore((s) => s.isDeleting);
 
   // 👉 Edit this array to add/remove bulk ops. You can attach your own handlers.
   const BULK_OPS: BulkOp[] = [
@@ -117,9 +123,9 @@ const MemoPolls = () => {
     //   label: "Export",
     //   btnClassName: "bg-emerald-600 hover:bg-emerald-700 text-white",
     //   onClick: (items, api) => {
-    //     console.log("Export polls:", items);
+    //     console.log("Export trials:", items);
     //     // TODO: call your API here; on success:
-    //     // api.clear(); or api.removeByIds(items.map(i => i.pollId));
+    //     // api.clear(); or api.removeByIds(items.map(i => i.trialId));
     //     // api.refresh();
     //   },
     // },
@@ -127,10 +133,10 @@ const MemoPolls = () => {
       label: "Delete",
       btnClassName: "bg-red-600 hover:bg-red-700 text-white",
       onClick: (items, api) => {
-        console.log("Delete polls:", items);
+        console.log("Delete trials:", items);
         setIsDeleting(items);
         // TODO: call your API here; on success:
-        // api.removeByIds(items.map(i => i.pollId));
+        // api.removeByIds(items.map(i => i.trialId));
         // api.refresh();
       },
     },
@@ -151,7 +157,7 @@ const MemoPolls = () => {
     uiNonce,
     patch,
     reset,
-  } = usePollFilters();
+  } = useTrialFilters();
 
   // ---- Build params (ALWAYS pageSize=10) ----
   const params = useMemo(() => {
@@ -174,7 +180,7 @@ const MemoPolls = () => {
 
     if (expired !== "all") p.expired = expired === "true";
     if (exhausted !== "all") p.exhausted = exhausted === "true";
-    if (trendingOn) p.sortedByHighestVotes = trendingWindow;
+    if (trendingOn) p.sortedByHighestResponses = trendingWindow;
 
     return p;
   }, [
@@ -195,14 +201,14 @@ const MemoPolls = () => {
     Object.entries(params).forEach(([k, v]) => {
       if (v !== undefined && v !== null && v !== "") usp.set(k, String(v));
     });
-    const base = endpoints.entities.polls.advancedListing; // "/internal/poll/advanced-listing"
+    const base = endpoints.entities.trials.advancedListing; // "/internal/trial/advanced-listing"
     const qs = usp.toString();
     return qs ? `${base}?${qs}` : base;
   }, [params]);
 
   const { data, isLoading, isFetching, error, refetch } = useApiQuery(
     urlWithQuery,
-    { key: ["polls-advanced", urlWithQuery] } as any
+    { key: ["trials-advanced", urlWithQuery] } as any
   );
 
   useEffect(() => {
@@ -214,7 +220,6 @@ const MemoPolls = () => {
   const payload = data?.data?.data ?? {};
   const meta = payload?.meta ?? {};
   const entries: any[] = Array.isArray(payload.entries) ? payload.entries : [];
-  console.log("entries", entries);
   const total: number =
     typeof meta.total === "number" ? meta.total : entries.length ?? 0;
 
@@ -227,7 +232,7 @@ const MemoPolls = () => {
     typeof meta.page === "number" && meta.page > 0 ? meta.page : page;
 
   const handleViewMore = (id: string, title: string) => {
-    navigate(`/analytics/polls/${id}`, { state: { title } });
+    navigate(`/analytics/trials/${id}`, { state: { title } });
   };
 
   // Build page list with ellipses: Prev 1 2 3 … Next
@@ -254,7 +259,7 @@ const MemoPolls = () => {
   };
 
   const handleResetAll = () => {
-    usePollFilters.persist?.clearStorage?.();
+    useTrialFilters.persist?.clearStorage?.();
     reset();
     setTrendingOn(false);
     setTrendingWindow("day");
@@ -263,21 +268,21 @@ const MemoPolls = () => {
   /* -----------------------------
      Multi-select helpers (page)
   ------------------------------*/
-  const selectedApi = useSelectedPolls();
+  const selectedApi = useSelectedTrials();
   const selectedCount = selectedApi.count();
-  const selectedItems = selectedApi.all(); // Array<{pollId,title}>
+  const selectedItems = selectedApi.all(); // Array<{trialId,title}>
   const selectedIds = selectedApi.allIds();
 
-  // Items for current page: Array<{pollId,title}>
-  const pageItems: SelectedPoll[] = useMemo(
+  // Items for current page: Array<{trialId,title}>
+  const pageItems: SelectedTrial[] = useMemo(
     () =>
-      entries.map((p: any) => ({
-        pollId: p._id,
-        title: p.title ?? "",
+      entries.map((t: any) => ({
+        trialId: t._id,
+        title: t.title ?? "",
       })),
     [entries]
   );
-  const pageIds = useMemo(() => pageItems.map((it) => it.pollId), [pageItems]);
+  const pageIds = useMemo(() => pageItems.map((it) => it.trialId), [pageItems]);
 
   const allPageSelected =
     pageIds.length > 0 && pageIds.every((id) => selectedApi.isSelected(id));
@@ -310,6 +315,8 @@ const MemoPolls = () => {
     </span>
   );
 
+  const { patch: patchStore } = useTrialFilters.getState();
+
   const chipBar = (
     <div className="flex flex-wrap gap-2">
       {/* Countries */}
@@ -318,7 +325,7 @@ const MemoPolls = () => {
           key={`c-${o.value}-${idx}`}
           label={`Country: ${o.label}`}
           onRemove={() =>
-            usePollFilters.getState().patch({
+            patchStore({
               page: 1,
               countryOpts: countryOpts.filter((x) => x.value !== o.value),
             })
@@ -331,7 +338,7 @@ const MemoPolls = () => {
           key={`s-${o.value}-${idx}`}
           label={`State: ${o.label}`}
           onRemove={() =>
-            usePollFilters.getState().patch({
+            patchStore({
               page: 1,
               stateOpts: stateOpts.filter((x) => x.value !== o.value),
             })
@@ -344,7 +351,7 @@ const MemoPolls = () => {
           key={`ci-${o.value}-${idx}`}
           label={`City: ${o.label}`}
           onRemove={() =>
-            usePollFilters.getState().patch({
+            patchStore({
               page: 1,
               cityOpts: cityOpts.filter((x) => x.value !== o.value),
             })
@@ -357,7 +364,7 @@ const MemoPolls = () => {
           key={`a-${o.value}-${idx}`}
           label={`Asset: ${o.label}`}
           onRemove={() =>
-            usePollFilters.getState().patch({
+            patchStore({
               page: 1,
               assetOpts: assetOpts.filter((x) => x.value !== o.value),
             })
@@ -368,26 +375,20 @@ const MemoPolls = () => {
       {expired !== "all" && (
         <Chip
           label={expired === "true" ? "Expired" : "Non-expired"}
-          onRemove={() =>
-            usePollFilters.getState().patch({ page: 1, expired: "all" })
-          }
+          onRemove={() => patchStore({ page: 1, expired: "all" })}
         />
       )}
       {exhausted !== "all" && (
         <Chip
           label={exhausted === "true" ? "Exhausted" : "Non-exhausted"}
-          onRemove={() =>
-            usePollFilters.getState().patch({ page: 1, exhausted: "all" })
-          }
+          onRemove={() => patchStore({ page: 1, exhausted: "all" })}
         />
       )}
       {/* Title search */}
       {search.trim() && (
         <Chip
           label={`Title: "${search.trim()}"`}
-          onRemove={() =>
-            usePollFilters.getState().patch({ page: 1, search: "" })
-          }
+          onRemove={() => patchStore({ page: 1, search: "" })}
         />
       )}
       {/* Trending */}
@@ -396,6 +397,7 @@ const MemoPolls = () => {
           label={`Trending: ${trendingWindow}`}
           onRemove={() => {
             setTrendingOn(false);
+            // page reset for consistency
             patch({ page: 1 });
           }}
         />
@@ -454,17 +456,17 @@ const MemoPolls = () => {
         <section className="flex flex-col gap-4">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex flex-col gap-1">
-              <h1 className="text-3xl font-bold">Polls</h1>
+              <h1 className="text-3xl font-bold">Trials</h1>
               <p className="text-muted-foreground">
-                View detailed analytics of all the polls
+                View detailed analytics of all the trials
               </p>
             </div>
             <div>
               <Button
                 variant="default"
-                onClick={() => navigate("/polls/create")}
+                onClick={() => navigate("/trials/create")}
               >
-                <Plus /> Create New Poll
+                <Plus /> Create New Trial
               </Button>
             </div>
           </div>
@@ -556,6 +558,8 @@ const MemoPolls = () => {
                 </SelectContent>
               </Select>
             </section>
+
+            {/* Trending: sortedByHighestResponses */}
             <section className="flex flex-col gap-1">
               <label className="text-sm text-muted-foreground flex items-center gap-2">
                 Trending
@@ -563,7 +567,6 @@ const MemoPolls = () => {
                   checked={trendingOn}
                   onCheckedChange={(v) => {
                     setTrendingOn(v);
-                    // when turning on, force page 1 so results reflect sort
                     if (v) patch({ page: 1 });
                   }}
                   aria-label="Toggle Trending"
@@ -592,7 +595,6 @@ const MemoPolls = () => {
                   </SelectContent>
                 </Select>
               ) : (
-                // keep layout height consistent (optional)
                 <div className="h-9" />
               )}
             </section>
@@ -606,7 +608,7 @@ const MemoPolls = () => {
         {bulkBar}
 
         {error ? (
-          <div className="text-red-500 text-sm">Failed to load polls.</div>
+          <div className="text-red-500 text-sm">Failed to load trials.</div>
         ) : null}
 
         <div className="flex items-center gap-2">
@@ -615,23 +617,23 @@ const MemoPolls = () => {
           )}
         </div>
 
-        {/* Poll list with per-card checkbox */}
+        {/* Trial list with per-card checkbox */}
         <div className="flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
-          {entries?.map((poll: any) => {
-            const checked = selectedApi.isSelected(poll._id);
+          {entries?.map((trial: any) => {
+            const checked = selectedApi.isSelected(trial._id);
             return (
-              <div key={poll._id} className="flex items-stretch gap-3">
+              <div key={trial._id} className="flex items-stretch gap-3">
                 {/* Checkbox on the left */}
                 <div className="pt-5 pl-1">
                   <input
                     type="checkbox"
                     className="h-4 w-4 mt-1"
                     checked={checked}
-                    aria-label={`Select poll ${poll.title}`}
+                    aria-label={`Select trial ${trial.title}`}
                     onChange={() =>
                       selectedApi.toggle({
-                        pollId: poll._id,
-                        title: poll.title ?? "",
+                        trialId: trial._id,
+                        title: trial.title ?? "",
                       })
                     }
                   />
@@ -641,16 +643,17 @@ const MemoPolls = () => {
                 <Card className="@container/card bg-primary/5 rounded-3xl flex flex-row justify-between items-center gap-32 w-full">
                   <CardHeader className="w-full">
                     <CardTitle className="text-lg font-semibold @[250px]/card:text-xl overflow-hidden text-ellipsis whitespace-nowrap">
-                      {poll.title}
+                      {trial.title}
                     </CardTitle>
                     <CardDescription className="text-muted-foreground">
-                      {poll.viewCount ?? 0} views • {poll.voteCount ?? 0} votes
+                      {trial.viewCount ?? 0} views • {trial.responseCount ?? 0}{" "}
+                      responses
                     </CardDescription>
                   </CardHeader>
                   <CardFooter className="flex items-center gap-3">
                     <Button
                       onClick={() =>
-                        navigate(`/polls/${poll._id}`, {
+                        navigate(`/trials/${trial._id}`, {
                           state: {
                             isNavigationEditing: false,
                           },
@@ -663,7 +666,7 @@ const MemoPolls = () => {
                     </Button>
                     <Button
                       onClick={() =>
-                        navigate(`/polls/${poll._id}`, {
+                        navigate(`/trials/${trial._id}`, {
                           state: {
                             isNavigationEditing: true,
                           },
@@ -674,13 +677,13 @@ const MemoPolls = () => {
                     >
                       <Edit />
                     </Button>
-                    <Button
-                      onClick={() => handleViewMore(poll._id, poll.title)}
+                    {/* <Button
+                      onClick={() => handleViewMore(trial._id, trial.title)}
                       variant="outline"
-                      className="w-fir md:h-12 rounded-2xl"
+                      className="w-fit md:h-12 rounded-2xl"
                     >
                       <ChartNoAxesCombined />
-                    </Button>
+                    </Button> */}
                   </CardFooter>
                 </Card>
               </div>
@@ -748,11 +751,11 @@ const MemoPolls = () => {
         </section>
       </div>
       {isDeleting && isDeleting?.length > 0 && (
-        <ConfirmDeletePollsModal url={urlWithQuery} />
+        <ConfirmDeleteTrialPollsModal url={urlWithQuery} />
       )}
     </>
   );
 };
 
-const Polls = memo(MemoPolls);
-export default Polls;
+const Trials = memo(MemoTrials);
+export default Trials;

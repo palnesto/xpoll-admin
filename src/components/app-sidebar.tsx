@@ -16,7 +16,6 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
-  SidebarRail,
 } from "@/components/ui/sidebar";
 import xpollSVG from "@/assets/xpoll-svg.svg";
 import { useLocation } from "react-router";
@@ -38,6 +37,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     isSellIntentApproval,
     isSellIntentRejection,
     isAnalyticsPoll,
+    isAnalyticsTrials,
     isLLMQueries,
   } = React.useMemo(() => {
     // isOverallPollStats
@@ -73,6 +73,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       if (pathname.startsWith("/analytics/polls")) return true;
       return false;
     })();
+    // analytics trials
+    const isAnalyticsTrials = (() => {
+      if (pathname.startsWith("/analytics/trials")) return true;
+      return false;
+    })();
 
     // llm
     const isLLMQueries = (() => {
@@ -92,6 +97,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       isSellIntentApproval,
       isSellIntentRejection,
       isAnalyticsPoll,
+      isAnalyticsTrials,
       isLLMQueries,
     };
   }, [pathname]);
@@ -102,62 +108,107 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       avatar: "/avatars/shadcn.jpg",
     },
     navMain: [
+      // {
+      //   title: "All Polls",
+      //   url: "#",
+      //   icon: ReceiptText,
+      //   isActive: isAdminAndUserPolls || isTrialPolls,
+      //   items: [
+      //     {
+      //       title: "Admin and Users Polls",
+      //       url: "/polls",
+      //       isActive: isAdminAndUserPolls,
+      //     },
+      //     {
+      //       title: "Trial Polls",
+      //       url: "/trials",
+      //       isActive: isTrialPolls,
+      //     },
+      //   ],
+      // },
       {
         title: "XP Intelligence",
         url: "#",
         icon: Brain,
-        isActive: isOverallPollStats,
+        isActive:
+          isOverallPollStats ||
+          isAnalyticsPoll ||
+          isAnalyticsTrials ||
+          isLLMQueries,
         items: [
           {
             title: "Overall Poll Stats",
             url: "/",
             isActive: isOverallPollStats,
           },
+          {
+            title: "Polls Analytics",
+            url: "/analytics/polls",
+            isActive: isAnalyticsPoll,
+          },
+          {
+            title: "Trials Analytics",
+            url: "/analytics/trials",
+            isActive: isAnalyticsTrials,
+          },
+          {
+            title: "XPOLL AI",
+            url: "/llm/queries",
+            isActive: isLLMQueries,
+          },
         ],
       },
       {
-        title: "All Polls",
+        title: "Transfer Rewards",
         url: "#",
         icon: ReceiptText,
-        isActive: isAdminAndUserPolls || isTrialPolls,
-        items: [
-          {
-            title: "Admin and Users Polls",
-            url: "/polls",
-            isActive: isAdminAndUserPolls,
-          },
-          {
-            title: "Trial Polls",
-            url: "/trials",
-            isActive: isTrialPolls,
-          },
-        ],
-      },
-      {
-        title: "Actions",
-        url: "#",
-        icon: Settings,
-        isActive: isAllActions,
-        items: [
-          {
-            title: "All Actions",
-            url: "/actions",
-            isActive: isAllActions,
-          },
-        ],
-      },
-      {
-        title: "Asset Ledger",
-        url: "#",
-        icon: GraduationCap,
         isActive:
-          isAllLedgers ||
-          isSystemReport ||
           isSellIntent ||
           isSellIntentAdmin ||
           isSellIntentPending ||
           isSellIntentApproval ||
           isSellIntentRejection,
+        items: [
+          {
+            title: "Batch Transfer",
+            url: "/asset-ledger/sell-intent",
+            isActive: isSellIntent,
+          },
+          {
+            title: "Pending Transfers",
+            url: "/asset-ledger/sell-intent-pending",
+            isActive: isSellIntentPending,
+          },
+          {
+            title: "Approved Transfers",
+            url: "/asset-ledger/sell-intent-approval",
+            isActive: isSellIntentApproval,
+          },
+          {
+            title: "Rejected Transfers",
+            url: "/asset-ledger/sell-intent-rejection",
+            isActive: isSellIntentRejection,
+          },
+        ],
+      },
+      // {
+      //   title: "Actions",
+      //   url: "#",
+      //   icon: Settings,
+      //   isActive: isAllActions,
+      //   items: [
+      //     {
+      //       title: "All Actions",
+      //       url: "/actions",
+      //       isActive: isAllActions,
+      //     },
+      //   ],
+      // },
+      {
+        title: "Asset Ledger",
+        url: "#",
+        icon: GraduationCap,
+        isActive: isAllLedgers || isSystemReport,
         items: [
           {
             title: "All Ledgers",
@@ -169,54 +220,39 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             url: "/asset-ledger/system-report",
             isActive: isSystemReport,
           },
-          {
-            title: "Sell Intent All",
-            url: "/asset-ledger/sell-intent",
-            isActive: isSellIntent,
-          },
-          {
-            title: "Sell Intent Pending",
-            url: "/asset-ledger/sell-intent-pending",
-            isActive: isSellIntentPending,
-          },
-          {
-            title: "Sell Intent Approval",
-            url: "/asset-ledger/sell-intent-approval",
-            isActive: isSellIntentApproval,
-          },
-          {
-            title: "Sell Intent Rejection",
-            url: "/asset-ledger/sell-intent-rejection",
-            isActive: isSellIntentRejection,
-          },
         ],
       },
-      {
-        title: "Analytics",
-        url: "#",
-        icon: Settings,
-        isActive: isAnalyticsPoll,
-        items: [
-          {
-            title: "Polls",
-            url: "/analytics/polls",
-            isActive: isAnalyticsPoll,
-          },
-        ],
-      },
-      {
-        title: "LLM",
-        url: "#",
-        icon: Settings,
-        isActive: isLLMQueries,
-        items: [
-          {
-            title: "Queries",
-            url: "/llm/queries",
-            isActive: isLLMQueries,
-          },
-        ],
-      },
+      // {
+      //   title: "Analytics",
+      //   url: "#",
+      //   icon: Settings,
+      //   isActive: isAnalyticsPoll,
+      //   items: [
+      //     {
+      //       title: "Polls",
+      //       url: "/analytics/polls",
+      //       isActive: isAnalyticsPoll,
+      //     },
+      //     {
+      //       title: "Trials",
+      //       url: "/analytics/trials",
+      //       isActive: isAnalyticsTrials,
+      //     },
+      //   ],
+      // },
+      // {
+      //   title: "LLM",
+      //   url: "#",
+      //   icon: Settings,
+      //   isActive: isLLMQueries,
+      //   items: [
+      //     {
+      //       title: "Queries",
+      //       url: "/llm/queries",
+      //       isActive: isLLMQueries,
+      //     },
+      //   ],
+      // },
     ],
     projects: [
       {

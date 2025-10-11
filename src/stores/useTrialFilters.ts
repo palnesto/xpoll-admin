@@ -2,7 +2,6 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 export type Tri = "all" | "true" | "false";
-
 export type Opt = { value: string; label: string };
 
 type State = {
@@ -13,7 +12,7 @@ type State = {
   countryOpts: Opt[];
   stateOpts: Opt[];
   cityOpts: Opt[];
-  assetOpts: Opt[]; // e.g. [{value:"xPoll", label:"xPoll"}]
+  assetOpts: Opt[]; // e.g. [{ value: "xPoll", label: "xPoll" }]
 
   // tri-state singles
   expired: Tri;
@@ -45,7 +44,7 @@ const initial: Omit<State, "patch" | "reset"> = {
   uiNonce: 0,
 };
 
-export const usePollFilters = create<State>()(
+export const useTrialFilters = create<State>()(
   persist(
     (set) => ({
       ...initial,
@@ -56,6 +55,6 @@ export const usePollFilters = create<State>()(
           uiNonce: s.uiNonce + 1,
         })),
     }),
-    { name: "poll-filters" }
+    { name: "trial-filters" }
   )
 );

@@ -86,11 +86,11 @@ export default function SellIntent() {
     // { key: "assetId", header: "Asset ID", canFilter: true },
     { key: "parentAmountVal", header: "Amount", canFilter: true },
     { key: "status", header: "Status", canFilter: true },
-    { key: "action", header: "Action", canFilter: true },
+    // { key: "action", header: "Action", canFilter: true },
     { key: "txnHash", header: "Txn Hash", canFilter: true },
     {
       key: "createdAt",
-      header: "Created At",
+      header: "Approved At",
       render: (val: any) => <span>{fmt(val)}</span>,
     },
     // {

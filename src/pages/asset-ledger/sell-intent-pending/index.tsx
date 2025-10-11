@@ -48,6 +48,7 @@ export default function SellIntent() {
   const tableData = useMemo(
     () =>
       entries.map((r: any) => {
+        console.log("r", r);
         const intentLeg = r.legs?.find((l) => {
           return l?.legType === "intent-amount";
         });
@@ -85,20 +86,20 @@ export default function SellIntent() {
     { key: "username", header: "Username", canFilter: true },
     { key: "walletAddress", header: "Wallet Address", canFilter: true },
     { key: "chain", header: "Chain", canFilter: true },
-    { key: "assetId", header: "Asset ID", canFilter: true },
+    // { key: "assetId", header: "Asset ID", canFilter: true },
     { key: "parentAmountVal", header: "Amount", canFilter: true },
     { key: "status", header: "Status", canFilter: true },
-    { key: "action", header: "Action", canFilter: true },
+    // { key: "action", header: "Action", canFilter: true },
     {
       key: "createdAt",
       header: "Created At",
       render: (val: any) => <span>{fmt(val)}</span>,
     },
-    {
-      key: "archivedAt",
-      header: "Archived At",
-      render: (val: any) => <span>{fmt(val)}</span>,
-    },
+    // {
+    //   key: "archivedAt",
+    //   header: "Archived At",
+    //   render: (val: any) => <span>{fmt(val)}</span>,
+    // },
     {
       key: "tableOptions",
       header: "...",
