@@ -134,6 +134,7 @@ interface CustomBlock {
 interface SectionBlock {
   type: "section";
   title: string;
+  toHideHeading?: boolean;
   content: UIBlock[];
 }
 
@@ -623,25 +624,29 @@ const ChartRenderer: React.FC<{ block: ChartBlock }> = ({ block }) => {
 
 const SectionRenderer: React.FC<{ block: SectionBlock }> = ({ block }) => (
   <Card className="bg-[#111] border border-border/50 shadow-md rounded-xl">
-    <CardHeader>
-      <CardTitle className="text-lg font-semibold text-white">
-        {block.title}
-      </CardTitle>
-    </CardHeader>
-    <CardContent className="flex flex-col gap-4">
-      {block.content.map((child, idx) => (
-        <UILayoutRenderer
-          key={idx}
-          data={{
-            meta: {
-              query: "",
-              generatedAt: "",
-            },
-            layout: [child],
-          }}
-        />
-      ))}
-    </CardContent>
+    {!block?.toHideHeading && block?.title && (
+      <CardHeader>
+        <CardTitle className="text-lg font-semibold text-white">
+          {block.title}
+        </CardTitle>
+      </CardHeader>
+    )}
+    {block?.content && (
+      <CardContent className="flex flex-col gap-4">
+        {block.content.map((child, idx) => (
+          <UILayoutRenderer
+            key={idx}
+            data={{
+              meta: {
+                query: "",
+                generatedAt: "",
+              },
+              layout: [child],
+            }}
+          />
+        ))}
+      </CardContent>
+    )}
   </Card>
 );
 
@@ -678,7 +683,7 @@ export const UILayoutRenderer: React.FC<{
   return (
     <div className={cls("flex flex-col gap-6", className)}>
       {/* Header meta */}
-      <div className="flex flex-col gap-3 rounded-lg border border-border/50 bg-[#111] p-4 shadow-md">
+      {/* <div className="flex flex-col gap-3 rounded-lg border border-border/50 bg-[#111] p-4 shadow-md">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="text-lg font-bold text-white">{meta.query}</div>
           <div className="text-xs text-muted-foreground">
@@ -714,9 +719,9 @@ export const UILayoutRenderer: React.FC<{
             </Badge>
           ))}
         </div>
-      </div>
+      </div> */}
 
-      <Separator />
+      {/* <Separator /> */}
 
       {/* Blocks */}
       <div className="grid grid-cols-1 gap-6">
