@@ -38,7 +38,7 @@ export const AllLedgerTable = () => {
           : "--";
         return {
           ...r,
-          username: meta.username ?? "--",
+          username: meta.username ?? "Admin",
           chain: meta.chain ?? "--",
           assetId:
             assetSpecs[meta.assetId]?.parentSymbol ?? meta.assetId ?? "—",
