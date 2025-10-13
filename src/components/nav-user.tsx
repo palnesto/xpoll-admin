@@ -1,11 +1,12 @@
 "use client";
 
-import { ChevronsUpDown, LogOut } from "lucide-react";
+import { ChevronsUpDown, LogOut, Sparkles } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -20,7 +21,7 @@ import {
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { endpoints } from "@/api/endpoints";
 import { getInitials } from "@/utils/formatter";
 
@@ -34,6 +35,7 @@ export function NavUser({
   };
 }) {
   const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
   const { mutate: logoutMutate } = useApiMutation({
     route: endpoints.adminLogout,
     method: "POST",
@@ -48,7 +50,7 @@ export function NavUser({
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <DropdownMenu>
+        <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
@@ -73,6 +75,19 @@ export function NavUser({
             align="end"
             sideOffset={4}
           >
+            {/* <DropdownMenuGroup
+              onClick={() => {
+                navigate("/actions");
+                setMenuOpen(false);
+              }}
+              className="flex items-center gap-2 font-normal px-1 py-1.5 text-left text-sm"
+            >
+              <Avatar className="h-8 w-8 rounded-lg bg-slate-800 backdrop-blur-lg items-center justify-center">
+                <Sparkles />
+              </Avatar>
+              <h2 className="text-sm font-semibold">All Actions</h2>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator /> */}
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
@@ -88,12 +103,7 @@ export function NavUser({
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {/* <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <Sparkles />
-                Upgrade to Pro
-              </DropdownMenuItem>
-            </DropdownMenuGroup> */}
+
             {/* <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem>

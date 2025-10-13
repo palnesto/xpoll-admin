@@ -32,6 +32,7 @@ export const endpoints = {
       delete: "/internal/trial",
       getById: (id: string) => `/internal/trial/${id}`,
       addPollToTrial: (id: string) => `/internal/trial/${id}/polls`,
+      advancedListing: "/internal/trial/advanced-listing",
     },
     actions: {
       mint: "/internal/actions/mint",

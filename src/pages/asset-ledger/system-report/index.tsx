@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { amount, unwrapString } from "@/utils/currency-assets/base";
 import { assetSpecs, AssetType } from "@/utils/currency-assets/asset";
 import SystemReportSkeleton from "@/utils/SystemReportSkeleton";
+import Actions from "@/components/allActions";
 
 type RoleKey = "treasury" | "exchange" | "poll-funds";
 
@@ -450,7 +451,7 @@ export default function SystemReportPage() {
           {isFetching ? "Refreshing…" : "Refresh"}
         </Button>
       </div>
-
+      <Actions />
       {/* Role cards */}
       <div className="grid gap-7 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
         {isFetching && !report ? (

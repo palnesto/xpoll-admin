@@ -3,6 +3,7 @@ import { queryClient } from "@/api/queryClient";
 import { CustomModal } from "@/components/modals/custom-modal";
 import { Button } from "@/components/ui/button";
 import { useApiMutation } from "@/hooks/useApiMutation";
+import { useSelectedTrials } from "@/pages/analytics/trials";
 import { useTableTrialsStore } from "@/stores/table_trials.store";
 import { appToast } from "@/utils/toast";
 import { Loader2 } from "lucide-react";
@@ -17,7 +18,25 @@ export function ConfirmDeleteTrialPollsModal({ url }: { url: string }) {
       method: "DELETE",
       onSuccess: () => {
         appToast.success("Trial Poll deleted");
+        if (Array.isArray(isDeleting) && isDeleting.length > 0) {
+          useSelectedTrials.getState().removeManyByIds(isDeleting);
+        }
+
+        queryClient.invalidateQueries({
+          predicate: (query) =>
+            Array.isArray(query.queryKey) &&
+            query.queryKey.some(
+              (k) => typeof k === "string" && k.toLowerCase().includes("trial")
+            ),
+        });
+
+        // ✅ Refresh current list view
+        queryClient.invalidateQueries({ queryKey: ["trials-advanced"] });
+        queryClient.invalidateQueries({
+          queryKey: [endpoints.entities.trials.all],
+        });
         queryClient.invalidateQueries({ queryKey: [url] });
+
         onClose();
       },
     });

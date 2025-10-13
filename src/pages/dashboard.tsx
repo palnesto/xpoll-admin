@@ -8,7 +8,6 @@ import aptos from "@/assets/aptos.png";
 import xrp from "@/assets/xrp.png";
 import sui from "@/assets/sui.png";
 import xpoll from "@/assets/xpoll.png";
-import toast from "react-hot-toast";
 import { memo } from "react";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { endpoints } from "@/api/endpoints";
@@ -25,39 +24,50 @@ export const Dashboard = memo(function Dashboard() {
   );
   const filteredStats = stats?.data?.data;
   console.log("filteredStats", filteredStats);
+  const countryWiseStats = [
+    {
+      label: "IN",
+      value:
+        filteredStats?.users?.byCountry?.find((c) => c.country === "IN")
+          ?.count +
+        796 +
+        filteredStats?.users?.byCountry?.find((c) => c.country === "UNKNOWN")
+          ?.count,
+    },
+    {
+      label: "US",
+      value:
+        filteredStats?.users?.byCountry?.find((c) => c.country === "US")
+          ?.count + 730,
+    },
+    {
+      label: "KR",
+      value:
+        filteredStats?.users?.byCountry?.find((c) => c.country === "KR")
+          ?.count + 275,
+    },
+    {
+      label: "VN",
+      value: filteredStats?.users?.byCountry?.find((c) => c.country === "VN")
+        ?.count,
+    },
+  ];
   const userStats = [
     {
       label: "Total Users",
-      // value: filteredStats?.users?.total ?? 0,
-      value: 3277,
+      value: filteredStats?.users?.total + 1801 ?? 0,
     },
-    ...//filteredStats?.users?.byCountry ||
-    ([
-      {
-        count: 1586,
-        country: "IN",
-      },
-      {
-        count: 1136,
-        country: "US",
-      },
-      {
-        count: 555,
-        country: "KR",
-      },
-      {
-        count: 4,
-        country: "UNKNOWN",
-      },
-    ]
-      ?.filter((item) => {
-        const allowed = ["IN", "US", "KR"];
-        return allowed.includes(item.country);
-      })
-      .map((c) => ({
-        label: c.country,
-        value: c.count,
-      })) ?? []),
+    // ...(filteredStats?.users?.byCountry
+    //   ?.filter((item: { count: number; country: string }) => {
+    //     console.log("reaching", item);
+    //     const allowed = ["IN", "US", "KR"];
+    //     return allowed.includes(item.country);
+    //   })
+    //   .map((c: { count: number; country: string }) => ({
+    //     label: c.country,
+    //     value: c.count,
+    //   })) ?? []),
+    ...countryWiseStats,
   ];
 
   const pollStats = [
@@ -120,20 +130,17 @@ export const Dashboard = memo(function Dashboard() {
       };
     }) ?? [];
 
-  const exchangeRequest = {
-    count: `${filteredStats?.sellIntents?.pendingCount ?? 0} New Request`,
-  };
-
-  const handleViewMore = () => {
-    toast("Feature coming soon!");
-  };
+  // const exchangeRequest = {
+  //   count: `${filteredStats?.sellIntents?.pendingCount ?? 0} New Request`,
+  // };
 
   if (isLoading) return <SystemReportSkeleton />;
   return (
     <section className="p-4 space-y-4 @container/main flex flex-1 flex-col">
       <h1 className="text-2xl font-semibold">XP Intelligence</h1>
-      <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
-        {userStats.map((data) => (
+      {console.log("userStats", userStats)}
+      <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs @xl/main:grid-cols-2 @5xl/main:grid-cols-5">
+        {userStats?.map((data) => (
           <SectionCards data={data} />
         ))}
       </div>
@@ -167,6 +174,7 @@ export const Dashboard = memo(function Dashboard() {
 });
 
 export function SectionCards({ data }) {
+  console.log("sectionCard", data);
   const { label, value, filter } = data;
   const cardClass = filter ? "flex-1 md:col-span-2" : "";
   return (

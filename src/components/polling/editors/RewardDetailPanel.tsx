@@ -2,6 +2,8 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import RewardCurveTable from "@/components/commons/reward-curve-table";
+import { assetSpecs, AssetType } from "@/utils/currency-assets/asset";
+import { amount, unwrapString } from "@/utils/currency-assets/base";
 
 type RewardType = "max" | "min";
 
@@ -29,6 +31,19 @@ type Props = {
   append: (reward: Omit<Reward, "id">) => void;
   update: (index: number, reward: Omit<Reward, "id">) => void;
 };
+function toParentAmount(assetId: AssetType, baseVal: string | number): string {
+  return unwrapString(
+    amount({
+      op: "toParent",
+      assetId,
+      value: String(baseVal ?? "0"),
+      output: "string",
+      trim: true,
+      group: false,
+    }),
+    "0"
+  );
+}
 
 export default function RewardDetailPanel({
   index,
@@ -106,30 +121,47 @@ export default function RewardDetailPanel({
       >
         {availableAssetOptions.map((a) => (
           <option key={a.value} value={a.value}>
-            {a.label}
+            {assetSpecs[a.value as AssetType]?.parent ?? a.value}
           </option>
         ))}
       </select>
 
       {/* Amount */}
-      <Input
-        type="number"
-        min={1}
-        value={draft.amount}
-        onChange={(e) => setDraft((d) => ({ ...d, amount: e.target.value }))}
-        placeholder="Amount per user"
-      />
+      <div>
+        <Input
+          type="number"
+          min={1}
+          value={draft.amount}
+          onChange={(e) => setDraft((d) => ({ ...d, amount: e.target.value }))}
+          placeholder="Amount per user"
+        />
+        {draft.amount && (
+          <p className="text-xs text-muted-foreground mt-1">
+            ≈ {toParentAmount(draft.assetId as AssetType, draft.amount)}{" "}
+            {assetSpecs[draft.assetId as AssetType]?.parent}
+          </p>
+        )}
+      </div>
 
       {/* Cap */}
-      <Input
-        type="number"
-        min={1}
-        value={draft.rewardAmountCap}
-        onChange={(e) =>
-          setDraft((d) => ({ ...d, rewardAmountCap: e.target.value }))
-        }
-        placeholder="Reward cap"
-      />
+      <div>
+        <Input
+          type="number"
+          min={1}
+          value={draft.rewardAmountCap}
+          onChange={(e) =>
+            setDraft((d) => ({ ...d, rewardAmountCap: e.target.value }))
+          }
+          placeholder="Reward cap"
+        />
+        {draft.rewardAmountCap && (
+          <p className="text-xs text-muted-foreground mt-1">
+            ≈{" "}
+            {toParentAmount(draft.assetId as AssetType, draft.rewardAmountCap)}{" "}
+            {assetSpecs[draft.assetId as AssetType]?.parent}
+          </p>
+        )}
+      </div>
 
       {/* Type */}
       <select
@@ -145,8 +177,12 @@ export default function RewardDetailPanel({
 
       {/* Preview */}
       <RewardCurveTable
-        perUserReward={Number(draft.amount || 0)}
-        rewardAmountCap={Number(draft.rewardAmountCap || 0)}
+        perUserReward={Number(
+          toParentAmount(draft.assetId as AssetType, draft.amount || 0)
+        )}
+        rewardAmountCap={Number(
+          toParentAmount(draft.assetId as AssetType, draft.rewardAmountCap || 0)
+        )}
         rewardType={draft.rewardType}
         totalLevels={totalLevels}
         label="Preview"

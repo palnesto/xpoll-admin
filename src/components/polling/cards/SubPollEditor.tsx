@@ -178,6 +178,7 @@ export default function SubPollEditor({
             name={`${base}.resourceAssets`}
             label="Media (Images / YouTube)"
             maxAssets={3}
+            isEditing={true}
           />
         </FormCard>
       </div>
