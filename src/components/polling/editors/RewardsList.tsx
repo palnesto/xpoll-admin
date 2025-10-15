@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { assetSpecs } from "@/utils/asset";
+import { AssetType } from "@/utils/currency-assets/asset";
+import { amount, unwrapString } from "@/utils/currency-assets/base";
 import { capitalize } from "lodash";
 import { Pencil, Trash } from "lucide-react";
 import { useState } from "react";
@@ -22,6 +24,24 @@ type Props = {
   remove: (index: number) => void;
   allAssets: string[];
 };
+function toParentAmount(
+  assetId: AssetType,
+  baseVal: string | number,
+  fixed = 11
+): string {
+  return unwrapString(
+    amount({
+      op: "toParent",
+      assetId,
+      value: String(baseVal ?? "0"),
+      output: "string",
+      trim: true,
+      fixed,
+      group: false,
+    }),
+    "0"
+  );
+}
 
 export default function RewardsList({
   fields,
@@ -57,8 +77,11 @@ export default function RewardsList({
             assetOptions.find((a) => a.value === field?.assetId)?.label ??
             field?.assetId;
           const assetId = field?.assetId ?? "xOcta";
-          const amount = field?.amount ?? 0;
-          const rewardAmountCap = field?.rewardAmountCap ?? 0;
+          const rawAmount = field?.amount ?? 0;
+          const rawRewardCap = field?.rewardAmountCap ?? 0;
+          const amount = toParentAmount(assetId, rawAmount);
+          const rewardAmountCap = toParentAmount(assetId, rawRewardCap);
+
           const rewardType = field?.rewardType ?? "max";
           return (
             <Card
@@ -104,13 +127,13 @@ export default function RewardsList({
                 {/* cards */}
                 <div className="flex gap-3 justify-center">
                   {[
-                    { label: capitalize("Amount Per Person"), value: amount },
+                    { label: "Amount Per Person", value: amount },
                     {
-                      label: capitalize("Reward Amount Cap"),
+                      label: "Reward Amount Cap",
                       value: rewardAmountCap,
                     },
                     {
-                      label: capitalize("Reward Type"),
+                      label: "Reward Type",
                       value: capitalize(rewardType),
                     },
                   ]?.map((item) => {

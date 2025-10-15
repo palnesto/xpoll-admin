@@ -29,7 +29,7 @@ import { useApiQuery } from "@/hooks/useApiQuery";
 import { endpoints } from "@/api/endpoints";
 import { Switch } from "@/components/ui/switch";
 import AssetMultiSelect from "@/components/commons/selects/asset-multi-select";
-import { ChartNoAxesCombined, Edit, Eye, Plus, X } from "lucide-react";
+import { Edit, Eye, Plus, X } from "lucide-react";
 import CountrySelect from "@/components/commons/selects/country-select";
 import StateSelect from "@/components/commons/selects/state-select";
 import CitySelect from "@/components/commons/selects/city-select";
@@ -42,10 +42,6 @@ import { ConfirmDeleteTrialPollsModal } from "@/components/modals/table_trials/d
 
 const PAGE_SIZE = 10;
 
-/* -----------------------------
-   Multi-select store (persisted)
-   Stores objects: { trialId, title }
-------------------------------*/
 export type SelectedTrial = { trialId: string; title: string };
 
 type SelectedState = {
@@ -95,10 +91,6 @@ export const useSelectedTrials = create<SelectedState>()(
   )
 );
 
-/* -----------------------------------
-   Configurable bulk operations (UI)
-   onClick receives Array<{trialId,title}>
-------------------------------------*/
 type BulkOp = {
   label: string;
   btnClassName?: string;
@@ -132,12 +124,8 @@ const MemoTrials = () => {
     {
       label: "Delete",
       btnClassName: "bg-red-600 hover:bg-red-700 text-white",
-      onClick: (items, api) => {
-        console.log("Delete trials:", items);
-        setIsDeleting(items);
-        // TODO: call your API here; on success:
-        // api.removeByIds(items.map(i => i.trialId));
-        // api.refresh();
+      onClick: () => {
+        setIsDeleting(selectedIds);
       },
     },
   ];
@@ -159,7 +147,6 @@ const MemoTrials = () => {
     reset,
   } = useTrialFilters();
 
-  // ---- Build params (ALWAYS pageSize=10) ----
   const params = useMemo(() => {
     const p: Record<string, any> = { page, pageSize: PAGE_SIZE };
 

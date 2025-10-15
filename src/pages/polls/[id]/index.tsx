@@ -46,7 +46,9 @@ import { cn } from "@/lib/utils";
 import ResourceAssetsEditor, {
   getYTImageUrl,
 } from "@/components/polling/editors/ResourceAssetsEditor";
-import { type AssetOption } from "@/components/polling/editors/RewardsEditor";
+import RewardsEditor, {
+  type AssetOption,
+} from "@/components/polling/editors/RewardsEditor";
 import ExpireRewardAtPicker from "@/components/polling/editors/ExpireRewardAtPicker";
 import TargetGeoEditor from "@/components/polling/editors/TargetGeoEditor";
 import { useImageUpload } from "@/hooks/upload/useAssetUpload";
@@ -205,16 +207,12 @@ const normalEditSchema = z
 type EditValues = z.infer<typeof normalEditSchema>;
 type OutputResourceAsset = { type: "image" | "youtube"; value: string };
 
-/* ---------- assets helpers ---------- */
 function toComparableAssets(arr?: OutputResourceAsset[]) {
   return (arr ?? []).map((a) =>
     a.type === "youtube" ? `yt:${extractYouTubeId(a.value)}` : `img:${a.value}`
   );
 }
 
-/* =========================================================
-   Component
-   ========================================================= */
 export default function PollShowPage() {
   const navigate = useNavigate();
   const location = useLocation() || {};
@@ -309,6 +307,12 @@ export default function PollShowPage() {
       expireRewardAt: poll.expireRewardAt ?? "",
     });
   }, [poll, reset]);
+  useEffect(() => {
+    if (isNavigationEditing) {
+      setIsEditing(true);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [isNavigationEditing]);
 
   const { mutate: saveEdit, isPending: isSaving } = useApiMutation<any, any>({
     route: endpoints.entities.polls.edit.details,
