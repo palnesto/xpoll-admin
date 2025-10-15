@@ -3,6 +3,9 @@ export const endpoints = {
   adminLogin: "/public/admin/login",
   adminLogout: "/public/admin/logout",
   adminMe: "/internal/auth/me",
+  grwb: {
+    healthCheck: "/internal/grwb/health-check",
+  },
   entities: {
     llm: {
       pollQueryResult: (llmQueryId: string) =>
