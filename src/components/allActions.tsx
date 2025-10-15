@@ -16,7 +16,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { appToast } from "@/utils/toast";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import {
@@ -27,9 +26,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { endpoints } from "@/api/endpoints";
-import { AllLedgerTable } from "../asset-ledger/all-ledger";
-import { queryClient } from "@/api/queryClient";
 import { trimUrl } from "@/utils/formatter";
+import { queryClient } from "@/api/queryClient";
 
 type Asset = { _id: string; name: string; symbol: string };
 
@@ -68,9 +66,10 @@ type FundWithdrawValues = z.infer<typeof fundWithdrawSchema>;
 function ApiResult({ data }: { data: any }) {
   if (!data) return null;
   const actionId = data?.data?.actionId ?? data?.actionId;
+  console.log("actionId", actionId);
   const legIds: string[] = data?.data?.legIds ?? data?.legIds ?? [];
   return (
-    <div className="rounded-md border p-3 bg-muted/30 mt-3">
+    <div className="rounded-md border bg-muted/30 mt-3">
       <div className="text-xs text-muted-foreground mb-1">Response</div>
       <div className="text-sm">
         <div>
@@ -288,8 +287,8 @@ export default function Actions() {
   });
 
   return (
-    <div className="p-4 space-y-6">
-      <Card>
+    <div className="space-y-6">
+      <Card className="px-0">
         <CardHeader>
           <CardTitle>Ledger Actions</CardTitle>
         </CardHeader>
@@ -480,7 +479,7 @@ export default function Actions() {
         </CardContent>
       </Card>
 
-      <AllLedgerTable />
+      {/* <AllLedgerTable /> */}
     </div>
   );
 }

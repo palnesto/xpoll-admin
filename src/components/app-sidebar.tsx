@@ -6,7 +6,6 @@ import {
   Map,
   PieChart,
   ReceiptText,
-  Settings,
 } from "lucide-react";
 import xOctopus from "@/assets/sidebar.png";
 import { NavMain } from "@/components/nav-main";
