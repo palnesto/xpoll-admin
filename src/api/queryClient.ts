@@ -1,7 +1,7 @@
 import { appToast } from "@/utils/toast";
 import { QueryClient, QueryFunctionContext } from "@tanstack/react-query";
 import axios from "axios";
-import { endpoints } from "./endpoints"; // ← add
+import { endpoints } from "./endpoints";
 
 export const BASE_URL = import.meta.env.VITE_BACKEND_URL || "";
 
@@ -15,13 +15,17 @@ apiInstance.interceptors.response.use(
   (error) => {
     const status = error?.response?.status;
     const url = error?.config?.url || "";
-    console.log("error", error);
-    const errorMessage =
+    const message =
       error?.response?.data?.message || "An unexpected error occurred";
 
-    // Don't toast on the normal auth probe 401
-    if (!(status === 401 && url.includes(endpoints.adminMe))) {
-      appToast.error(errorMessage);
+    // Don't toast for the normal auth probe 401
+    if (!(status === 401 && url.includes(endpoints.profile.me))) {
+      if (
+        import.meta.env.VITE_MODE !== "production" &&
+        import.meta.env.VITE_MODE !== "development"
+      ) {
+        appToast.error(message);
+      }
     }
     return Promise.reject(error);
   }
@@ -31,9 +35,8 @@ export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: false,
-      // keep the default queryFn shape you’re already using
       queryFn: async ({ queryKey, signal }: QueryFunctionContext) => {
-        const { data } = await apiInstance(String(queryKey[0]), { signal });
+        const { data } = await apiInstance.get(String(queryKey[0]), { signal });
         return data;
       },
       refetchOnWindowFocus: false,
