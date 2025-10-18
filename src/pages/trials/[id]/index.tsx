@@ -1,6 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { z } from "zod";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -24,7 +23,6 @@ import { fmt } from "@/components/paginated-table";
 import TrialPollTable from "@/components/table-trial-poll";
 import { Pencil, Trash2, Loader2 } from "lucide-react";
 import ResourceAssetsEditor from "@/components/polling/editors/ResourceAssetsEditor";
-import { type AssetOption } from "@/components/polling/editors/RewardsEditor";
 import ExpireRewardAtPicker from "@/components/polling/editors/ExpireRewardAtPicker";
 import TargetGeoEditor from "@/components/polling/editors/TargetGeoEditor";
 import { useImageUpload } from "@/hooks/upload/useAssetUpload";
@@ -33,121 +31,19 @@ import { FormCard } from "@/components/form/form-card";
 import TwoPane from "@/layouts/TwoPane";
 import RewardDetailPanel from "@/components/polling/editors/RewardDetailPanel";
 import RewardsList from "@/components/polling/editors/RewardsList";
-
-const TOTAL_LEVELS = 10 as const;
-const ASSET_OPTIONS: AssetOption[] = [
-  { label: "OCTA", value: "xOcta" },
-  { label: "MYST", value: "xMYST" },
-  { label: "DROP", value: "xDrop" },
-  { label: "XPOLL", value: "xPoll" },
-];
-
-type OutputResourceAsset = { type: "image" | "youtube"; value: string };
-type ResourceAsset = { type: "image" | "youtube"; value: string };
-const arrEqUnordered = (a: string[], b: string[]) => {
-  if (!Array.isArray(a) || !Array.isArray(b)) return false;
-  if (a.length !== b.length) return false;
-  const A = [...a].sort();
-  const B = [...b].sort();
-  return A.every((v, i) => v === B[i]);
-};
-
-function toComparableAssets(arr?: OutputResourceAsset[]) {
-  return (arr ?? []).map((a) =>
-    a.type === "youtube" ? `yt:${extractYouTubeId(a.value)}` : `img:${a.value}`
-  );
-}
-
-function cmpTrialRewards(
-  a: { assetId: string; amount: number; rewardAmountCap?: number }[] = [],
-  b: { assetId: string; amount: number; rewardAmountCap?: number }[] = []
-) {
-  const norm = (arr: typeof a) =>
-    [...arr]
-      .sort((x, y) => x.assetId.localeCompare(y.assetId))
-      .map((r) => `${r.assetId}:${r.amount}:${r.rewardAmountCap ?? r.amount}`)
-      .join("|");
-  return norm(a) === norm(b);
-}
-
-/* =========================
-   API result types
-   ========================= */
-type TrialReward = {
-  assetId: string;
-  amount: number;
-  rewardAmountCap?: number;
-};
-type Trial = {
-  _id: string;
-  title: string;
-  description?: string;
-  // modern preferred
-  resourceAssets?: ResourceAsset[];
-  // legacy single url
-  media?: string;
-  rewards?: TrialReward[];
-  createdAt?: string;
-  archivedAt?: string | null;
-  expireRewardAt?: string | null;
-  targetGeo?: {
-    countries?: string[];
-    states?: string[];
-    cities?: string[];
-  };
-};
-
-const resourceAssetZ = z.union([
-  z.object({ type: z.literal("youtube"), value: z.string().min(11) }),
-  z.object({
-    type: z.literal("image"),
-    value: z.array(z.union([z.instanceof(File), z.string()])).nullable(),
-  }),
-]);
-
-const rewardRowZ = z
-  .object({
-    assetId: z.enum(["xOcta", "xMYST", "xDrop", "xPoll"]),
-    amount: z.coerce.number().int().min(1),
-    rewardAmountCap: z.coerce.number().int().min(1),
-    // UI parity only; server payload for Trial omits rewardType
-    rewardType: z.enum(["max", "min"]).default("max"),
-  })
-  .refine((r) => r.rewardAmountCap >= r.amount, {
-    message: "rewardAmountCap must be >= amount",
-    path: ["rewardAmountCap"],
-  });
-
-const editSchema = z
-  .object({
-    title: z.string().min(3, "Min 3 chars").trim(),
-    description: z.string().min(3, "Min 3 chars").trim(),
-    resourceAssets: z.array(resourceAssetZ).min(1, "Add at least 1 media"),
-    rewards: z.array(rewardRowZ).default([]),
-    targetGeo: z.object({
-      countries: z.array(z.string()).default([]),
-      states: z.array(z.string()).default([]),
-      cities: z.array(z.string()).default([]),
-    }),
-    expireRewardAt: z
-      .string()
-      .datetime()
-      .optional()
-      .or(z.literal("").optional())
-      .optional(),
-  })
-  .superRefine((v, ctx) => {
-    const ids = (v.rewards ?? []).map((r) => r.assetId);
-    const dup = ids.find((a, i) => ids.indexOf(a) !== i);
-    if (dup)
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["rewards"],
-        message: `Duplicate reward assetId: ${dup}`,
-      });
-  });
-
-type EditValues = z.infer<typeof editSchema>;
+import {
+  arrEqUnorderedById,
+  ASSET_OPTIONS,
+  cmpTrialRewards,
+  editSchema,
+  EditValues,
+  OutputResourceAsset,
+  renderGeoList,
+  toComparableAssets,
+  TOTAL_LEVELS,
+  Trial,
+  TrialReward,
+} from "@/components/types/trial";
 
 export default function TrialShowPage() {
   const navigate = useNavigate();
@@ -181,6 +77,20 @@ export default function TrialShowPage() {
     mode: "onChange",
   });
   const { control, handleSubmit, reset, setValue, watch } = form;
+  // Debug subscription – logs every change across the form
+  useEffect(() => {
+    const sub = form.watch((value, { name, type }) => {
+      console.log("[FORM.WATCH]", {
+        name,
+        type,
+        targetGeo: value?.targetGeo,
+        countries: value?.targetGeo?.countries,
+        states: value?.targetGeo?.states,
+        cities: value?.targetGeo?.cities,
+      });
+    });
+    return () => sub.unsubscribe();
+  }, [form]);
 
   const { uploadImage, loading: isUploading } = useImageUpload();
   const { fields, append, remove, update } = useFieldArray({
@@ -209,23 +119,34 @@ export default function TrialShowPage() {
             rewardType: "max",
           }))
         : [];
+    // inside useEffect hydration in TrialShowPage
+    const initialTG = {
+      countries: Array.isArray(trial.targetGeo?.countries)
+        ? trial.targetGeo!.countries.map((c: any) => ({
+            _id: String(c?._id ?? c?.id ?? c?.value ?? c),
+            name: String(c?.name ?? c?.label ?? c?._id ?? c),
+          }))
+        : [],
+      states: Array.isArray(trial.targetGeo?.states)
+        ? trial.targetGeo!.states.map((s: any) => ({
+            _id: String(s?._id ?? s?.id ?? s?.value ?? s),
+            name: String(s?.name ?? s?.label ?? s?._id ?? s),
+          }))
+        : [],
+      cities: Array.isArray(trial.targetGeo?.cities)
+        ? trial.targetGeo!.cities.map((ci: any) => ({
+            _id: String(ci?._id ?? ci?.id ?? ci?.value ?? ci),
+            name: String(ci?.name ?? ci?.label ?? ci?._id ?? ci),
+          }))
+        : [],
+    };
 
     reset({
       title: trial.title ?? "",
       description: trial.description ?? "",
       resourceAssets: initialAssets,
       rewards: initialRewards,
-      targetGeo: {
-        countries: Array.isArray(trial.targetGeo?.countries)
-          ? trial.targetGeo!.countries
-          : [],
-        states: Array.isArray(trial.targetGeo?.states)
-          ? trial.targetGeo!.states
-          : [],
-        cities: Array.isArray(trial.targetGeo?.cities)
-          ? trial.targetGeo!.cities
-          : [],
-      },
+      targetGeo: initialTG, // 👈 same normalized TG
       expireRewardAt: trial.expireRewardAt ?? "",
     });
   }, [trial, reset]);
@@ -293,12 +214,12 @@ export default function TrialShowPage() {
     );
   };
 
-  /* ===== Submit (diff-only, unchanged) ===== */
   const onSubmitEdit = handleSubmit(async (v) => {
     if (!trial) return;
 
     const payload: any = { trialId: trial._id };
 
+    // —— assets & rewards (unchanged) ——
     const normalizedNow = await normalizeAssetsForSave(v.resourceAssets);
     const prevAssets: OutputResourceAsset[] = (trial.resourceAssets ?? []).map(
       (a) =>
@@ -327,7 +248,11 @@ export default function TrialShowPage() {
       rewardAmountCap: r.rewardAmountCap,
     }));
     if (!cmpTrialRewards(prevRewards as any, nowRewards as any)) {
-      payload.rewards = nowRewards; // no rewardType in payload
+      payload.rewards = nowRewards.map((r) => ({
+        assetId: r.assetId,
+        amount: String(r.amount),
+        rewardAmountCap: String(r.rewardAmountCap),
+      }));
     }
 
     const prevExpire = (trial.expireRewardAt ?? "").trim();
@@ -336,17 +261,67 @@ export default function TrialShowPage() {
       payload.expireRewardAt = nowExpire ? nowExpire : undefined;
     }
 
+    // —— targetGeo: ALWAYS send ID arrays; add logs ——
     const nextTG = v.targetGeo ?? { countries: [], states: [], cities: [] };
     const prevTG = {
-      countries: trial.targetGeo?.countries ?? [],
-      states: trial.targetGeo?.states ?? [],
-      cities: trial.targetGeo?.cities ?? [],
+      countries: Array.isArray(trial.targetGeo?.countries)
+        ? trial.targetGeo!.countries
+        : [],
+      states: Array.isArray(trial.targetGeo?.states)
+        ? trial.targetGeo!.states
+        : [],
+      cities: Array.isArray(trial.targetGeo?.cities)
+        ? trial.targetGeo!.cities
+        : [],
     };
+
     const geoChanged =
-      !arrEqUnordered(nextTG.countries, prevTG.countries) ||
-      !arrEqUnordered(nextTG.states, prevTG.states) ||
-      !arrEqUnordered(nextTG.cities, prevTG.cities);
-    if (geoChanged) payload.targetGeo = nextTG;
+      !arrEqUnorderedById(nextTG.countries, prevTG.countries) ||
+      !arrEqUnorderedById(nextTG.states, prevTG.states) ||
+      !arrEqUnorderedById(nextTG.cities, prevTG.cities);
+
+    // Debug what the form currently holds
+    console.log("[SUBMIT:TG:FORM]", {
+      nextTG,
+      nextCountries: nextTG.countries,
+      nextStates: nextTG.states,
+      nextCities: nextTG.cities,
+    });
+
+    if (geoChanged) {
+      const idsOnly = {
+        countries: (nextTG.countries ?? []).map((x) =>
+          typeof x === "string" ? x : x._id
+        ),
+        states: (nextTG.states ?? []).map((x) =>
+          typeof x === "string" ? x : x._id
+        ),
+        cities: (nextTG.cities ?? []).map((x) =>
+          typeof x === "string" ? x : x._id
+        ),
+      };
+
+      // Guard: make sure all are strings (server Zod expects strings)
+      const allStrings =
+        idsOnly.countries.every((x) => typeof x === "string") &&
+        idsOnly.states.every((x) => typeof x === "string") &&
+        idsOnly.cities.every((x) => typeof x === "string");
+
+      console.log("[SUBMIT:TG:DIFF]", {
+        prevIds: {
+          countries: (prevTG.countries ?? []).map((x: any) => x?._id ?? x),
+          states: (prevTG.states ?? []).map((x: any) => x?._id ?? x),
+          cities: (prevTG.cities ?? []).map((x: any) => x?._id ?? x),
+        },
+        nextIds: idsOnly,
+        geoChanged,
+        allStrings,
+      });
+
+      payload.targetGeo = idsOnly; // ✅ IDs only
+    }
+
+    console.log("[SUBMIT:payload]", payload);
 
     if (Object.keys(payload).length <= 1) {
       setIsEditing(false);
@@ -695,22 +670,13 @@ export default function TrialShowPage() {
             <div className="grid grid-cols-1 gap-6">
               <FormCard title="Target Geo">
                 <h2 className="break-all">
-                  Countries –{" "}
-                  {Array.isArray(trial.targetGeo?.countries)
-                    ? trial.targetGeo!.countries.join(", ")
-                    : "-"}
+                  Countries –{renderGeoList(trial.targetGeo?.countries as any)}
                 </h2>
                 <h2 className="break-all">
-                  States –{" "}
-                  {Array.isArray(trial.targetGeo?.states)
-                    ? trial.targetGeo!.states.join(", ")
-                    : "-"}
+                  States –{renderGeoList(trial.targetGeo?.states as any)}
                 </h2>
                 <h2 className="break-all">
-                  Cities –{" "}
-                  {Array.isArray(trial.targetGeo?.cities)
-                    ? trial.targetGeo!.cities.join(", ")
-                    : "-"}
+                  Cities –{renderGeoList(trial.targetGeo?.cities as any)}
                 </h2>
 
                 <section className="flex items-center gap-2">

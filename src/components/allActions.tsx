@@ -29,7 +29,7 @@ import { endpoints } from "@/api/endpoints";
 import { trimUrl } from "@/utils/formatter";
 import { queryClient } from "@/api/queryClient";
 
-type Asset = { _id: string; name: string; symbol: string };
+type Asset = { _id: string; name: string; symbol: string; parent: string };
 
 const SYSTEM_ACCOUNTS = [
   { label: "Exchange", value: "bbbbbbbbbbbbbbbbbbbbbbbb" },
@@ -112,7 +112,7 @@ function AssetSelect({
         <SelectContent>
           {(Array.isArray(assets) ? assets : []).map((a) => (
             <SelectItem key={a._id} value={a._id}>
-              {a.name} ({a.symbol})
+              {a.parent} ({a.name})
             </SelectItem>
           ))}
         </SelectContent>

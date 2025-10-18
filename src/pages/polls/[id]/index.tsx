@@ -169,14 +169,20 @@ const rewardRowZ = z
     path: ["rewardAmountCap"],
   });
 
+// add near other zod helpers
+const geoItemZ = z.union([
+  z.string(), // server shape or simple ID
+  z.object({ _id: z.string().min(1), name: z.string().min(1) }), // editor shape
+]);
+
 const baseSchema = {
   title: z.string().min(3, "Min 3 chars").trim(),
   description: z.string().min(3, "Min 3 chars").trim(),
   resourceAssets: z.array(resourceAssetZ).default([]),
   targetGeo: z.object({
-    countries: z.array(z.string()).default([]),
-    states: z.array(z.string()).default([]),
-    cities: z.array(z.string()).default([]),
+    countries: z.array(geoItemZ).default([]),
+    states: z.array(geoItemZ).default([]),
+    cities: z.array(geoItemZ).default([]),
   }),
 };
 
@@ -233,6 +239,15 @@ export default function PollShowPage() {
   const isTrialPoll = !!(poll?.trialId || poll?.trial?._id);
 
   const [isEditing, setIsEditing] = useState(isNavigationEditing ?? false);
+  function renderGeoList(list?: Array<{ _id: string; name: string } | string>) {
+    if (!Array.isArray(list) || list.length === 0) return "-";
+    const names = list
+      .map((item) =>
+        typeof item === "string" ? item : item?.name || item?._id || ""
+      )
+      .filter(Boolean);
+    return names.length ? names.join(", ") : "-";
+  }
 
   const form = useForm<EditValues>({
     resolver: zodResolver(isTrialPoll ? trialEditSchema : normalEditSchema),
@@ -287,23 +302,33 @@ export default function PollShowPage() {
               rewardType: "max",
             },
           ];
+    const initialTG = {
+      countries: Array.isArray(poll.targetGeo?.countries)
+        ? poll.targetGeo!.countries.map((c: any) => ({
+            _id: String(c?._id ?? c?.id ?? c?.value ?? c),
+            name: String(c?.name ?? c?.label ?? c?._id ?? c),
+          }))
+        : [],
+      states: Array.isArray(poll.targetGeo?.states)
+        ? poll.targetGeo!.states.map((s: any) => ({
+            _id: String(s?._id ?? s?.id ?? s?.value ?? s),
+            name: String(s?.name ?? s?.label ?? s?._id ?? s),
+          }))
+        : [],
+      cities: Array.isArray(poll.targetGeo?.cities)
+        ? poll.targetGeo!.cities.map((ci: any) => ({
+            _id: String(ci?._id ?? ci?.id ?? ci?.value ?? ci),
+            name: String(ci?.name ?? ci?.label ?? ci?._id ?? ci),
+          }))
+        : [],
+    };
 
     reset({
       title: poll.title ?? "",
       description: poll.description ?? "",
       resourceAssets: initialAssets,
       rewards: initialRewards,
-      targetGeo: {
-        countries: Array.isArray(poll.targetGeo?.countries)
-          ? poll.targetGeo!.countries
-          : [],
-        states: Array.isArray(poll.targetGeo?.states)
-          ? poll.targetGeo!.states
-          : [],
-        cities: Array.isArray(poll.targetGeo?.cities)
-          ? poll.targetGeo!.cities
-          : [],
-      },
+      targetGeo: initialTG, // 👈 important
       expireRewardAt: poll.expireRewardAt ?? "",
     });
   }, [poll, reset]);
@@ -321,7 +346,17 @@ export default function PollShowPage() {
       appToast.success("Poll updated");
 
       const v = getValues();
-
+      const idsOnlyTG = {
+        countries: (v.targetGeo?.countries ?? []).map((x: any) =>
+          typeof x === "string" ? x : x._id
+        ),
+        states: (v.targetGeo?.states ?? []).map((x: any) =>
+          typeof x === "string" ? x : x._id
+        ),
+        cities: (v.targetGeo?.cities ?? []).map((x: any) =>
+          typeof x === "string" ? x : x._id
+        ),
+      };
       // Prepare normalized assets for cache patch
       const normalizedNow: OutputResourceAsset[] = (v.resourceAssets ?? []).map(
         (a: any) =>
@@ -343,9 +378,7 @@ export default function PollShowPage() {
         resourceAssets: normalizedNow,
         rewards: v.rewards,
         expireRewardAt: v.expireRewardAt?.trim() ? v.expireRewardAt : undefined,
-        // IMPORTANT: trial polls do not update targetGeo here (controlled at trial)
-        targetGeo: isTrialPoll ? curr.targetGeo : v.targetGeo ?? curr.targetGeo,
-        // legacy "media" (first image) for backward-compat viewers
+        targetGeo: isTrialPoll ? curr.targetGeo : idsOnlyTG, // 👈 store IDs
         media:
           normalizedNow.find((x) => x.type === "image")?.value ??
           (curr as any)?.media,
@@ -417,14 +450,50 @@ export default function PollShowPage() {
         states: poll.targetGeo?.states ?? [],
         cities: poll.targetGeo?.cities ?? [],
       };
+
       const nextTG = v.targetGeo ?? { countries: [], states: [], cities: [] };
 
-      const geoChanged =
-        !arrEqUnordered(nextTG.countries, prevTG.countries) ||
-        !arrEqUnordered(nextTG.states, prevTG.states) ||
-        !arrEqUnordered(nextTG.cities, prevTG.cities);
+      // extract ids regardless of objects/strings in-form
+      const idsOnly = {
+        countries: (nextTG.countries ?? []).map((x: any) =>
+          typeof x === "string" ? x : x._id
+        ),
+        states: (nextTG.states ?? []).map((x: any) =>
+          typeof x === "string" ? x : x._id
+        ),
+        cities: (nextTG.cities ?? []).map((x: any) =>
+          typeof x === "string" ? x : x._id
+        ),
+      };
 
-      if (geoChanged) payload.targetGeo = nextTG;
+      const arrEqUnordered = (a: string[], b: string[]) => {
+        if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length)
+          return false;
+        const A = [...a].sort(),
+          B = [...b].sort();
+        return A.every((v, i) => v === B[i]);
+      };
+
+      const prevIds = {
+        countries: (prevTG.countries ?? []).map((x: any) =>
+          typeof x === "string" ? x : x?._id
+        ),
+        states: (prevTG.states ?? []).map((x: any) =>
+          typeof x === "string" ? x : x?._id
+        ),
+        cities: (prevTG.cities ?? []).map((x: any) =>
+          typeof x === "string" ? x : x?._id
+        ),
+      };
+
+      const geoChanged =
+        !arrEqUnordered(idsOnly.countries, prevIds.countries) ||
+        !arrEqUnordered(idsOnly.states, prevIds.states) ||
+        !arrEqUnordered(idsOnly.cities, prevIds.cities);
+
+      console.log("[POLL SUBMIT:TG]", { nextTG, idsOnly, prevIds, geoChanged });
+
+      if (geoChanged) payload.targetGeo = idsOnly; // ✅ server expects string[]
     }
 
     // resourceAssets diffs
@@ -1009,22 +1078,13 @@ export default function PollShowPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormCard title="Target Geo">
                   <h2 className="break-all">
-                    Countries –{" "}
-                    {Array.isArray(poll.targetGeo?.countries)
-                      ? poll.targetGeo!.countries.join(", ")
-                      : ""}
+                    Countries –{renderGeoList(poll.targetGeo?.countries as any)}
                   </h2>
                   <h2 className="break-all">
-                    States –{" "}
-                    {Array.isArray(poll.targetGeo?.states)
-                      ? poll.targetGeo!.states.join(", ")
-                      : ""}
+                    States –{renderGeoList(poll.targetGeo?.states as any)}
                   </h2>
                   <h2 className="break-all">
-                    Cities –{" "}
-                    {Array.isArray(poll.targetGeo?.cities)
-                      ? poll.targetGeo!.cities.join(", ")
-                      : ""}
+                    Cities –{renderGeoList(poll.targetGeo?.cities as any)}
                   </h2>
                 </FormCard>
                 <FormCard title="Details">

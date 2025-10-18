@@ -99,7 +99,7 @@ export default function RewardsList({
                         className="w-full h-full"
                       />
                     </div>
-                    <p>{assetSpecs[assetId]?.parentSymbol}</p>
+                    <p>{assetSpecs[assetId]?.parent}</p>
                   </div>
                   {isEditing ? (
                     <div className="flex items-center gap-2">

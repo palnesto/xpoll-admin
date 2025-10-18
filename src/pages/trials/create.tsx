@@ -26,14 +26,21 @@ import { FormInput } from "@/components/form/input";
 import { FormTextarea } from "@/components/form/textarea";
 import RewardsList from "@/components/polling/editors/RewardsList";
 import RewardDetailPanel from "@/components/polling/editors/RewardDetailPanel";
+import { assetSpecs, type AssetType } from "@/utils/currency-assets/asset";
+
+const ASSET_OPTIONS: AssetOption[] = (
+  [
+    { value: "xOcta" },
+    { value: "xMYST" },
+    { value: "xDrop" },
+    { value: "xPoll" },
+  ] as const
+).map((a) => ({
+  value: a.value,
+  label: assetSpecs[a.value as AssetType].parentSymbol,
+}));
 
 const TOTAL_LEVELS = 10 as const;
-const ASSET_OPTIONS: AssetOption[] = [
-  { label: "OCTA", value: "xOcta" },
-  { label: "MYST", value: "xMYST" },
-  { label: "DROP", value: "xDrop" },
-  { label: "XPOLL", value: "xPoll" },
-];
 
 const optionZ = z.object({ text: z.string().min(3).trim() });
 const resourceAssetZ = z.union([
