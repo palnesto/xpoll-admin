@@ -142,10 +142,86 @@ function MultiInfiniteSelect<
       }
       components={{ MenuList }}
       styles={{
-        placeholder: (base) => ({ ...base, color: "black" }),
+        // placeholder: (base) => ({ ...base, color: "black" }),
         menuPortal: (base) => ({ ...base, zIndex: 9999 }),
-        control: (base) => ({ ...base, minHeight: 38, boxShadow: "none" }),
-        multiValue: (base) => ({ ...base, borderRadius: 9999 }),
+        control: (base, state) => ({
+          ...base,
+          minHeight: 38,
+          boxShadow: "none",
+          background: "transparent", // ⬅ transparent/black bg so white text shows
+          borderColor: "hsl(var(--border))",
+          ":hover": { borderColor: "hsl(var(--border))" },
+          color: "hsl(var(--foreground))",
+        }),
+        /* The dropdown panel */
+        menu: (base) => ({
+          ...base,
+          background: "rgba(0,0,0,0.9)", // ⬅ dark backdrop (or "transparent")
+          backdropFilter: "blur(4px)",
+          border: "1px solid hsl(var(--border))",
+        }),
+
+        /* Scroll area inside the dropdown */
+        menuList: (base) => ({
+          ...base,
+          background: "transparent", // ⬅ keep it see-through
+          padding: 4,
+        }),
+
+        /* Each option row */
+        option: (base, state) => ({
+          ...base,
+          background: state.isFocused ? "hsl(var(--muted))" : "transparent",
+          color: "hsl(var(--foreground))",
+          ":active": { background: "hsl(var(--muted))" },
+        }),
+
+        /* Input text color inside the control */
+        input: (base) => ({
+          ...base,
+          color: "hsl(var(--foreground))", // ⬅ make typed text visible
+        }),
+
+        /* Placeholder (when nothing selected/typed) */
+        placeholder: (base) => ({
+          ...base,
+          color: "hsl(var(--muted-foreground))",
+        }),
+        multiValue: (base) => ({
+          ...base,
+          borderRadius: 9999,
+          background: "hsl(var(--muted))",
+        }),
+        multiValueLabel: (base) => ({
+          ...base,
+          color: "hsl(var(--foreground))",
+        }),
+        multiValueRemove: (base) => ({
+          ...base,
+          color: "hsl(var(--foreground))",
+          ":hover": {
+            background: "hsl(var(--destructive))",
+            color: "hsl(var(--destructive-foreground))",
+          },
+        }),
+
+        /* Icons / indicators should match foreground */
+        dropdownIndicator: (base) => ({
+          ...base,
+          color: "hsl(var(--foreground))",
+          ":hover": { color: "hsl(var(--foreground))" },
+        }),
+        clearIndicator: (base) => ({
+          ...base,
+          color: "hsl(var(--foreground))",
+          ":hover": { color: "hsl(var(--foreground))" },
+        }),
+
+        /* Container for values + input */
+        valueContainer: (base) => ({
+          ...base,
+          background: "transparent",
+        }),
       }}
       menuPortalTarget={document.body}
       menuShouldScrollIntoView={false}

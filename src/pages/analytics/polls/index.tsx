@@ -529,30 +529,71 @@ const MemoPolls = () => {
                 value={expired}
                 onValueChange={(v: Tri) => patch({ page: 1, expired: v })}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-9 bg-transparent text-foreground border-border">
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="true">True</SelectItem>
-                  <SelectItem value="false">False</SelectItem>
+
+                {/* menu matches dark/transparent react-select menu */}
+                <SelectContent
+                  className="bg-[rgba(0,0,0,0.85)] backdrop-blur-md border-border text-foreground"
+                  position="popper"
+                  align="start"
+                >
+                  <SelectItem
+                    value="all"
+                    className="focus:bg-muted focus:text-foreground data-[state=checked]:bg-muted"
+                  >
+                    All
+                  </SelectItem>
+                  <SelectItem
+                    value="true"
+                    className="focus:bg-muted focus:text-foreground data-[state=checked]:bg-muted"
+                  >
+                    True
+                  </SelectItem>
+                  <SelectItem
+                    value="false"
+                    className="focus:bg-muted focus:text-foreground data-[state=checked]:bg-muted"
+                  >
+                    False
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </section>
 
+            {/* Exhausted */}
             <section className="flex flex-col gap-1">
               <label className="text-sm text-muted-foreground">Exhausted</label>
               <Select
                 value={exhausted}
                 onValueChange={(v: Tri) => patch({ page: 1, exhausted: v })}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-9 bg-transparent text-foreground border-border">
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="true">True</SelectItem>
-                  <SelectItem value="false">False</SelectItem>
+                <SelectContent
+                  className="bg-[rgba(0,0,0,0.85)] backdrop-blur-md border-border text-foreground"
+                  position="popper"
+                  align="start"
+                >
+                  <SelectItem
+                    value="all"
+                    className="focus:bg-muted focus:text-foreground data-[state=checked]:bg-muted"
+                  >
+                    All
+                  </SelectItem>
+                  <SelectItem
+                    value="true"
+                    className="focus:bg-muted focus:text-foreground data-[state=checked]:bg-muted"
+                  >
+                    True
+                  </SelectItem>
+                  <SelectItem
+                    value="false"
+                    className="focus:bg-muted focus:text-foreground data-[state=checked]:bg-muted"
+                  >
+                    False
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </section>

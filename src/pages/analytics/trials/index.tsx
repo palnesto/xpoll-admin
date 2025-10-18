@@ -207,6 +207,7 @@ const MemoTrials = () => {
   const payload = data?.data?.data ?? {};
   const meta = payload?.meta ?? {};
   const entries: any[] = Array.isArray(payload.entries) ? payload.entries : [];
+  console.log("entries", entries);
   const total: number =
     typeof meta.total === "number" ? meta.total : entries.length ?? 0;
 
@@ -633,7 +634,7 @@ const MemoTrials = () => {
                       {trial.title}
                     </CardTitle>
                     <CardDescription className="text-muted-foreground">
-                      {trial.viewCount ?? 0} views • {trial.responseCount ?? 0}{" "}
+                      {trial.viewCount ?? 0} views • {trial.responsesCount ?? 0}{" "}
                       responses
                     </CardDescription>
                   </CardHeader>
