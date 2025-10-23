@@ -1,160 +1,27 @@
-// import CitySelect from "@/components/commons/selects/city-select";
-// import CountrySelect from "@/components/commons/selects/country-select";
-// import StateSelect from "@/components/commons/selects/state-select";
-// import { X } from "lucide-react";
-// import type { Control, UseFormSetValue, UseFormWatch } from "react-hook-form";
-
-// type Props = {
-//   control: Control<any>;
-//   watch: UseFormWatch<any>;
-//   setValue: UseFormSetValue<any>;
-//   basePath: string; // e.g. "targetGeo" or "trial.targetGeo"
-//   label?: string;
-// };
-
-// export default function TargetGeoEditor({
-//   watch,
-//   setValue,
-//   basePath,
-//   label = "Target Geo",
-// }: Props) {
-//   const countriesPath = `${basePath}.countries`;
-//   const statesPath = `${basePath}.states`;
-//   const citiesPath = `${basePath}.cities`;
-
-//   const countries = watch(countriesPath) || [];
-//   const states = watch(statesPath) || [];
-//   const cities = watch(citiesPath) || [];
-
-//   function add(path: string, value: string) {
-//     const arr = watch(path) || [];
-//     if (!arr.includes(value)) {
-//       setValue(path as any, [...arr, value], {
-//         shouldValidate: true,
-//         shouldDirty: true,
-//       });
-//     }
-//   }
-
-//   function removeAt(path: string, index: number) {
-//     const arr = (watch(path) || []).slice();
-//     arr.splice(index, 1);
-//     setValue(path as any, arr, { shouldValidate: true, shouldDirty: true });
-//   }
-
-//   return (
-//     <div className="space-y-2">
-//       <label className="text-sm font-medium">{label}</label>
-
-//       <CountrySelect
-//         placeholder="Select country"
-//         onChange={(opt: any) => opt?.value && add(countriesPath, opt.value)}
-//       />
-//       <div className="flex flex-wrap gap-2 mt-2">
-//         {countries.map((c: string, i: number) => (
-//           <span
-//             key={`country-${i}`}
-//             className="flex items-center gap-1 px-2 py-1 border rounded text-sm"
-//           >
-//             {c}
-//             <X
-//               className="w-4 h-4 cursor-pointer"
-//               onClick={() => removeAt(countriesPath, i)}
-//             />
-//           </span>
-//         ))}
-//       </div>
-
-//       <StateSelect
-//         placeholder="Select state"
-//         onChange={(opt: any) => opt?.value && add(statesPath, opt.value)}
-//       />
-//       <div className="flex flex-wrap gap-2 mt-2">
-//         {states.map((s: string, i: number) => (
-//           <span
-//             key={`state-${i}`}
-//             className="flex items-center gap-1 px-2 py-1 border rounded text-sm"
-//           >
-//             {s}
-//             <X
-//               className="w-4 h-4 cursor-pointer"
-//               onClick={() => removeAt(statesPath, i)}
-//             />
-//           </span>
-//         ))}
-//       </div>
-
-//       <CitySelect
-//         placeholder="Select city"
-//         onChange={(opt: any) => opt?.value && add(citiesPath, opt.value)}
-//       />
-//       <div className="flex flex-wrap gap-2 mt-2">
-//         {cities.map((city: string, i: number) => (
-//           <span
-//             key={`city-${i}`}
-//             className="flex items-center gap-1 px-2 py-1 border rounded text-sm"
-//           >
-//             {city}
-//             <X
-//               className="w-4 h-4 cursor-pointer"
-//               onClick={() => removeAt(citiesPath, i)}
-//             />
-//           </span>
-//         ))}
-//       </div>
-//     </div>
-//   );
-// }
-// TargetGeoEditor.tsx
+import { useState } from "react";
 import CitySelect from "@/components/commons/selects/city-select";
 import CountrySelect from "@/components/commons/selects/country-select";
 import StateSelect from "@/components/commons/selects/state-select";
-import { GeoItem } from "@/components/types/trial";
-import { X } from "lucide-react";
 import type { Control, UseFormSetValue, UseFormWatch } from "react-hook-form";
 
+// react-select option shape used by your base selects
+type BaseOption<T = unknown> = {
+  value: string;
+  label: string;
+  data?: T;
+};
+
 type Props = {
-  control: Control<any>;
-  watch: UseFormWatch<any>; // keep if you still want it for debugging
+  control: Control<any>; // kept for parity, not used directly here
+  watch: UseFormWatch<any>;
   setValue: UseFormSetValue<any>;
   basePath: string; // e.g. "targetGeo"
   label?: string;
 };
 
-function toGeoItem(opt: any): GeoItem | null {
-  if (!opt) return null;
-  // 🔎 Pull from opt.data first (that’s what your console showed)
-  const fromData = opt.data || {};
-  const id =
-    fromData._id ??
-    opt._id ??
-    opt.value ?? // react-select style
-    fromData.value ??
-    opt.code ??
-    opt.id ??
-    null;
-
-  if (!id) {
-    console.log("[TG:toGeoItem] could not resolve id from:", opt);
-    return null;
-  }
-
-  const name =
-    fromData.name ??
-    opt.name ??
-    opt.label ?? // react-select style
-    fromData.label ??
-    opt.text ??
-    String(id);
-
-  const item = { _id: String(id), name: String(name) };
-  console.log("[TG:toGeoItem] mapped", { raw: opt, item });
-  return item;
-}
-
 export default function TargetGeoEditor({
-  control,
-  watch, // not required for subscription any more, but fine to keep
+  control, // eslint-disable-line @typescript-eslint/no-unused-vars
+  watch,
   setValue,
   basePath,
   label = "Target Geo",
@@ -163,115 +30,90 @@ export default function TargetGeoEditor({
   const statesPath = `${basePath}.states`;
   const citiesPath = `${basePath}.cities`;
 
-  const countries: GeoItem[] = watch(`${basePath}.countries`) || [];
-  const states: GeoItem[] = watch(`${basePath}.states`) || [];
-  const cities: GeoItem[] = watch(`${basePath}.cities`) || [];
+  // --- Form values: we store IDs only ---
+  const countriesIds: string[] = watch(countriesPath) || [];
+  const statesIds: string[] = watch(statesPath) || [];
+  const citiesIds: string[] = watch(citiesPath) || [];
 
-  function addMany(path: string, opts: any) {
-    const list = Array.isArray(opts) ? opts : [opts];
-    const items = list.map(toGeoItem).filter(Boolean) as GeoItem[];
-    const current: GeoItem[] =
-      path === countriesPath
-        ? countries
-        : path === statesPath
-        ? states
-        : cities;
+  // --- Local UI state for react-select controlled value (so tags show inside the select) ---
+  const [selCountries, setSelCountries] = useState<BaseOption[]>([]);
+  const [selStates, setSelStates] = useState<BaseOption[]>([]);
+  const [selCities, setSelCities] = useState<BaseOption[]>([]);
 
-    const next = [...current];
-    for (const it of items) {
-      if (!next.some((x) => x._id === it._id)) next.push(it);
-    }
-    console.log("[TG:addMany]", {
-      path,
-      from: opts,
-      before: current,
-      after: next,
-    });
-    setValue(path as any, next, { shouldValidate: true, shouldDirty: true });
-  }
+  // NOTE:
+  // We don't have labels for preloaded IDs from the form.
+  // If you want to hydrate labels on mount (edit mode), you can:
+  //  - fetch by IDs and map { value: id, label: fetchedName }
+  //  - or let it remain empty and it fills as users add/select again.
+  // Here we keep it simple and do not auto-fetch for hydration.
 
-  function removeAt(path: string, index: number) {
-    const current: GeoItem[] =
-      (path === countriesPath
-        ? countries
-        : path === statesPath
-        ? states
-        : cities) || [];
-    const next = current.slice();
-    next.splice(index, 1);
-    console.log("[TG:removeAt]", { path, index, before: current, after: next });
-    setValue(path as any, next, { shouldValidate: true, shouldDirty: true });
-  }
+  // When user changes countries in the select
+  const onCountriesChange = (opts: BaseOption[]) => {
+    setSelCountries(opts);
+    setValue(
+      countriesPath as any,
+      opts.map((o) => o.value),
+      { shouldValidate: true, shouldDirty: true }
+    );
+  };
+
+  // When user changes states
+  const onStatesChange = (opts: BaseOption[]) => {
+    setSelStates(opts);
+    setValue(
+      statesPath as any,
+      opts.map((o) => o.value),
+      { shouldValidate: true, shouldDirty: true }
+    );
+  };
+
+  // When user changes cities
+  const onCitiesChange = (opts: BaseOption[]) => {
+    setSelCities(opts);
+    setValue(
+      citiesPath as any,
+      opts.map((o) => o.value),
+      { shouldValidate: true, shouldDirty: true }
+    );
+  };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <label className="text-sm font-medium">{label}</label>
 
+      {/* Countries (IDs stored in form; tags shown inside the select via selCountries) */}
       <CountrySelect
-        placeholder="Select country"
-        onChange={(opt: any) => {
-          console.log("[TG:country:onChange:raw]", opt);
-          addMany(countriesPath, opt);
+        placeholder="Select countries"
+        value={selCountries}
+        onChange={(opts: BaseOption[]) => onCountriesChange(opts)}
+        selectProps={{
+          // keep the select controlled by our selCountries state
+          closeMenuOnSelect: false,
+          isClearable: true,
         }}
       />
-      <div className="flex flex-wrap gap-2 mt-2">
-        {countries.map((c, i) => (
-          <span
-            key={`country-${c._id}-${i}`}
-            className="flex items-center gap-1 px-2 py-1 border rounded text-sm"
-          >
-            {c.name}
-            <X
-              className="w-4 h-4 cursor-pointer"
-              onClick={() => removeAt(countriesPath, i)}
-            />
-          </span>
-        ))}
-      </div>
 
+      {/* States */}
       <StateSelect
-        placeholder="Select state"
-        onChange={(opt: any) => {
-          console.log("[TG:state:onChange:raw]", opt);
-          addMany(statesPath, opt);
+        placeholder="Select states"
+        value={selStates}
+        onChange={(opts: BaseOption[]) => onStatesChange(opts)}
+        selectProps={{
+          closeMenuOnSelect: false,
+          isClearable: true,
         }}
       />
-      <div className="flex flex-wrap gap-2 mt-2">
-        {states.map((s, i) => (
-          <span
-            key={`state-${s._id}-${i}`}
-            className="flex items-center gap-1 px-2 py-1 border rounded text-sm"
-          >
-            {s.name}
-            <X
-              className="w-4 h-4 cursor-pointer"
-              onClick={() => removeAt(statesPath, i)}
-            />
-          </span>
-        ))}
-      </div>
 
+      {/* Cities */}
       <CitySelect
-        placeholder="Select city"
-        onChange={(opt: any) => {
-          console.log("[TG:city:onChange:raw]", opt);
-          addMany(citiesPath, opt);
+        placeholder="Select cities"
+        value={selCities}
+        onChange={(opts: BaseOption[]) => onCitiesChange(opts)}
+        selectProps={{
+          closeMenuOnSelect: false,
+          isClearable: true,
         }}
       />
-      <div className="flex flex-wrap gap-2 mt-2">
-        {cities.map((city, i) => (
-          <span
-            key={`city-${city._id}-${i}`}
-            className="flex items-center gap-1 px-2 py-1 border rounded text-sm"
-          >
-            {city.name}
-            <X
-              className="w-4 h-4 cursor-pointer"
-              onClick={() => removeAt(citiesPath, i)}
-            />
-          </span>
-        ))}
-      </div>
     </div>
   );
 }

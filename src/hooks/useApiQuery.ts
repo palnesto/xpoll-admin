@@ -7,7 +7,6 @@ export const useApiQuery = (
   options?: UseQueryOptions<any, any>
 ) => {
   // Keep this if you want, but include the querystring in the log:
-  console.log("registering query", route);
 
   return useQuery({
     // 👇 include full route (WITH ?page=…&pageSize=…) so key changes when page changes

@@ -1,7 +1,7 @@
 // rewards.ts (optimized, same external API)
 
 /** ========= Types ========= */
-export type RewardType = 'min' | 'max';
+export type RewardType = "min" | "max";
 
 export interface CurveConfig {
   totalLevels: number;
@@ -16,13 +16,21 @@ const DEFAULT_BASE_SCORE = 100;
 const DEFAULT_EXPONENT = 3;
 
 /** Level -> score (integer) */
-export function scoreForLevelFn(level: number, baseScore: number, exponent: number): number {
+export function scoreForLevelFn(
+  level: number,
+  baseScore: number,
+  exponent: number
+): number {
   if (level < 1) return Math.floor(baseScore);
   return Math.floor(baseScore * Math.pow(level, exponent));
 }
 
 /** Score -> level (integer) */
-export function levelForScoreFn(score: number, baseScore: number, exponent: number): number {
+export function levelForScoreFn(
+  score: number,
+  baseScore: number,
+  exponent: number
+): number {
   if (score <= baseScore) return 1;
   return Math.floor(Math.pow(score / baseScore, 1 / exponent));
 }
@@ -79,7 +87,7 @@ function getRewardTable(config: CurveConfig): RewardTable {
   const exponent = config.exponent ?? DEFAULT_EXPONENT;
   const perUserReward = Math.max(0, Math.floor(config.perUserReward));
 
-  const anchorLevel = config.rewardType === 'max' ? totalLevels : 1;
+  const anchorLevel = config.rewardType === "max" ? totalLevels : 1;
   const scoreAtAnchor = scoreForLevelFn(anchorLevel, baseScore, exponent) || 1; // guard
 
   // Precompute scale once
@@ -117,7 +125,7 @@ export function rewardForLevelAnchoredAtTop(
 ): number {
   const rewards = getRewardTable({
     totalLevels,
-    rewardType: 'max',
+    rewardType: "max",
     perUserReward: topReward,
     baseScore,
     exponent,
@@ -135,7 +143,7 @@ export function rewardForLevelAnchoredAtBase(
 ): number {
   const rewards = getRewardTable({
     totalLevels,
-    rewardType: 'min',
+    rewardType: "min",
     perUserReward: baseReward,
     baseScore,
     exponent,
@@ -145,7 +153,9 @@ export function rewardForLevelAnchoredAtBase(
 }
 
 /** Build full reward table from config (memoized) */
-export function buildRewardTable(config: Pick<CurveConfig, 'perUserReward' | 'totalLevels' | 'rewardType'>): { level: number; reward: number }[] {
+export function buildRewardTable(
+  config: Pick<CurveConfig, "perUserReward" | "totalLevels" | "rewardType">
+): { level: number; reward: number }[] {
   const table = getRewardTable(config);
   // map once; fast
   return table.rewards.map((reward, idx) => ({ level: idx + 1, reward }));
@@ -154,7 +164,11 @@ export function buildRewardTable(config: Pick<CurveConfig, 'perUserReward' | 'to
 /** ========= Cap Logic ========= */
 
 /** Binary search the largest reward <= remaining within [1..L] */
-function findFloorRewardAtOrBelowLevel(rewards: number[], remaining: number, L: number): number | null {
+function findFloorRewardAtOrBelowLevel(
+  rewards: number[],
+  remaining: number,
+  L: number
+): number | null {
   // rewards are non-decreasing with level
   let lo = 0;
   let hi = L - 1; // search within [0..L-1]
@@ -179,10 +193,18 @@ function findFloorRewardAtOrBelowLevel(rewards: number[], remaining: number, L: 
  * - Binary search fallback within [1..L]
  * - If no reward <= remaining, return remaining (as specified)
  */
-export function computeUserReward(params: { maxCap: number; currentDistribution: number; level: number; config: CurveConfig }): number {
+export function computeUserReward(params: {
+  maxCap: number;
+  currentDistribution: number;
+  level: number;
+  config: CurveConfig;
+}): number {
   const { maxCap, currentDistribution, level, config } = params;
 
-  const remaining = Math.max(0, Math.floor(maxCap) - Math.floor(currentDistribution));
+  const remaining = Math.max(
+    0,
+    Math.floor(maxCap) - Math.floor(currentDistribution)
+  );
   if (remaining <= 0) return 0;
 
   const table = getRewardTable(config);
@@ -201,7 +223,12 @@ export function computeUserReward(params: { maxCap: number; currentDistribution:
 }
 
 /** Batch compute; reuses memoized table implicitly via computeUserReward */
-export function computeRewardsForUsers(users: number[], maxCap: number, currentDistribution: number, config: CurveConfig): number[] {
+export function computeRewardsForUsers(
+  users: number[],
+  maxCap: number,
+  currentDistribution: number,
+  config: CurveConfig
+): number[] {
   let distributed = Math.floor(currentDistribution);
   const out = new Array<number>(users.length);
   for (let i = 0; i < users.length; i++) {
@@ -219,18 +246,14 @@ export function computeRewardsForUsers(users: number[], maxCap: number, currentD
 }
 
 /** ========= Small Helpers / Tables for Debugging ========= */
-export function levelTable(totalLevels: number, baseScore = DEFAULT_BASE_SCORE, exponent = DEFAULT_EXPONENT): { level: number; score: number }[] {
+export function levelTable(
+  totalLevels: number,
+  baseScore = DEFAULT_BASE_SCORE,
+  exponent = DEFAULT_EXPONENT
+): { level: number; score: number }[] {
   const out = new Array<{ level: number; score: number }>(totalLevels);
   for (let i = 1; i <= totalLevels; i++) {
     out[i - 1] = { level: i, score: scoreForLevelFn(i, baseScore, exponent) };
   }
   return out;
 }
-
-console.log(
-  buildRewardTable({
-    perUserReward: 100,
-    totalLevels: 10,
-    rewardType: 'min',
-  })
-);

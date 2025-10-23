@@ -9,7 +9,7 @@ import { useApiMutation } from "@/hooks/useApiMutation";
 import { endpoints } from "@/api/endpoints";
 import { queryClient } from "@/api/queryClient";
 import { appToast } from "@/utils/toast";
-import { Loader2, Trash, Trash2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 import { useImageUpload } from "@/hooks/upload/useAssetUpload";
 import ExpireRewardAtPicker from "@/components/polling/editors/ExpireRewardAtPicker";
 import ResourceAssetsEditor from "@/components/polling/editors/ResourceAssetsEditor";
@@ -22,6 +22,7 @@ import { FormCard } from "@/components/form/form-card";
 import RewardsList from "@/components/polling/editors/RewardsList";
 import RewardDetailPanel from "@/components/polling/editors/RewardDetailPanel";
 import TwoPane from "@/layouts/TwoPane";
+import { assetSpecs } from "@/utils/asset";
 
 const DEBUG = true;
 const log = (...args: any[]) => DEBUG && console.log("[PollCreate]", ...args);
@@ -76,7 +77,17 @@ const formSchema = z
       .datetime()
       .optional()
       .or(z.literal("").optional())
-      .optional(),
+      .refine(
+        (val) => {
+          if (!val || val === "") return true; // allow empty / optional
+          const d = new Date(val);
+          const now = new Date();
+          return d >= now;
+        },
+        {
+          message: "Expiry date must not be in the past",
+        }
+      ),
   })
   .superRefine((v, ctx) => {
     const ids = v.rewards.map((r) => r.assetId);
@@ -120,13 +131,18 @@ export default function PollCreatePage() {
     mode: "onChange",
   });
 
-  const { control, handleSubmit, watch, setValue } = form;
+  const { control, handleSubmit, watch, setValue, formState } = form;
   const { errors, isValid, isSubmitting } = form.formState;
 
   // Rewards array
   const { fields, append, remove, update } = useFieldArray({
     control,
     name: "rewards",
+  });
+
+  console.log({
+    error: formState.errors,
+    watch: watch(),
   });
 
   // API mutation with error logging
@@ -154,7 +170,7 @@ export default function PollCreatePage() {
         "Failed to create poll";
       log("error message:", msg);
       groupEnd();
-      appToast.error(msg);
+      // appToast.error(msg);
     },
   });
 
@@ -184,7 +200,7 @@ export default function PollCreatePage() {
     log("errors:", e);
     log("isValid:", isValid);
     groupEnd();
-    appToast.error(firstErrorMessage(e));
+    // appToast.error(firstErrorMessage(e));
   };
 
   const onSubmit = async (v: FormValues) => {
@@ -267,6 +283,7 @@ export default function PollCreatePage() {
     groupEnd();
 
     try {
+      console.log("payload", payload);
       mutate(payload as any);
     } catch (e) {
       group("❌ mutate threw (synchronous)");
@@ -372,20 +389,15 @@ export default function PollCreatePage() {
                 <FormCard title="Rewards">
                   <div className="flex gap-2 items-center">
                     <Button
+                      type="button"
                       size="icon"
                       onClick={() => setActiveRewardIndex(-1)}
                       className="w-fit p-2"
+                      disabled={
+                        fields?.length >= Object.keys(assetSpecs)?.length
+                      }
                     >
                       Add reward
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      onClick={() => fields.length && remove(0)}
-                      disabled={!fields.length}
-                      className="cursor-pointer disabled:cursor-not-allowed"
-                    >
-                      <Trash2 className="text-red-600" />
                     </Button>
                   </div>
                   {fields.length > 0 ? (

@@ -21,8 +21,6 @@ import { useLocation } from "react-router";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { pathname } = useLocation();
-  console.log("pathname", pathname);
-
   const {
     isOverallPollStats,
     isAdminAndUserPolls,

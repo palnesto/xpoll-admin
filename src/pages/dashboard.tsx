@@ -23,7 +23,6 @@ export const Dashboard = memo(function Dashboard() {
     endpoints.entities.polls.overallPollStats
   );
   const filteredStats = stats?.data?.data;
-  console.log("filteredStats", filteredStats);
   const countryWiseStats = [
     {
       label: "IN",
@@ -138,7 +137,6 @@ export const Dashboard = memo(function Dashboard() {
   return (
     <section className="p-4 space-y-4 @container/main flex flex-1 flex-col">
       <h1 className="text-2xl font-semibold">XP Intelligence</h1>
-      {console.log("userStats", userStats)}
       <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs @xl/main:grid-cols-2 @5xl/main:grid-cols-5">
         {userStats?.map((data) => (
           <SectionCards data={data} />
@@ -174,7 +172,6 @@ export const Dashboard = memo(function Dashboard() {
 });
 
 export function SectionCards({ data }) {
-  console.log("sectionCard", data);
   const { label, value, filter } = data;
   const cardClass = filter ? "flex-1 md:col-span-2" : "";
   return (
@@ -209,7 +206,6 @@ export function SectionCards({ data }) {
 }
 
 export const CryptoStatCircle = ({ name, value, img }) => {
-  console.log({ name, value, img });
   return (
     <section className="flex flex-col items-center text-center">
       <article

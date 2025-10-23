@@ -4,7 +4,7 @@ import { assetSpecs } from "@/utils/asset";
 import { AssetType } from "@/utils/currency-assets/asset";
 import { amount, unwrapString } from "@/utils/currency-assets/base";
 import { capitalize } from "lodash";
-import { Pencil, Trash } from "lucide-react";
+import { Pencil, Trash, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "react-router";
 
@@ -92,14 +92,27 @@ export default function RewardsList({
               <div className="flex flex-col gap-5 text-start w-full">
                 <div className="flex justify-between items-center">
                   {/* left heading */}
-                  <div className="flex items-center gap-2">
-                    <div className="aspect-square w-7">
-                      <img
-                        src={assetSpecs[assetId]?.img}
-                        className="w-full h-full"
-                      />
+                  <div className="flex items-center gap-5 justify-between w-full">
+                    <div className="flex gap-2 items-center">
+                      <div className="aspect-square w-7">
+                        <img
+                          src={assetSpecs[assetId]?.img}
+                          className="w-full h-full"
+                        />
+                      </div>
+                      <p>{assetSpecs[assetId]?.parent}</p>
                     </div>
-                    <p>{assetSpecs[assetId]?.parent}</p>
+
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={() => fields.length && remove(idx)}
+                      disabled={!fields.length}
+                      className="cursor-pointer disabled:cursor-not-allowed"
+                    >
+                      <Trash2 className="text-red-600" />
+                    </Button>
                   </div>
                   {isEditing ? (
                     <div className="flex items-center gap-2">
