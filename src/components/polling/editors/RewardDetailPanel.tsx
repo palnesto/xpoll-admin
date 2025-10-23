@@ -4,6 +4,9 @@ import { Input } from "@/components/ui/input";
 import RewardCurveTable from "@/components/commons/reward-curve-table";
 import { assetSpecs, AssetType } from "@/utils/currency-assets/asset";
 import { amount, unwrapString } from "@/utils/currency-assets/base";
+import { RewardsAccordion } from "@/components/reward-table/rewards-accordion";
+import { useApiQuery } from "@/hooks/useApiQuery";
+import { endpoints } from "@/api/endpoints";
 
 type RewardType = "max" | "min";
 
@@ -234,6 +237,8 @@ export default function RewardDetailPanel({
   update,
 }: Props) {
   const isAddMode = index === -1;
+  const { data } = useApiQuery(endpoints.adminMe);
+  const highestLevel = data?.data?.data?.highestLevel;
 
   const takenAssets = rewards.map((r) => r.assetId);
 
@@ -335,15 +340,18 @@ export default function RewardDetailPanel({
 
       {/* Amount (PARENT-facing; stores BASE in draft.amount) */}
       <div>
-        <Input
-          type="text"
-          inputMode="decimal"
-          className="placeholder:text-xs"
-          value={amountField.value}
-          placeholder={amountField.placeholder}
-          onChange={(e) => amountField.onChange(e.target.value)}
-          onBlur={amountField.onBlur}
-        />
+        <div className="flex flex-col gap-2 text-zinc-400">
+          <p className="text-xs">Amount Per Person</p>
+          <Input
+            type="text"
+            inputMode="decimal"
+            className="placeholder:text-xs"
+            value={amountField.value}
+            placeholder={amountField.placeholder}
+            onChange={(e) => amountField.onChange(e.target.value)}
+            onBlur={amountField.onBlur}
+          />
+        </div>
         <div className="mt-1 flex items-center justify-between">
           <p className="text-xs text-muted-foreground">
             {amountField.value ? (
@@ -368,17 +376,20 @@ export default function RewardDetailPanel({
 
       {/* Reward Cap (PARENT-facing; stores BASE in draft.rewardAmountCap) */}
       <div>
-        <Input
-          type="text"
-          inputMode="decimal"
-          className="placeholder:text-xs"
-          value={capField.value}
-          placeholder={capField.placeholder
-            .replace("100.", "1000.")
-            .replace("100", "1000")}
-          onChange={(e) => capField.onChange(e.target.value)}
-          onBlur={capField.onBlur}
-        />
+        <div className="flex flex-col gap-2 text-zinc-400">
+          <p className="text-xs">Reward Cap</p>
+          <Input
+            type="text"
+            inputMode="decimal"
+            className="placeholder:text-xs"
+            value={capField.value}
+            placeholder={capField.placeholder
+              .replace("100.", "1000.")
+              .replace("100", "1000")}
+            onChange={(e) => capField.onChange(e.target.value)}
+            onBlur={capField.onBlur}
+          />
+        </div>
         <div className="mt-1 flex items-center justify-between">
           <p className="text-xs text-muted-foreground">
             {capField.value ? (
@@ -424,17 +435,13 @@ export default function RewardDetailPanel({
       </select>
 
       {/* Preview */}
-      <RewardCurveTable
-        asset={draft.assetId as AssetType}
-        perUserReward={Number(
-          toParentAmount(draft.assetId as AssetType, draft.amount || 0)
-        )}
-        rewardAmountCap={Number(
-          toParentAmount(draft.assetId as AssetType, draft.rewardAmountCap || 0)
-        )}
+      <RewardsAccordion
+        highestLevel={highestLevel ?? 1}
         rewardType={draft.rewardType}
-        totalLevels={totalLevels}
-        label="Preview"
+        perUserReward={draft.amount}
+        rewardCap={draft.rewardAmountCap}
+        asset={draft.assetId as AssetType}
+        size="sm"
       />
 
       {isAddMode ? (

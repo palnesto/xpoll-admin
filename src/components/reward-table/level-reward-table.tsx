@@ -6,26 +6,79 @@ import { type AssetType, assetSpecs } from "@/utils/currency-assets/asset";
 import { cn } from "@/lib/utils";
 import { buildRewardTable, RewardType } from "@/utils/civic-logic2";
 import { LEVELS } from "@/utils/levelConfig";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
 export type RewardsTableProps = {
   highestLevel: number;
   rewardType: RewardType;
   perUserReward: string | number | bigint; // base currency amount (no decimals!)
+  rewardCap: string | number | bigint; // base currency amount (no decimals!)
   asset: AssetType;
   maxDecimals?: number; // limit decimals displayed
   size?: "sm" | "md" | "lg"; // table size variant
   className?: string; // custom class for outer container
 };
+type CapResult = {
+  isCapped: true;
+  computed: string;
+  cappedAt: string;
+} | null;
+
+export function computeCap({
+  rewardCap,
+  rewardBig,
+  asset,
+}: {
+  rewardCap: string | number | bigint;
+  rewardBig: bigint;
+  asset: AssetType;
+}): CapResult {
+  // normalize rewardCap to bigint
+  const rewardCapBig =
+    typeof rewardCap === "bigint"
+      ? rewardCap
+      : typeof rewardCap === "string"
+      ? BigInt(rewardCap)
+      : BigInt(rewardCap);
+
+  if (rewardCapBig < rewardBig) {
+    return {
+      isCapped: true,
+      computed:
+        amount({
+          op: "toParent",
+          assetId: asset,
+          value: rewardBig.toString(),
+          output: "string",
+          trim: true,
+          group: true,
+        })?.value || "0",
+      cappedAt:
+        amount({
+          op: "toParent",
+          assetId: asset,
+          value: rewardCapBig.toString(),
+          output: "string",
+          trim: true,
+          group: true,
+        })?.value || "0",
+    };
+  }
+
+  return null;
+}
 
 export function RewardsTable({
-  highestLevel,
+  highestLevel = 1,
   rewardType,
   perUserReward,
+  rewardCap,
   asset,
   maxDecimals,
   size = "md",
   className,
 }: RewardsTableProps) {
+  highestLevel = 10;
   const decimal = assetSpecs?.[asset]?.decimal;
   const parentSymbol = assetSpecs?.[asset]?.parentSymbol;
   const img = assetSpecs?.[asset]?.img;
@@ -73,6 +126,9 @@ export function RewardsTable({
   const rows = Array.from({ length: highestLevel }, (_, idx) => {
     const levelNum = idx + 1;
     const rewardBase = rewards.find((r) => r.level === levelNum)?.reward ?? 0n;
+    console.log("rewardBase", rewardBase);
+    const cap = computeCap({ rewardCap, rewardBig: rewardBase, asset });
+    console.log("cap", cap);
 
     // convert base → parent with clamped decimals
     const rewardParent = unwrapString(
@@ -94,6 +150,7 @@ export function RewardsTable({
       title: config?.title ?? "—",
       image: config?.image ?? "",
       reward: rewardParent,
+      cap,
     };
   });
 
@@ -145,7 +202,30 @@ export function RewardsTable({
                     className={cn("object-contain", sizeStyles.icon)}
                   />
                   <span>
-                    {level.reward} {parentSymbol}
+                    {level?.cap ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="text-yellow-600 font-mono">
+                            {level?.cap.cappedAt}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          <div className="text-sm leading-snug text-yellow-700">
+                            <div>
+                              <span className="font-semibold">Computed:</span>{" "}
+                              {level?.cap.computed}
+                            </div>
+                            <div>
+                              <span className="font-semibold">Capped at:</span>{" "}
+                              {level?.cap.cappedAt}
+                            </div>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <span>{level.reward}</span>
+                    )}{" "}
+                    {parentSymbol}
                   </span>
                 </div>
               </td>

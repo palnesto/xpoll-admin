@@ -46,7 +46,6 @@ import { cn } from "@/lib/utils";
 import ResourceAssetsEditor, {
   getYTImageUrl,
 } from "@/components/polling/editors/ResourceAssetsEditor";
-import { type AssetOption } from "@/components/polling/editors/RewardsEditor";
 import ExpireRewardAtPicker from "@/components/polling/editors/ExpireRewardAtPicker";
 import TargetGeoEditor from "@/components/polling/editors/TargetGeoEditor";
 import { useImageUpload } from "@/hooks/upload/useAssetUpload";
@@ -56,6 +55,7 @@ import TwoPane from "@/layouts/TwoPane";
 import RewardDetailPanel from "@/components/polling/editors/RewardDetailPanel";
 import RewardsList from "@/components/polling/editors/RewardsList";
 import ResourceAssetsPreview from "@/components/polling/editors/ResourceAssetsPreview";
+import { AssetOption } from "@/components/commons/selects/asset-multi-select";
 
 /* ---------- constants ---------- */
 const TOTAL_LEVELS = 10 as const;
@@ -228,7 +228,7 @@ export default function PollShowPage() {
 
   const showRoute = (endpoints.entities as any)?.polls?.getById
     ? (endpoints.entities as any).polls.getById(id)
-    : `/poll/${id}`;
+    : `/internal/poll/${id}`;
   const { data, isLoading, isError } = useApiQuery(showRoute);
 
   const poll: Poll | null = useMemo(() => {
@@ -244,7 +244,17 @@ export default function PollShowPage() {
         typeof item === "string" ? item : item?.name || item?._id || ""
       )
       .filter(Boolean);
-    return names.length ? names.join(", ") : "-";
+    return (
+      <div className="flex flex-wrap gap-2">
+        {names.map((name, idx) => {
+          return (
+            <span key={idx + name} className="bg-gray-950 py-1 px-2 rounded-lg">
+              {name}
+            </span>
+          );
+        })}
+      </div>
+    );
   }
 
   const form = useForm<EditValues>({
@@ -382,14 +392,7 @@ export default function PollShowPage() {
           (curr as any)?.media,
       }));
 
-      queryClient.invalidateQueries({ queryKey: [showRoute] });
-      queryClient.invalidateQueries({
-        predicate: (q) =>
-          typeof q.queryKey?.[0] === "string" &&
-          (q.queryKey[0] as string).startsWith(
-            (endpoints.entities as any)?.polls?.all ?? "/poll/list"
-          ),
-      });
+      queryClient.invalidateQueries({ queryKey: ["GET", showRoute] });
       setIsEditing(false);
       navigate(location.pathname, { replace: true });
     },
@@ -821,15 +824,6 @@ export default function PollShowPage() {
 
                     {/* Rewards (same as create) */}
                     {!isTrialPoll && (
-                      // <RewardsEditor
-                      //   control={control}
-                      //   name="rewards"
-                      //   assetOptions={ASSET_OPTIONS}
-                      //   includeRewardType
-                      //   showCurvePreview
-                      //   totalLevelsForPreview={TOTAL_LEVELS}
-                      //   label="Rewards"
-                      // />
                       <FormCard title="Rewards">
                         <RewardsList
                           fields={fields}
@@ -990,10 +984,16 @@ export default function PollShowPage() {
                             key={`yt-${i}`}
                             className="flex items-center justify-between rounded-md border p-1 h-16 w-full"
                           >
-                            <ResourceAssetsPreview
-                              src={getYTImageUrl(extractYouTubeId(a.value))}
-                              label={`youtube ${i + 1}`}
-                            />
+                            <a
+                              target="_blank"
+                              href={`https://www.youtube.com/watch?v=${a.value}`}
+                              rel="noreferrer"
+                            >
+                              <ResourceAssetsPreview
+                                src={getYTImageUrl(extractYouTubeId(a.value))}
+                                label={`youtube`}
+                              />
+                            </a>
                           </div>
                         </>
                       ) : (
@@ -1001,10 +1001,12 @@ export default function PollShowPage() {
                           key={`img-${i}`}
                           className="flex items-center h-16 justify-between gap-3 rounded-md border p-1 w-full"
                         >
-                          <ResourceAssetsPreview
-                            src={a.value}
-                            label={`youtube ${i + 1}`}
-                          />
+                          <a target="_blank" href={a.value} rel="noreferrer">
+                            <ResourceAssetsPreview
+                              src={a.value}
+                              label={`Image`}
+                            />
+                          </a>
                         </div>
                       );
                     })}
@@ -1076,15 +1078,18 @@ export default function PollShowPage() {
             {!isTrialPoll && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormCard title="Target Geo">
-                  <h2 className="break-all">
-                    Countries –{renderGeoList(poll.targetGeo?.countries as any)}
-                  </h2>
-                  <h2 className="break-all">
-                    States –{renderGeoList(poll.targetGeo?.states as any)}
-                  </h2>
-                  <h2 className="break-all">
-                    Cities –{renderGeoList(poll.targetGeo?.cities as any)}
-                  </h2>
+                  <div className="flex flex-col gap-2">
+                    <span className="text-sm font-semibold">Countries</span>{" "}
+                    {renderGeoList(poll.targetGeo?.countries as any)}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <span className="text-sm font-semibold">States</span>{" "}
+                    {renderGeoList(poll.targetGeo?.states as any)}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <span className="text-sm font-semibold">Cities</span>{" "}
+                    {renderGeoList(poll.targetGeo?.cities as any)}
+                  </div>
                 </FormCard>
                 <FormCard title="Details">
                   <section className="flex items-center gap-2">
@@ -1093,12 +1098,14 @@ export default function PollShowPage() {
                       {fmt(poll.createdAt)}
                     </p>
                   </section>
-                  <section className="flex items-center gap-2">
-                    <h2>Archived At - </h2>
-                    <p className="text-xs text-muted-foreground">
-                      {fmt(poll.archivedAt)}
-                    </p>
-                  </section>
+                  {poll?.archivedAt && (
+                    <section className="flex items-center gap-2">
+                      <h2>Archived At - </h2>
+                      <p className="text-xs text-muted-foreground">
+                        {fmt(poll?.archivedAt)}
+                      </p>
+                    </section>
+                  )}
                 </FormCard>
               </div>
             )}

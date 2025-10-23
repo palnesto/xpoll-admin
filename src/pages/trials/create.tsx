@@ -331,17 +331,6 @@ export default function TrialCreatePage() {
                     <></>
                   )}
                 </FormCard>
-                {/* <FormCard title="Rewards">
-                  <RewardsEditor
-                    control={control}
-                    name="trial.rewards"
-                    assetOptions={ASSET_OPTIONS}
-                    includeRewardType
-                    showCurvePreview
-                    totalLevelsForPreview={TOTAL_LEVELS}
-                    label="Rewards"
-                  />
-                </FormCard> */}
 
                 {/* Expiry */}
                 <ExpireRewardAtPicker

@@ -1,5 +1,4 @@
 import { endpoints } from "@/api/endpoints";
-import RewardCurveTable from "@/components/commons/reward-curve-table";
 import { RewardsAccordion } from "@/components/reward-table/rewards-accordion";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -111,16 +110,26 @@ export default function RewardsList({
                       <p>{assetSpecs[assetId]?.parent}</p>
                     </div>
 
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="outline"
-                      onClick={() => fields.length && remove(idx)}
-                      disabled={!fields.length}
-                      className="cursor-pointer disabled:cursor-not-allowed"
-                    >
-                      <Trash2 className="text-red-600" />
-                    </Button>
+                    <div>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        onClick={() => onEdit(idx)}
+                      >
+                        <Pencil />
+                      </Button>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        onClick={() => fields.length && remove(idx)}
+                        disabled={!fields.length}
+                        className="cursor-pointer disabled:cursor-not-allowed"
+                      >
+                        <Trash2 className="text-red-600" />
+                      </Button>
+                    </div>
                   </div>
                   {isEditing ? (
                     <div className="flex items-center gap-2">
@@ -169,29 +178,11 @@ export default function RewardsList({
 
                 {showDistribution ? (
                   <>
-                    {/* <RewardCurveTable
-                      asset={assetId as AssetType}
-                      perUserReward={Number(
-                        toParentAmount(assetId as AssetType, rawAmount)
-                      )}
-                      rewardAmountCap={Number(
-                        toParentAmount(assetId as AssetType, rawRewardCap)
-                      )}
-                      rewardType={"min"}
-                      totalLevels={10}
-                      label="Reward"
-                    /> */}
-                    {console.log("expected", {
-                      highestLevel,
-                      rewardType,
-                      rawAmount,
-                      assetId,
-                    })}
                     <RewardsAccordion
                       highestLevel={highestLevel ?? 1}
                       rewardType={rewardType}
                       perUserReward={rawAmount}
-                      // asset="xDrop" // or whichever AssetType
+                      rewardCap={rawRewardCap}
                       asset={assetId as AssetType}
                       size="sm"
                     />

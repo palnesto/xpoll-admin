@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import CitySelect from "@/components/commons/selects/city-select";
 import CountrySelect from "@/components/commons/selects/country-select";
 import StateSelect from "@/components/commons/selects/state-select";
@@ -17,10 +17,23 @@ type Props = {
   setValue: UseFormSetValue<any>;
   basePath: string; // e.g. "targetGeo"
   label?: string;
-  selectProps?: Parameters<
-    typeof MultiInfiniteSelect<CityItem>
-  >[0]["selectProps"];
+  selectProps?: Record<string, any>;
 };
+
+// -------------------- NEW: normalize form values -> select options --------------------
+function asOptions<T extends { _id?: string; name?: string }>(
+  list: Array<string | T> | undefined | null
+): BaseOption<T>[] {
+  const arr = Array.isArray(list) ? list : [];
+  return arr.map((item) => {
+    if (typeof item === "string") {
+      return { value: item, label: item } as BaseOption<T>;
+    }
+    const id = String(item?._id ?? "");
+    const name = String(item?.name ?? id);
+    return { value: id, label: name, data: item } as BaseOption<T>;
+  });
+}
 
 export default function TargetGeoEditor({
   control, // eslint-disable-line @typescript-eslint/no-unused-vars
@@ -34,49 +47,64 @@ export default function TargetGeoEditor({
   const statesPath = `${basePath}.states`;
   const citiesPath = `${basePath}.cities`;
 
-  // --- Form values: we store IDs only ---
-  const countriesIds: string[] = watch(countriesPath) || [];
-  const statesIds: string[] = watch(statesPath) || [];
-  const citiesIds: string[] = watch(citiesPath) || [];
+  // --- Watch the form fields (can be string[] or {_id,name}[]) ---
+  const countriesRaw = watch(countriesPath) || [];
+  const statesRaw = watch(statesPath) || [];
+  const citiesRaw = watch(citiesPath) || [];
 
   // --- Local UI state for react-select controlled value (so tags show inside the select) ---
   const [selCountries, setSelCountries] = useState<BaseOption[]>([]);
   const [selStates, setSelStates] = useState<BaseOption[]>([]);
   const [selCities, setSelCities] = useState<BaseOption[]>([]);
 
-  // NOTE:
-  // We don't have labels for preloaded IDs from the form.
-  // If you want to hydrate labels on mount (edit mode), you can:
-  //  - fetch by IDs and map { value: id, label: fetchedName }
-  //  - or let it remain empty and it fills as users add/select again.
-  // Here we keep it simple and do not auto-fetch for hydration.
+  // -------------------- NEW: hydrate controlled values on edit --------------------
+
+  console.log({
+    countriesRaw,
+    statesRaw,
+    citiesRaw,
+    selCountries,
+    selStates,
+    selCities,
+  });
+  useEffect(() => {
+    setSelCountries(asOptions(countriesRaw));
+  }, [countriesRaw]);
+
+  useEffect(() => {
+    setSelStates(asOptions(statesRaw));
+  }, [statesRaw]);
+
+  useEffect(() => {
+    setSelCities(asOptions(citiesRaw));
+  }, [citiesRaw]);
 
   // When user changes countries in the select
   const onCountriesChange = (opts: BaseOption[]) => {
     setSelCountries(opts);
     setValue(
       countriesPath as any,
-      opts.map((o) => o.value),
+      opts.map((o) => ({ _id: o.value, name: o.label })), // <-- keep label
       { shouldValidate: true, shouldDirty: true }
     );
   };
 
-  // When user changes states
+  // States
   const onStatesChange = (opts: BaseOption[]) => {
     setSelStates(opts);
     setValue(
       statesPath as any,
-      opts.map((o) => o.value),
+      opts.map((o) => ({ _id: o.value, name: o.label })), // <-- keep label
       { shouldValidate: true, shouldDirty: true }
     );
   };
 
-  // When user changes cities
+  // Cities
   const onCitiesChange = (opts: BaseOption[]) => {
     setSelCities(opts);
     setValue(
       citiesPath as any,
-      opts.map((o) => o.value),
+      opts.map((o) => ({ _id: o.value, name: o.label })), // <-- keep label
       { shouldValidate: true, shouldDirty: true }
     );
   };
@@ -85,13 +113,12 @@ export default function TargetGeoEditor({
     <div className="space-y-3">
       <label className="text-sm font-medium">{label}</label>
 
-      {/* Countries (IDs stored in form; tags shown inside the select via selCountries) */}
+      {/* Countries (prefilled via selCountries) */}
       <CountrySelect
         placeholder="Select countries"
         value={selCountries}
         onChange={(opts: BaseOption[]) => onCountriesChange(opts)}
         selectProps={{
-          // keep the select controlled by our selCountries state
           ...selectProps,
           closeMenuOnSelect: false,
           isClearable: true,

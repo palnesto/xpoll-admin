@@ -142,6 +142,11 @@ export default function PollCreatePage() {
   const { control, handleSubmit, watch, setValue, formState } = form;
   const { errors, isValid, isSubmitting } = form.formState;
 
+  console.log({
+    watch,
+    errors,
+  });
+
   // Rewards array
   const { fields, append, remove, update } = useFieldArray({
     control,
@@ -165,7 +170,7 @@ export default function PollCreatePage() {
       queryClient.invalidateQueries({
         queryKey: [endpoints.entities.polls.create],
       });
-      navigate("/polls");
+      navigate("/analytics/polls");
     },
     onError: (err: any) => {
       group("❌ API Error");
@@ -292,7 +297,7 @@ export default function PollCreatePage() {
 
     try {
       console.log("payload", payload);
-      // mutate(payload as any);
+      mutate(payload as any);
     } catch (e) {
       group("❌ mutate threw (synchronous)");
       log(e);
@@ -417,6 +422,12 @@ export default function PollCreatePage() {
                     />
                   ) : (
                     <></>
+                  )}
+
+                  {errors.rewards?.message && (
+                    <p className="text-sm text-destructive">
+                      {errors.rewards?.message}
+                    </p>
                   )}
                 </FormCard>
                 <ExpireRewardAtPicker control={control} name="expireRewardAt" />
