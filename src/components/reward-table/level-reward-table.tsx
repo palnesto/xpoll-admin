@@ -78,7 +78,6 @@ export function RewardsTable({
   size = "md",
   className,
 }: RewardsTableProps) {
-  highestLevel = 10;
   const decimal = assetSpecs?.[asset]?.decimal;
   const parentSymbol = assetSpecs?.[asset]?.parentSymbol;
   const img = assetSpecs?.[asset]?.img;
