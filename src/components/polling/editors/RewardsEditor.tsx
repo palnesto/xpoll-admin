@@ -397,6 +397,7 @@ function RewardRow({
         {showCurvePreview && Number(amountBaseNum) > 0 && (
           <div className="col-span-12">
             <RewardCurveTable
+              asset={asset}
               perUserReward={amountBaseNum}
               rewardType={
                 (includeRewardType

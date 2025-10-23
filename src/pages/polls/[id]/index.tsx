@@ -46,9 +46,7 @@ import { cn } from "@/lib/utils";
 import ResourceAssetsEditor, {
   getYTImageUrl,
 } from "@/components/polling/editors/ResourceAssetsEditor";
-import RewardsEditor, {
-  type AssetOption,
-} from "@/components/polling/editors/RewardsEditor";
+import { type AssetOption } from "@/components/polling/editors/RewardsEditor";
 import ExpireRewardAtPicker from "@/components/polling/editors/ExpireRewardAtPicker";
 import TargetGeoEditor from "@/components/polling/editors/TargetGeoEditor";
 import { useImageUpload } from "@/hooks/upload/useAssetUpload";
@@ -1071,6 +1069,7 @@ export default function PollShowPage() {
                 onAdd={() => setActiveRewardIndex(-1)}
                 remove={remove}
                 allAssets={ASSET_OPTIONS.map((a) => a.value)}
+                showDistribution={true}
               />
             </FormCard>
             {/* Hide Target Geo block entirely for trial polls */}

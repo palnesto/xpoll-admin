@@ -1,5 +1,9 @@
+import { endpoints } from "@/api/endpoints";
+import RewardCurveTable from "@/components/commons/reward-curve-table";
+import { RewardsAccordion } from "@/components/reward-table/rewards-accordion";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useApiQuery } from "@/hooks/useApiQuery";
 import { assetSpecs } from "@/utils/asset";
 import { AssetType } from "@/utils/currency-assets/asset";
 import { amount, unwrapString } from "@/utils/currency-assets/base";
@@ -23,6 +27,7 @@ type Props = {
   onAdd: () => void;
   remove: (index: number) => void;
   allAssets: string[];
+  showDistribution?: boolean;
 };
 function toParentAmount(
   assetId: AssetType,
@@ -50,11 +55,14 @@ export default function RewardsList({
   onAdd,
   remove,
   allAssets,
+  showDistribution = false,
 }: Props) {
   const takenAssets = fields.map((f) => f.assetId);
   const canAdd = takenAssets.length < allAssets.length;
   const location = useLocation() || {};
   const isNavigationEditing = location?.state?.isNavigationEditing;
+  const { data } = useApiQuery(endpoints.adminMe);
+  const highestLevel = data?.data?.data?.highestLevel;
   const [isEditing, setIsEditing] = useState(isNavigationEditing ?? false);
   return (
     <>
@@ -158,12 +166,46 @@ export default function RewardsList({
                     );
                   })}
                 </div>
-                <p
-                  className="underline decoration-white/50 text-white/50 text-start underline-offset-4 cursor-pointer hover:decoration-white hover:text-white transition-colors duration-150"
-                  onClick={() => onEdit(idx)}
-                >
-                  Reward Distribution Preview
-                </p>
+
+                {showDistribution ? (
+                  <>
+                    {/* <RewardCurveTable
+                      asset={assetId as AssetType}
+                      perUserReward={Number(
+                        toParentAmount(assetId as AssetType, rawAmount)
+                      )}
+                      rewardAmountCap={Number(
+                        toParentAmount(assetId as AssetType, rawRewardCap)
+                      )}
+                      rewardType={"min"}
+                      totalLevels={10}
+                      label="Reward"
+                    /> */}
+                    {console.log("expected", {
+                      highestLevel,
+                      rewardType,
+                      rawAmount,
+                      assetId,
+                    })}
+                    <RewardsAccordion
+                      highestLevel={highestLevel ?? 1}
+                      rewardType={rewardType}
+                      perUserReward={rawAmount}
+                      // asset="xDrop" // or whichever AssetType
+                      asset={assetId as AssetType}
+                      size="sm"
+                    />
+                  </>
+                ) : (
+                  <p
+                    className="underline decoration-white/50 text-white/50 text-start underline-offset-4 cursor-pointer hover:decoration-white hover:text-white transition-colors duration-150"
+                    onClick={() => {
+                      onEdit(idx);
+                    }}
+                  >
+                    Reward Distribution Preview
+                  </p>
+                )}
               </div>
             </Card>
           );

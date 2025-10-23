@@ -289,7 +289,11 @@ export default function MultiInfiniteSelect<
   }, [data, mapItemToOption]);
 
   const handleChange = React.useCallback(
-    (v: MultiValue<BaseOption<T>>) => onChange?.(v as BaseOption<T>[]),
+    (v: MultiValue<BaseOption<T>>) => {
+      onChange?.(v as BaseOption<T>[]);
+      setInput("");
+      setSearch("");
+    },
     [onChange]
   );
 

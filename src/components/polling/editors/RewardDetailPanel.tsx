@@ -425,6 +425,7 @@ export default function RewardDetailPanel({
 
       {/* Preview */}
       <RewardCurveTable
+        asset={draft.assetId as AssetType}
         perUserReward={Number(
           toParentAmount(draft.assetId as AssetType, draft.amount || 0)
         )}

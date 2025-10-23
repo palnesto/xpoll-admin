@@ -27,6 +27,7 @@ import { FormTextarea } from "@/components/form/textarea";
 import RewardsList from "@/components/polling/editors/RewardsList";
 import RewardDetailPanel from "@/components/polling/editors/RewardDetailPanel";
 import { assetSpecs, type AssetType } from "@/utils/currency-assets/asset";
+import { optionZ } from "../polls/create";
 
 const ASSET_OPTIONS: AssetOption[] = (
   [
@@ -42,7 +43,6 @@ const ASSET_OPTIONS: AssetOption[] = (
 
 const TOTAL_LEVELS = 10 as const;
 
-const optionZ = z.object({ text: z.string().min(3).trim() });
 const resourceAssetZ = z.union([
   z.object({ type: z.literal("youtube"), value: z.string().min(11) }),
   z.object({

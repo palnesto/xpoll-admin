@@ -37,8 +37,16 @@ const ASSET_OPTIONS = [
   { label: "XPOLL", value: "xPoll" },
 ] as const;
 
-const optionZ = z.object({
-  text: z.string().trim().min(3, "Option must be at least 3 characters"),
+export const optionTextZod = z
+  .string()
+  .min(1, {
+    message: "Option must be at least 1 character(s)",
+  })
+  .max(500)
+  .trim();
+
+export const optionZ = z.object({
+  text: optionTextZod,
 });
 const rewardRowZ = z
   .object({
@@ -284,7 +292,7 @@ export default function PollCreatePage() {
 
     try {
       console.log("payload", payload);
-      mutate(payload as any);
+      // mutate(payload as any);
     } catch (e) {
       group("❌ mutate threw (synchronous)");
       log(e);
@@ -375,7 +383,6 @@ export default function PollCreatePage() {
                     />
                   </FormCard>
                 </div>
-
                 <FormCard title="Add Options">
                   <OptionsEditor
                     control={control}
@@ -385,7 +392,6 @@ export default function PollCreatePage() {
                     max={4}
                   />
                 </FormCard>
-
                 <FormCard title="Rewards">
                   <div className="flex gap-2 items-center">
                     <Button
@@ -413,14 +419,15 @@ export default function PollCreatePage() {
                     <></>
                   )}
                 </FormCard>
-
                 <ExpireRewardAtPicker control={control} name="expireRewardAt" />
-
                 <TargetGeoEditor
                   control={control}
                   watch={watch}
                   setValue={setValue}
                   basePath="targetGeo"
+                  selectProps={{
+                    menuPlacement: "top",
+                  }}
                 />
               </div>
             }

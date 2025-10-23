@@ -17,6 +17,9 @@ type Props = {
   setValue: UseFormSetValue<any>;
   basePath: string; // e.g. "targetGeo"
   label?: string;
+  selectProps?: Parameters<
+    typeof MultiInfiniteSelect<CityItem>
+  >[0]["selectProps"];
 };
 
 export default function TargetGeoEditor({
@@ -25,6 +28,7 @@ export default function TargetGeoEditor({
   setValue,
   basePath,
   label = "Target Geo",
+  selectProps,
 }: Props) {
   const countriesPath = `${basePath}.countries`;
   const statesPath = `${basePath}.states`;
@@ -88,6 +92,7 @@ export default function TargetGeoEditor({
         onChange={(opts: BaseOption[]) => onCountriesChange(opts)}
         selectProps={{
           // keep the select controlled by our selCountries state
+          ...selectProps,
           closeMenuOnSelect: false,
           isClearable: true,
         }}
@@ -99,6 +104,7 @@ export default function TargetGeoEditor({
         value={selStates}
         onChange={(opts: BaseOption[]) => onStatesChange(opts)}
         selectProps={{
+          ...selectProps,
           closeMenuOnSelect: false,
           isClearable: true,
         }}
@@ -110,6 +116,7 @@ export default function TargetGeoEditor({
         value={selCities}
         onChange={(opts: BaseOption[]) => onCitiesChange(opts)}
         selectProps={{
+          ...selectProps,
           closeMenuOnSelect: false,
           isClearable: true,
         }}
