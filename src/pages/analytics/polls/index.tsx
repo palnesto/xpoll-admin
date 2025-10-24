@@ -111,8 +111,6 @@ const MemoPolls = () => {
   const setIsDeleting = useTablePollsStore((s) => s.setIsDeleting);
   const isDeleting = useTablePollsStore((s) => s.isDeleting);
 
-  console.log("current deleting", isDeleting);
-
   // 👉 Edit this array to add/remove bulk ops. You can attach your own handlers.
   const BULK_OPS: BulkOp[] = [
     // {
@@ -216,7 +214,6 @@ const MemoPolls = () => {
   const payload = data?.data?.data ?? {};
   const meta = payload?.meta ?? {};
   const entries: any[] = Array.isArray(payload.entries) ? payload.entries : [];
-  console.log("entries", entries);
   const total: number =
     typeof meta.total === "number" ? meta.total : entries.length ?? 0;
 

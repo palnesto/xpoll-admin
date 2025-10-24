@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Trash2 } from "lucide-react";
 
 import ResourceAssetsEditor from "@/components/polling/editors/ResourceAssetsEditor";
-import { type AssetOption } from "@/components/polling/editors/RewardsEditor";
 import TargetGeoEditor from "@/components/polling/editors/TargetGeoEditor";
 import ExpireRewardAtPicker from "@/components/polling/editors/ExpireRewardAtPicker";
 import SubPollEditor from "@/components/polling/cards/SubPollEditor";
@@ -28,6 +27,7 @@ import RewardsList from "@/components/polling/editors/RewardsList";
 import RewardDetailPanel from "@/components/polling/editors/RewardDetailPanel";
 import { assetSpecs, type AssetType } from "@/utils/currency-assets/asset";
 import { optionZ } from "../polls/create";
+import { AssetOption } from "@/components/commons/selects/asset-multi-select";
 
 const ASSET_OPTIONS: AssetOption[] = (
   [
@@ -62,6 +62,15 @@ const rewardRowZ = z
     path: ["rewardAmountCap"],
   });
 
+const locationItemZ = z.object({
+  _id: z.string().min(1),
+  name: z.string().min(1),
+});
+const idArrayFromLocation = z
+  .array(locationItemZ)
+  .transform((list) => list.map((x) => x._id))
+  .pipe(z.array(z.string().min(1)));
+
 const trialFormZ = z
   .object({
     title: z.string().min(3).trim(),
@@ -73,13 +82,11 @@ const trialFormZ = z
       .optional()
       .or(z.literal("").optional())
       .optional(),
-    targetGeo: z
-      .object({
-        countries: z.array(z.string()).default([]),
-        states: z.array(z.string()).default([]),
-        cities: z.array(z.string()).default([]),
-      })
-      .optional(),
+    targetGeo: z.object({
+      countries: idArrayFromLocation.default([]),
+      states: idArrayFromLocation.default([]),
+      cities: idArrayFromLocation.default([]),
+    }),
     resourceAssets: z.array(resourceAssetZ).default([]),
   })
   .strict();
@@ -148,6 +155,11 @@ export default function TrialCreatePage() {
     resolver: zodResolver(formSchema),
     defaultValues,
     mode: "onChange",
+  });
+
+  console.log({
+    watch: form.watch(),
+    errors: form.formState.errors,
   });
 
   const { control, handleSubmit, watch, setValue } = form;
@@ -341,6 +353,7 @@ export default function TrialCreatePage() {
                 {/* Target Geo */}
                 <TargetGeoEditor
                   control={control}
+                  label="Target Geo (Optional)"
                   watch={watch}
                   setValue={setValue}
                   basePath="trial.targetGeo"

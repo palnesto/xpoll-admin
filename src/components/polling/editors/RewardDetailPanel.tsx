@@ -27,7 +27,6 @@ type DraftReward = {
 type Props = {
   index: number; // -1 = add mode
   assetOptions: { label: string; value: string }[];
-  totalLevels: number;
   onClose: () => void;
   rewards: Reward[];
   append: (reward: Omit<Reward, "id">) => void;

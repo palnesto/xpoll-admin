@@ -3,7 +3,6 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-
 import { endpoints } from "@/api/endpoints";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { useApiMutation } from "@/hooks/useApiMutation";
@@ -26,8 +25,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { fmt } from "@/components/paginated-table";
-
 import {
   Form,
   FormControl,
@@ -55,33 +52,37 @@ import TwoPane from "@/layouts/TwoPane";
 import RewardDetailPanel from "@/components/polling/editors/RewardDetailPanel";
 import RewardsList from "@/components/polling/editors/RewardsList";
 import ResourceAssetsPreview from "@/components/polling/editors/ResourceAssetsPreview";
-import { AssetOption } from "@/components/commons/selects/asset-multi-select";
-import { assetSpecs } from "@/utils/currency-assets/asset";
-import { adminZone, utcToAdmin } from "@/utils/time";
+import { assetSpecs, AssetType } from "@/utils/currency-assets/asset";
+import { utcToAdminFormatted } from "@/utils/time";
+import {
+  __MAX_OPTIONS_COUNT__,
+  _MAX_RESOURCE_ASSETS_COUNT_,
+  ASSET_OPTIONS,
+  descriptionZod,
+  expireRewardAtZod,
+  RESOURCE_TYPES_STRING,
+  resourceAssetFormZ,
+  ResourceType,
+  REWARD_TYPE,
+  rewardsZod,
+  RewardType,
+  targetGeoZod,
+  titleZod,
+} from "@/validators/poll-trial-form";
 
-/* ---------- constants ---------- */
-const TOTAL_LEVELS = 10 as const;
-const ASSET_OPTIONS: AssetOption[] = [
-  { label: "OCTA", value: "xOcta" },
-  { label: "MYST", value: "xMYST" },
-  { label: "DROP", value: "xDrop" },
-  { label: "XPOLL", value: "xPoll" },
-];
+export type ResourceAsset = { type: ResourceType; value: string };
 
-/* ---------- types ---------- */
 type PollOption = {
   _id: string;
   text: string;
   archivedAt?: string | null;
 };
 
-export type ResourceAsset = { type: "image" | "youtube"; value: string };
-
 type RewardRow = {
-  assetId: "xOcta" | "xMYST" | "xDrop" | "xPoll";
+  assetId: AssetType;
   amount: number;
   rewardAmountCap: number;
-  rewardType: "max" | "min";
+  rewardType: RewardType;
 };
 
 type Poll = {
@@ -91,29 +92,19 @@ type Poll = {
   description?: string;
   createdAt?: string;
   archivedAt?: string | null;
-
-  // modern preferred
   resourceAssets?: ResourceAsset[];
-  // legacy single url
   media?: string;
-
-  // optional if your backend returns rewards on show
   rewards?: RewardRow[];
   expireRewardAt?: string | null;
-
   options?: PollOption[];
   targetGeo?: {
     countries?: string[];
     states?: string[];
     cities?: string[];
   };
-  /** present if this poll belongs to a trial */
   trialId?: string;
-  /** some backends embed trial object instead */
   trial?: { _id: string; title?: string };
 };
-
-const MAX_OPTIONS = 4;
 
 /* ---------- helpers ---------- */
 function patchShowCache(showKey: string, updater: (curr: any) => any) {
@@ -139,85 +130,28 @@ function cmpRewards(a: RewardRow[] = [], b: RewardRow[] = []) {
   return norm(a) === norm(b);
 }
 
-/* ---------- zod: same field names/rules as Create Poll ---------- */
-const resourceAssetZ = z.union([
-  z.object({ type: z.literal("youtube"), value: z.string().min(11) }),
-  z.object({
-    type: z.literal("image"),
-    // keep as [File|string] in-form for preview; collapse to string on save
-    value: z.array(z.union([z.instanceof(File), z.string()])).nullable(),
-  }),
-]);
-
-const rewardRowZ = z
-  .object({
-    assetId: z.enum(["xOcta", "xMYST", "xDrop", "xPoll"]),
-    amount: z.coerce.number().int().min(1),
-    rewardAmountCap: z.coerce.number().int().min(1),
-    rewardType: z.enum(["max", "min"]).default("max"),
-  })
-  .refine((r) => r.rewardAmountCap >= r.amount, {
-    message: "rewardAmountCap must be >= amount",
-    path: ["rewardAmountCap"],
-  });
-
-// add near other zod helpers
-const geoItemZ = z.union([
-  z.string(), // server shape or simple ID
-  z.object({ _id: z.string().min(1), name: z.string().min(1) }), // editor shape
-]);
-
 const baseSchema = {
-  title: z.string().min(3, "Min 3 chars").trim(),
-  description: z.string().min(3, "Min 3 chars").trim(),
-  resourceAssets: z.array(resourceAssetZ).default([]),
-  targetGeo: z.object({
-    countries: z.array(geoItemZ).default([]),
-    states: z.array(geoItemZ).default([]),
-    cities: z.array(geoItemZ).default([]),
-  }),
+  title: titleZod,
+  description: descriptionZod,
+  targetGeo: targetGeoZod,
+  resourceAssets: z.array(resourceAssetFormZ).default([]),
 };
-
-const trialEditSchema = z.object(baseSchema); // no rewards, no expireRewardAt
-
-const normalEditSchema = z
-  .object({
-    ...baseSchema,
-    rewards: z.array(rewardRowZ).min(1, "At least one reward is required"),
-    expireRewardAt: z
-      .string()
-      .datetime()
-      .optional()
-      .or(z.literal("").optional().nullable())
-      .refine(
-        (val) => {
-          if (!val || val === "") return true; // allow empty / optional
-          const d = new Date(val);
-          const now = new Date();
-          return d >= now;
-        },
-        {
-          message: "Expiry date must not be in the past",
-        }
-      ),
-  })
-  .superRefine((v, ctx) => {
-    const ids = (v.rewards ?? []).map((r) => r.assetId);
-    const dup = ids.find((a, i) => ids.indexOf(a) !== i);
-    if (dup)
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["rewards"],
-        message: `Duplicate reward assetId: ${dup}`,
-      });
-  });
+const trialEditSchema = z.object(baseSchema);
+const normalEditSchema = z.object({
+  ...baseSchema,
+  rewards: rewardsZod,
+  expireRewardAt: expireRewardAtZod,
+});
 
 type EditValues = z.infer<typeof normalEditSchema>;
-type OutputResourceAsset = { type: "image" | "youtube"; value: string };
-
+export type OutputResourceAsset = {
+  [K in ResourceType]: { type: K; value: string };
+}[ResourceType];
 function toComparableAssets(arr?: OutputResourceAsset[]) {
   return (arr ?? []).map((a) =>
-    a.type === "youtube" ? `yt:${extractYouTubeId(a.value)}` : `img:${a.value}`
+    a.type === RESOURCE_TYPES_STRING.YOUTUBE
+      ? `yt:${extractYouTubeId(a.value)}`
+      : `img:${a.value}`
   );
 }
 
@@ -286,16 +220,21 @@ export default function PollShowPage() {
       resourceAssets: [],
       rewards: [
         {
-          assetId: ASSET_OPTIONS[0].value as any,
+          assetId: ASSET_OPTIONS[0].value,
           amount: 1,
           rewardAmountCap: 1,
-          rewardType: "max",
+          rewardType: REWARD_TYPE.MAX,
         },
       ],
       targetGeo: { countries: [], states: [], cities: [] },
       expireRewardAt: "",
     },
     mode: "onChange",
+  });
+
+  console.log({
+    watch: form.watch(),
+    errors: form.formState.errors,
   });
 
   const { control, handleSubmit, reset, getValues, setValue, watch } = form;
@@ -305,20 +244,21 @@ export default function PollShowPage() {
     control,
     name: "rewards",
   });
-  // hydrate form when poll loads
   useEffect(() => {
     if (!poll) return;
-
     // Prefer modern resourceAssets; fallback to legacy media string
     const initialAssets: EditValues["resourceAssets"] =
       Array.isArray(poll.resourceAssets) && poll.resourceAssets.length > 0
         ? poll.resourceAssets.map((a) =>
-            a.type === "image"
-              ? { type: "image", value: [a.value] }
-              : { type: "youtube", value: extractYouTubeId(a.value) }
+            a.type === RESOURCE_TYPES_STRING.IMAGE
+              ? { type: RESOURCE_TYPES_STRING.IMAGE, value: [a.value] }
+              : {
+                  type: RESOURCE_TYPES_STRING.YOUTUBE,
+                  value: extractYouTubeId(a.value),
+                }
           )
         : poll.media
-        ? [{ type: "image", value: [poll.media] }]
+        ? [{ type: RESOURCE_TYPES_STRING.IMAGE, value: [poll.media] }]
         : [];
 
     const initialRewards: EditValues["rewards"] =
@@ -329,7 +269,7 @@ export default function PollShowPage() {
               assetId: ASSET_OPTIONS[0].value as any,
               amount: 1,
               rewardAmountCap: 1,
-              rewardType: "max",
+              rewardType: REWARD_TYPE.MAX,
             },
           ];
     const initialTG = {
@@ -358,16 +298,17 @@ export default function PollShowPage() {
       description: poll.description ?? "",
       resourceAssets: initialAssets,
       rewards: initialRewards,
-      targetGeo: initialTG, // 👈 important
+      targetGeo: initialTG,
       expireRewardAt: poll.expireRewardAt ?? "",
     });
   }, [poll, reset]);
+
   useEffect(() => {
     if (isNavigationEditing) {
       setIsEditing(true);
       navigate(location.pathname, { replace: true, state: {} });
     }
-  }, [isNavigationEditing]);
+  }, [isNavigationEditing, navigate, location]);
 
   const { mutate: saveEdit, isPending: isSaving } = useApiMutation<any, any>({
     route: endpoints.entities.polls.edit.details,
@@ -377,23 +318,26 @@ export default function PollShowPage() {
 
       const v = getValues();
       const idsOnlyTG = {
-        countries: (v.targetGeo?.countries ?? []).map((x: any) =>
+        countries: (v.targetGeo?.countries ?? []).map((x) =>
           typeof x === "string" ? x : x._id
         ),
-        states: (v.targetGeo?.states ?? []).map((x: any) =>
+        states: (v.targetGeo?.states ?? []).map((x) =>
           typeof x === "string" ? x : x._id
         ),
-        cities: (v.targetGeo?.cities ?? []).map((x: any) =>
+        cities: (v.targetGeo?.cities ?? []).map((x) =>
           typeof x === "string" ? x : x._id
         ),
       };
       // Prepare normalized assets for cache patch
       const normalizedNow: OutputResourceAsset[] = (v.resourceAssets ?? []).map(
         (a: any) =>
-          a.type === "youtube"
-            ? { type: "youtube", value: extractYouTubeId(a.value) }
+          a.type === RESOURCE_TYPES_STRING.YOUTUBE
+            ? {
+                type: RESOURCE_TYPES_STRING.YOUTUBE,
+                value: extractYouTubeId(a.value),
+              }
             : {
-                type: "image",
+                type: RESOURCE_TYPES_STRING.IMAGE,
                 value:
                   typeof a.value?.[0] === "string"
                     ? a.value[0]
@@ -408,10 +352,10 @@ export default function PollShowPage() {
         resourceAssets: normalizedNow,
         rewards: v.rewards,
         expireRewardAt: v.expireRewardAt?.trim() ? v.expireRewardAt : undefined,
-        targetGeo: isTrialPoll ? curr.targetGeo : idsOnlyTG, // 👈 store IDs
+        targetGeo: isTrialPoll ? curr.targetGeo : idsOnlyTG,
         media:
-          normalizedNow.find((x) => x.type === "image")?.value ??
-          (curr as any)?.media,
+          normalizedNow.find((x) => x.type === RESOURCE_TYPES_STRING.IMAGE)
+            ?.value ?? (curr as any)?.media,
       }));
 
       queryClient.invalidateQueries({ queryKey: ["GET", showRoute] });
@@ -427,8 +371,11 @@ export default function PollShowPage() {
     const items = arr ?? [];
     return Promise.all(
       items.map(async (a) => {
-        if (a.type === "youtube") {
-          return { type: "youtube", value: extractYouTubeId(String(a.value)) };
+        if (a.type === RESOURCE_TYPES_STRING.YOUTUBE) {
+          return {
+            type: RESOURCE_TYPES_STRING.YOUTUBE,
+            value: extractYouTubeId(String(a.value)),
+          };
         }
         // image: a.value is [File|string] | null
         const list = (a.value ?? []) as (File | string)[];
@@ -436,7 +383,10 @@ export default function PollShowPage() {
         if (first instanceof File) {
           first = await uploadImage(first); // upload and replace with URL
         }
-        return { type: "image", value: typeof first === "string" ? first : "" };
+        return {
+          type: RESOURCE_TYPES_STRING.IMAGE,
+          value: typeof first === "string" ? first : "",
+        };
       })
     );
   };
@@ -452,12 +402,15 @@ export default function PollShowPage() {
     const prevAssets: OutputResourceAsset[] =
       Array.isArray(poll.resourceAssets) && poll.resourceAssets.length > 0
         ? poll.resourceAssets.map((a) =>
-            a.type === "youtube"
-              ? { type: "youtube", value: extractYouTubeId(a.value) }
-              : { type: "image", value: a.value }
+            a.type === RESOURCE_TYPES_STRING.YOUTUBE
+              ? {
+                  type: RESOURCE_TYPES_STRING.YOUTUBE,
+                  value: extractYouTubeId(a.value),
+                }
+              : { type: RESOURCE_TYPES_STRING.IMAGE, value: a.value }
           )
         : poll.media
-        ? [{ type: "image", value: poll.media }]
+        ? [{ type: RESOURCE_TYPES_STRING.IMAGE, value: poll.media }]
         : [];
 
     const payload: any = { pollId: id };
@@ -526,7 +479,9 @@ export default function PollShowPage() {
     if (assetsChanged) {
       payload.resourceAssets = normalizedNow;
       // Optional: keep legacy "media" in sync if your backend still reads it
-      const firstImg = normalizedNow.find((x) => x.type === "image")?.value;
+      const firstImg = normalizedNow.find(
+        (x) => x.type === RESOURCE_TYPES_STRING.IMAGE
+      )?.value;
       if (firstImg) payload.media = firstImg;
     }
 
@@ -564,7 +519,7 @@ export default function PollShowPage() {
   });
 
   const activeCount = (poll?.options ?? []).filter((o) => !o.archivedAt).length;
-  const canAddOption = activeCount < MAX_OPTIONS;
+  const canAddOption = activeCount < __MAX_OPTIONS_COUNT__;
 
   // ===== option modals =====
   const isAddOption = usePollViewStore((s) => s.isAddOption);
@@ -614,25 +569,15 @@ export default function PollShowPage() {
     Array.isArray(poll.resourceAssets) && poll.resourceAssets.length > 0
       ? poll.resourceAssets
       : poll.media
-      ? [{ type: "image", value: poll.media }]
+      ? [{ type: RESOURCE_TYPES_STRING.IMAGE, value: poll.media }]
       : [];
   const isBusy = isLoading || isUploading || isSaving;
   return (
     <div className="space-y-6">
       {isEditing ? (
         <div className="p-6 space-y-8 w-full">
-          {/* Header */}
           <div className="flex justify-between items-center w-full">
             <h1 className="text-2xl tracking-wider">Edit Poll</h1>
-            {/* <Button
-              type="submit"
-              form="poll-form"
-              disabled={isBusy}
-              className="text-base tracking-wide"
-            >
-              {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Edit Poll
-            </Button> */}
           </div>
           <Form {...form}>
             <form className="space-y-6" onSubmit={onSubmitEdit}>
@@ -643,7 +588,6 @@ export default function PollShowPage() {
                     <RewardDetailPanel
                       index={activeRewardIndex}
                       assetOptions={ASSET_OPTIONS as any}
-                      totalLevels={TOTAL_LEVELS}
                       onClose={() => setActiveRewardIndex(null)}
                       rewards={fields}
                       append={append}
@@ -707,7 +651,7 @@ export default function PollShowPage() {
                           control={control}
                           name="resourceAssets"
                           label="Media (Images / YouTube)"
-                          maxAssets={3}
+                          maxAssets={_MAX_RESOURCE_ASSETS_COUNT_}
                           isEditing={true}
                         />
                       </FormCard>
@@ -737,7 +681,7 @@ export default function PollShowPage() {
                                   title={
                                     canAddOption
                                       ? "Add option"
-                                      : "Max 4 active options"
+                                      : `Max ${__MAX_OPTIONS_COUNT__} active options`
                                   }
                                   disabled={!canAddOption}
                                 >
@@ -746,7 +690,8 @@ export default function PollShowPage() {
                               </TooltipTrigger>
                               {!canAddOption && (
                                 <TooltipContent>
-                                  Maximum of 4 active options
+                                  Maximum of {__MAX_OPTIONS_COUNT__} active
+                                  options
                                 </TooltipContent>
                               )}
                             </Tooltip>
@@ -788,7 +733,8 @@ export default function PollShowPage() {
 
                                       {!(
                                         (isArchived &&
-                                          activeCount + 1 > MAX_OPTIONS) ||
+                                          activeCount + 1 >
+                                            __MAX_OPTIONS_COUNT__) ||
                                         (!isArchived &&
                                           unArchivedOptionsLength <= 2)
                                       ) && (
@@ -834,7 +780,7 @@ export default function PollShowPage() {
                                       <div className="text-xs text-muted-foreground mt-2">
                                         Archived:{" "}
                                         {opt.archivedAt
-                                          ? fmt(opt.archivedAt)
+                                          ? utcToAdminFormatted(opt.archivedAt)
                                           : "-"}
                                       </div>
                                     </div>
@@ -887,8 +833,6 @@ export default function PollShowPage() {
                         </FormCard>
                       </>
                     )}
-
-                    {/* Target Geo (hidden for trial polls) */}
                     {!isTrialPoll && (
                       <TargetGeoEditor
                         control={control}
@@ -901,9 +845,7 @@ export default function PollShowPage() {
                         }}
                       />
                     )}
-
                     <section className="flex items-end justify-between">
-                      {/* Expire Reward At (same as create) */}
                       {!isTrialPoll && (
                         <ExpireRewardAtPicker
                           control={control}
@@ -918,21 +860,27 @@ export default function PollShowPage() {
                           variant="outline"
                           onClick={() => {
                             if (!poll) return;
-
-                            // Reset to server state
                             const initialAssets: EditValues["resourceAssets"] =
                               Array.isArray(poll.resourceAssets) &&
                               poll.resourceAssets.length > 0
                                 ? poll.resourceAssets.map((a) =>
-                                    a.type === "image"
-                                      ? { type: "image", value: [a.value] }
+                                    a.type === RESOURCE_TYPES_STRING.IMAGE
+                                      ? {
+                                          type: RESOURCE_TYPES_STRING.IMAGE,
+                                          value: [a.value],
+                                        }
                                       : {
-                                          type: "youtube",
+                                          type: RESOURCE_TYPES_STRING.YOUTUBE,
                                           value: extractYouTubeId(a.value),
                                         }
                                   )
                                 : poll.media
-                                ? [{ type: "image", value: [poll.media] }]
+                                ? [
+                                    {
+                                      type: RESOURCE_TYPES_STRING.IMAGE,
+                                      value: [poll.media],
+                                    },
+                                  ]
                                 : [];
 
                             const initialRewards: EditValues["rewards"] =
@@ -942,14 +890,14 @@ export default function PollShowPage() {
                                     assetId: r.assetId as any,
                                     amount: Number(r.amount), // convert
                                     rewardAmountCap: Number(r.rewardAmountCap), // convert
-                                    rewardType: r.rewardType as "max" | "min",
+                                    rewardType: r.rewardType as RewardType,
                                   }))
                                 : [
                                     {
-                                      assetId: ASSET_OPTIONS[0].value as any,
+                                      assetId: ASSET_OPTIONS[0].value,
                                       amount: 1,
                                       rewardAmountCap: 1,
-                                      rewardType: "max",
+                                      rewardType: REWARD_TYPE.MAX,
                                     },
                                   ];
 
@@ -1049,7 +997,7 @@ export default function PollShowPage() {
                 {viewAssets.length ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
                     {viewAssets.map((a, i) => {
-                      return a.type === "youtube" ? (
+                      return a.type === RESOURCE_TYPES_STRING.YOUTUBE ? (
                         <>
                           <div
                             key={`yt-${i}`}
@@ -1062,7 +1010,7 @@ export default function PollShowPage() {
                             >
                               <ResourceAssetsPreview
                                 src={getYTImageUrl(extractYouTubeId(a.value))}
-                                label={`youtube`}
+                                label={"Youtube"}
                               />
                             </a>
                           </div>
@@ -1075,7 +1023,7 @@ export default function PollShowPage() {
                           <a target="_blank" href={a.value} rel="noreferrer">
                             <ResourceAssetsPreview
                               src={a.value}
-                              label={`Image`}
+                              label={"Image"}
                             />
                           </a>
                         </div>
@@ -1119,7 +1067,9 @@ export default function PollShowPage() {
                               </div>
                               <div className="text-xs text-muted-foreground mt-2">
                                 Archived:{" "}
-                                {opt.archivedAt ? fmt(opt.archivedAt) : "-"}
+                                {opt.archivedAt
+                                  ? utcToAdminFormatted(opt.archivedAt)
+                                  : "-"}
                               </div>
                             </div>
                           </div>
@@ -1137,7 +1087,7 @@ export default function PollShowPage() {
             <FormCard title="Rewards">
               <RewardsList
                 fields={fields}
-                assetOptions={ASSET_OPTIONS as any}
+                assetOptions={ASSET_OPTIONS}
                 onEdit={setActiveRewardIndex}
                 onAdd={() => setActiveRewardIndex(-1)}
                 remove={remove}
@@ -1153,15 +1103,15 @@ export default function PollShowPage() {
                 <FormCard title="Target Geo">
                   <div className="flex flex-col gap-2">
                     <span className="text-sm font-semibold">Countries</span>{" "}
-                    {renderGeoList(poll.targetGeo?.countries as any)}
+                    {renderGeoList(poll.targetGeo?.countries ?? [])}
                   </div>
                   <div className="flex flex-col gap-2">
                     <span className="text-sm font-semibold">States</span>{" "}
-                    {renderGeoList(poll.targetGeo?.states as any)}
+                    {renderGeoList(poll.targetGeo?.states ?? [])}
                   </div>
                   <div className="flex flex-col gap-2">
                     <span className="text-sm font-semibold">Cities</span>{" "}
-                    {renderGeoList(poll.targetGeo?.cities as any)}
+                    {renderGeoList(poll.targetGeo?.cities ?? [])}
                   </div>
                 </FormCard>
                 <FormCard title="Details">
@@ -1169,9 +1119,7 @@ export default function PollShowPage() {
                     <section className="flex items-center gap-2">
                       <h2>Created At - </h2>
                       <p className="text-xs text-muted-foreground">
-                        {utcToAdmin(poll.createdAt, adminZone).format(
-                          "DD/MM/YYYY HH:mm:ss"
-                        )}
+                        {utcToAdminFormatted(poll.createdAt)}
                       </p>
                     </section>
                   )}
@@ -1179,9 +1127,7 @@ export default function PollShowPage() {
                     <section className="flex items-center gap-2">
                       <h2>Expire Rewards At - </h2>
                       <p className="text-xs text-muted-foreground">
-                        {utcToAdmin(poll.expireRewardAt, adminZone).format(
-                          "DD/MM/YYYY HH:mm:ss"
-                        )}
+                        {utcToAdminFormatted(poll.expireRewardAt)}
                       </p>
                     </section>
                   )}
@@ -1189,7 +1135,7 @@ export default function PollShowPage() {
                     <section className="flex items-center gap-2">
                       <h2>Archived At - </h2>
                       <p className="text-xs text-muted-foreground">
-                        {fmt(poll?.archivedAt)}
+                        {utcToAdminFormatted(poll?.archivedAt)}
                       </p>
                     </section>
                   )}

@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useFieldArray, FieldErrors } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Form, FormField } from "@/components/ui/form";
 import { useApiMutation } from "@/hooks/useApiMutation";
@@ -24,105 +24,36 @@ import RewardDetailPanel from "@/components/polling/editors/RewardDetailPanel";
 import TwoPane from "@/layouts/TwoPane";
 import { assetSpecs } from "@/utils/asset";
 import dayjs from "dayjs";
-import { adminZone, localISOtoUTC } from "@/utils/time";
+import {
+  __SYSYEM_STANDARAD_DATE_FORMAT__,
+  localAdminISOtoUTC,
+} from "@/utils/time";
+import {
+  ASSET_OPTIONS,
+  descriptionZod,
+  expireRewardAtZod,
+  optionsZod,
+  RESOURCE_TYPES_STRING,
+  resourceAssetFormZ,
+  ResourceType,
+  rewardsZod,
+  targetGeoZod,
+  titleZod,
+} from "@/validators/poll-trial-form";
 
-const DEBUG = true;
-const log = (...args: any[]) => DEBUG && console.log("[PollCreate]", ...args);
-const group = (label: string) => DEBUG && console.group(label);
-const groupEnd = () => DEBUG && console.groupEnd();
-
-const TOTAL_LEVELS = 10 as const;
-const ASSET_OPTIONS = [
-  { label: "OCTA", value: "xOcta" },
-  { label: "MYST", value: "xMYST" },
-  { label: "DROP", value: "xDrop" },
-  { label: "XPOLL", value: "xPoll" },
-] as const;
-
-export const optionTextZod = z
-  .string()
-  .min(1, {
-    message: "Option must be at least 1 character(s)",
-  })
-  .max(500)
-  .trim();
-
-export const optionZ = z.object({
-  text: optionTextZod,
+const formSchema = z.object({
+  title: titleZod,
+  description: descriptionZod,
+  options: optionsZod,
+  rewards: rewardsZod,
+  targetGeo: targetGeoZod,
+  resourceAssets: z.array(resourceAssetFormZ).default([]),
+  expireRewardAt: expireRewardAtZod,
 });
-const rewardRowZ = z
-  .object({
-    assetId: z.enum(["xOcta", "xMYST", "xDrop", "xPoll"]),
-    amount: z.coerce.number().int().min(1),
-    rewardAmountCap: z.coerce.number().int().min(1),
-    rewardType: z.enum(["max", "min"]).default("max"),
-  })
-  .refine((r) => r.rewardAmountCap >= r.amount, {
-    message: "Cap must be ≥ amount",
-    path: ["rewardAmountCap"],
-  });
-
-const resourceAssetFormZ = z.union([
-  z.object({ type: z.literal("youtube"), value: z.string().min(1) }),
-  z.object({
-    type: z.literal("image"),
-    value: z.array(z.union([z.instanceof(File), z.string()])).nullable(),
-  }),
-]);
-
-const locationItemZ = z.object({
-  _id: z.string().min(1),
-  name: z.string().min(1),
-});
-const idArrayFromLocation = z
-  .array(locationItemZ)
-  .transform((list) => list.map((x) => x._id))
-  .pipe(z.array(z.string().min(1)));
-const formSchema = z
-  .object({
-    title: z.string().min(3).trim(),
-    description: z.string().min(3).trim(),
-    options: z.array(optionZ).min(2).max(4),
-    rewards: z.array(rewardRowZ).min(1, "At least one reward is required"),
-    targetGeo: z.object({
-      countries: idArrayFromLocation.default([]),
-      states: idArrayFromLocation.default([]),
-      cities: idArrayFromLocation.default([]),
-    }),
-    resourceAssets: z.array(resourceAssetFormZ).default([]),
-    expireRewardAt: z
-      .string()
-      .datetime()
-      .optional()
-      .or(z.literal("").optional().nullable())
-      .refine(
-        (val) => {
-          if (!val || val === "") return true; // allow empty / optional
-          const d = new Date(val);
-          const now = new Date();
-          return d >= now;
-        },
-        {
-          message: "Expiry date must not be in the past",
-        }
-      ),
-  })
-  .superRefine((v, ctx) => {
-    const ids = v.rewards.map((r) => r.assetId);
-    const dup = ids.find((a, i) => ids.indexOf(a) !== i);
-    if (dup) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["rewards"],
-        message: `Duplicate reward assetId: ${dup}`,
-      });
-    }
-  });
-
 type FormValues = z.infer<typeof formSchema>;
-type OutputResourceAsset =
-  | { type: "youtube"; value: string }
-  | { type: "image"; value: string };
+export type OutputResourceAsset = {
+  [K in ResourceType]: { type: K; value: string };
+}[ResourceType];
 
 export default function PollCreatePage() {
   const navigate = useNavigate();
@@ -149,87 +80,61 @@ export default function PollCreatePage() {
     mode: "onChange",
   });
 
-  const { control, handleSubmit, watch, setValue, formState } = form;
-  const { errors, isValid, isSubmitting } = form.formState;
+  console.log({
+    watch: form.watch(),
+    errors: form.formState.errors,
+  });
+
+  const { control, handleSubmit, watch, setValue } = form;
+  const { errors, isSubmitting } = form.formState;
 
   // Rewards array
   const { fields, append, remove, update } = useFieldArray({
     control,
     name: "rewards",
   });
-
-  // API mutation with error logging
   const { mutate, isPending } = useApiMutation<any, any>({
     route: endpoints.entities.polls.create,
     method: "POST",
-    onSuccess: (data: any) => {
-      group("✅ API Success");
-      log("response:", data);
-      groupEnd();
+    onSuccess: () => {
       appToast.success("Poll created");
       queryClient.invalidateQueries({
         queryKey: [endpoints.entities.polls.create],
       });
       navigate("/analytics/polls");
     },
-    onError: (err: any) => {
-      group("❌ API Error");
-      log("error object:", err);
-      // Try to show helpful message if present
-      const msg =
-        err?.message ||
-        err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        "Failed to create poll";
-      log("error message:", msg);
-      groupEnd();
-      // appToast.error(msg);
+    onError: (err: Error) => {
+      console.log("error", err);
     },
   });
 
   const { uploadImage, loading: imageUploading } = useImageUpload();
   const isBusy = isPending || imageUploading || isSubmitting;
 
-  const onInvalid = (e: FieldErrors<FormValues>) => {
-    group("⛔ Invalid Submit (Zod)");
-    log("errors:", e);
-    log("isValid:", isValid);
-    groupEnd();
-    // appToast.error(firstErrorMessage(e));
-  };
-
   const onSubmit = async (v: FormValues) => {
-    group("🚀 onSubmit");
-    log("raw values:", v);
-
-    // Normalize resource assets, but avoid sending empties.
     const normalizedResources: OutputResourceAsset[] = (
       await Promise.all(
-        (v.resourceAssets ?? []).map(async (a, idx) => {
+        (v.resourceAssets ?? []).map(async (a) => {
           try {
-            if (a.type === "youtube") {
+            if (a.type === RESOURCE_TYPES_STRING.YOUTUBE) {
               const id = extractYouTubeId(a.value);
-              log(`resource[${idx}] youtube ->`, { input: a.value, id });
-              // If we fail to extract a valid id, skip this asset
               if (!id) return null;
-              return { type: "youtube", value: id };
+              return { type: RESOURCE_TYPES_STRING.YOUTUBE, value: id };
             }
             const arr = a.value ?? [];
             const first: File | string | undefined = arr[0];
             if (first instanceof File) {
-              log(`resource[${idx}] image uploading…`, first);
               const url = await uploadImage(first);
-              log(`resource[${idx}] image uploaded`, url);
-              return url ? { type: "image", value: url } : null;
+              return url
+                ? { type: RESOURCE_TYPES_STRING.IMAGE, value: url }
+                : null;
             }
             if (typeof first === "string" && first.trim().length > 0) {
-              log(`resource[${idx}] image (existing url)`, first);
-              return { type: "image", value: first };
+              return { type: RESOURCE_TYPES_STRING.IMAGE, value: first };
             }
-            log(`resource[${idx}] image skipped (empty)`);
             return null;
           } catch (e) {
-            log(`resource[${idx}] error:`, e);
+            console.log(e);
             return null;
           }
         })
@@ -237,17 +142,19 @@ export default function PollCreatePage() {
     ).filter(Boolean) as OutputResourceAsset[];
 
     const expireRewardAtUTC = v.expireRewardAt?.trim()
-      ? localISOtoUTC(
-          dayjs(v.expireRewardAt?.trim()).format("YYYY-MM-DDTHH:mm:ss"),
-          adminZone
+      ? localAdminISOtoUTC(
+          dayjs(v.expireRewardAt?.trim()).format(
+            __SYSYEM_STANDARAD_DATE_FORMAT__
+          )
         )
       : undefined;
+
     const payload = {
-      title: v.title.trim(),
-      description: v.description.trim(),
+      title: v.title,
+      description: v.description,
       resourceAssets: normalizedResources,
       options: v.options.map((o) => ({
-        text: o.text.trim(),
+        text: o.text,
         archivedAt: null,
       })),
       rewards: v.rewards.map((r) => ({
@@ -261,7 +168,6 @@ export default function PollCreatePage() {
       expireRewardAt: expireRewardAtUTC,
     };
 
-    // Some quick sanity checks before hitting the API
     const clientSideIssues: string[] = [];
     if (payload.options.some((o) => o.text.length < 3)) {
       clientSideIssues.push("Each option must be at least 3 characters.");
@@ -274,29 +180,17 @@ export default function PollCreatePage() {
       const dup = ids.find((a, i) => ids.indexOf(a) !== i);
       if (dup) clientSideIssues.push(`Duplicate reward asset: ${dup}`);
     }
-
-    window._lastPollPayload = payload; // quick access in DevTools
-    group("📦 Payload");
-    log("payload:", payload);
-    if (clientSideIssues.length) {
-      log("client-side warnings:", clientSideIssues);
-    }
-    groupEnd();
-
     try {
       // console.log("payload", payload);
-      mutate(payload as any);
-    } catch (e) {
-      group("❌ mutate threw (synchronous)");
-      log(e);
-      groupEnd();
+      mutate(payload);
+    } catch (err) {
+      console.log("error", err);
       appToast.error("Something went wrong before the request was sent.");
     }
   };
 
   return (
     <div className="p-6 space-y-8 w-full">
-      {/* Header */}
       <div className="flex justify-between items-center w-full">
         <h1 className="text-2xl tracking-wider">Create Poll</h1>
         <Button
@@ -313,7 +207,7 @@ export default function PollCreatePage() {
       <Form {...form}>
         <form
           id="poll-form"
-          onSubmit={handleSubmit(onSubmit, onInvalid)}
+          onSubmit={handleSubmit(onSubmit)}
           className="space-y-10"
         >
           <TwoPane
@@ -323,7 +217,6 @@ export default function PollCreatePage() {
                 <RewardDetailPanel
                   index={activeRewardIndex}
                   assetOptions={ASSET_OPTIONS as any}
-                  totalLevels={TOTAL_LEVELS}
                   onClose={() => setActiveRewardIndex(null)}
                   rewards={fields}
                   append={append}
@@ -343,10 +236,6 @@ export default function PollCreatePage() {
                           label="Poll Title"
                           placeholder="Enter poll title"
                           {...field}
-                          // onBlur={(e) => {
-                          //   field.onBlur();
-                          //   log("title blur:", e.target.value);
-                          // }}
                         />
                       )}
                     />
@@ -358,15 +247,13 @@ export default function PollCreatePage() {
                           label="Description"
                           placeholder="Write description"
                           {...field}
-                          onBlur={(e) => {
+                          onBlur={() => {
                             field.onBlur();
-                            log("description blur:", e.target.value);
                           }}
                         />
                       )}
                     />
                   </FormCard>
-
                   <FormCard
                     title="Resource Assets (Optional)"
                     subtitle="Max.: 3"
@@ -402,19 +289,16 @@ export default function PollCreatePage() {
                       Add reward
                     </Button>
                   </div>
-                  {fields.length > 0 ? (
+                  {fields.length > 0 && (
                     <RewardsList
                       fields={fields}
-                      assetOptions={ASSET_OPTIONS as any}
+                      assetOptions={ASSET_OPTIONS}
                       onEdit={setActiveRewardIndex}
                       onAdd={() => setActiveRewardIndex(-1)}
                       remove={remove}
                       allAssets={ASSET_OPTIONS.map((a) => a.value)}
                     />
-                  ) : (
-                    <></>
                   )}
-
                   {errors.rewards?.message && (
                     <p className="text-sm text-destructive">
                       {errors.rewards?.message}
