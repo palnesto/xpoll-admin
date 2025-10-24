@@ -57,6 +57,7 @@ import RewardsList from "@/components/polling/editors/RewardsList";
 import ResourceAssetsPreview from "@/components/polling/editors/ResourceAssetsPreview";
 import { AssetOption } from "@/components/commons/selects/asset-multi-select";
 import { assetSpecs } from "@/utils/currency-assets/asset";
+import { adminZone, utcToAdmin } from "@/utils/time";
 
 /* ---------- constants ---------- */
 const TOTAL_LEVELS = 10 as const;
@@ -127,14 +128,6 @@ function patchShowCache(showKey: string, updater: (curr: any) => any) {
   queryClient.setQueryData([showKey], next);
 }
 
-const arrEqUnordered = (a: string[], b: string[]) => {
-  if (!Array.isArray(a) || !Array.isArray(b)) return false;
-  if (a.length !== b.length) return false;
-  const A = [...a].sort();
-  const B = [...b].sort();
-  return A.every((v, i) => v === B[i]);
-};
-
 function cmpRewards(a: RewardRow[] = [], b: RewardRow[] = []) {
   const norm = (arr: RewardRow[]) =>
     [...arr]
@@ -196,7 +189,17 @@ const normalEditSchema = z
       .datetime()
       .optional()
       .or(z.literal("").optional())
-      .optional(),
+      .refine(
+        (val) => {
+          if (!val || val === "") return true; // allow empty / optional
+          const d = new Date(val);
+          const now = new Date();
+          return d >= now;
+        },
+        {
+          message: "Expiry date must not be in the past",
+        }
+      ),
   })
   .superRefine((v, ctx) => {
     const ids = (v.rewards ?? []).map((r) => r.assetId);
@@ -239,7 +242,10 @@ export default function PollShowPage() {
 
   const [isEditing, setIsEditing] = useState(isNavigationEditing ?? false);
   function renderGeoList(list?: Array<{ _id: string; name: string } | string>) {
-    if (!Array.isArray(list) || list.length === 0) return "-";
+    if (!Array.isArray(list) || list.length === 0)
+      return (
+        <span className="text-zinc-400 text-sm">No Location Selected</span>
+      );
     const names = list
       .map((item) =>
         typeof item === "string" ? item : item?.name || item?._id || ""
@@ -678,7 +684,10 @@ export default function PollShowPage() {
                       </FormCard>
 
                       {/* Resource Assets (same as create) */}
-                      <FormCard title="Resource Assets" subtitle="Max.: 3">
+                      <FormCard
+                        title="Resource Assets (Optional)"
+                        subtitle="Max.: 3"
+                      >
                         <ResourceAssetsEditor
                           control={control}
                           name="resourceAssets"
@@ -696,6 +705,7 @@ export default function PollShowPage() {
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <button
+                                  type="button"
                                   className={`rounded-md p-1 hover:bg-foreground/10 ${
                                     !canAddOption
                                       ? "opacity-50 cursor-not-allowed"
@@ -743,6 +753,7 @@ export default function PollShowPage() {
                                     <div className="absolute right-2 top-2 flex items-center gap-2">
                                       {!isArchived && (
                                         <button
+                                          type="button"
                                           className="rounded-md p-1 hover:bg-foreground/10"
                                           onClick={() =>
                                             setIsEditOption({
@@ -761,6 +772,7 @@ export default function PollShowPage() {
                                       {isArchived &&
                                       activeCount + 1 > MAX_OPTIONS ? null : (
                                         <button
+                                          type="button"
                                           className="rounded-md p-1 hover:bg-foreground/10"
                                           onClick={() => {
                                             setIsArchiveToggleOption({
@@ -773,11 +785,9 @@ export default function PollShowPage() {
                                           title="Delete option"
                                         >
                                           {!isArchived ? (
-                                            <>
-                                              <Trash2
-                                                className={`w-4 h-4 text-red-600`}
-                                              />
-                                            </>
+                                            <Trash2
+                                              className={`w-4 h-4 text-red-600`}
+                                            />
                                           ) : (
                                             <Recycle
                                               className={`w-4 h-4 text-white`}
@@ -861,7 +871,7 @@ export default function PollShowPage() {
                         watch={watch}
                         setValue={setValue}
                         basePath="targetGeo"
-                        label="Target Geo"
+                        label="Target Geo (Optional)"
                       />
                     )}
 
@@ -992,7 +1002,7 @@ export default function PollShowPage() {
                 </div>
               </FormCard>
 
-              <FormCard title="Resource Assets" subtitle="Max.: 3">
+              <FormCard title="Resource Assets">
                 {viewAssets.length ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
                     {viewAssets.map((a, i) => {
@@ -1112,12 +1122,26 @@ export default function PollShowPage() {
                   </div>
                 </FormCard>
                 <FormCard title="Details">
-                  <section className="flex items-center gap-2">
-                    <h2>Created At - </h2>
-                    <p className="text-xs text-muted-foreground">
-                      {fmt(poll.createdAt)}
-                    </p>
-                  </section>
+                  {poll?.createdAt && (
+                    <section className="flex items-center gap-2">
+                      <h2>Created At - </h2>
+                      <p className="text-xs text-muted-foreground">
+                        {utcToAdmin(poll.createdAt, adminZone).format(
+                          "DD/MM/YYYY HH:mm:ss"
+                        )}
+                      </p>
+                    </section>
+                  )}
+                  {poll?.expireRewardAt && (
+                    <section className="flex items-center gap-2">
+                      <h2>Expire Rewards At - </h2>
+                      <p className="text-xs text-muted-foreground">
+                        {utcToAdmin(poll.expireRewardAt, adminZone).format(
+                          "DD/MM/YYYY HH:mm:ss"
+                        )}
+                      </p>
+                    </section>
+                  )}
                   {poll?.archivedAt && (
                     <section className="flex items-center gap-2">
                       <h2>Archived At - </h2>

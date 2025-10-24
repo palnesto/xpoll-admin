@@ -11,10 +11,11 @@ export function localISOtoUTC(localISO: string, zone: string): string {
 }
 
 /** Convert UTC ISO string → Day.js in the user’s zone */
-export function utcToUser(utcISO: string, userZone: string) {
-  return dayjs.utc(utcISO).tz(userZone); // Day.js instance in local zone
+export function utcToAdmin(utcISO: string, adminZone: string) {
+  return dayjs.utc(utcISO).tz(adminZone); // Day.js instance in local zone
 }
 
-export const userZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+export const adminZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+console.log("adminZone", adminZone);
 
 export const dateTimeFormat = "DD/MM/YYYY HH:mm:ss";

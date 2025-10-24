@@ -23,6 +23,8 @@ import RewardsList from "@/components/polling/editors/RewardsList";
 import RewardDetailPanel from "@/components/polling/editors/RewardDetailPanel";
 import TwoPane from "@/layouts/TwoPane";
 import { assetSpecs } from "@/utils/asset";
+import dayjs from "dayjs";
+import { adminZone, localISOtoUTC } from "@/utils/time";
 
 const DEBUG = true;
 const log = (...args: any[]) => DEBUG && console.log("[PollCreate]", ...args);
@@ -198,24 +200,6 @@ export default function PollCreatePage() {
   const { uploadImage, loading: imageUploading } = useImageUpload();
   const isBusy = isPending || imageUploading || isSubmitting;
 
-  // Helper: compute a readable first error (for invalid submits)
-  function firstErrorMessage(e: FieldErrors<FormValues>): string {
-    // pick the first leaf error
-    const scan = (obj: any): string | null => {
-      for (const k in obj) {
-        const v = obj[k];
-        if (!v) continue;
-        if (v?.message) return v.message as string;
-        if (typeof v === "object") {
-          const child = scan(v);
-          if (child) return child;
-        }
-      }
-      return null;
-    };
-    return scan(e) || "Please check the form fields.";
-  }
-
   const onInvalid = (e: FieldErrors<FormValues>) => {
     group("⛔ Invalid Submit (Zod)");
     log("errors:", e);
@@ -262,6 +246,12 @@ export default function PollCreatePage() {
       )
     ).filter(Boolean) as OutputResourceAsset[];
 
+    const expireRewardAtUTC = v.expireRewardAt?.trim()
+      ? localISOtoUTC(
+          dayjs(v.expireRewardAt?.trim()).format("YYYY-MM-DDTHH:mm:ss"),
+          adminZone
+        )
+      : undefined;
     const payload = {
       title: v.title.trim(),
       description: v.description.trim(),
@@ -278,7 +268,7 @@ export default function PollCreatePage() {
         rewardType: r.rewardType,
       })),
       targetGeo: v.targetGeo,
-      expireRewardAt: v.expireRewardAt?.trim() ? v.expireRewardAt : undefined,
+      expireRewardAt: expireRewardAtUTC,
     };
 
     // Some quick sanity checks before hitting the API
@@ -409,7 +399,7 @@ export default function PollCreatePage() {
                   />
                 </FormCard>
                 <FormCard title="Rewards">
-                  <div className="flex gap-2 items-center">
+                  <div className="flex gap-2 items-center justify-end">
                     <Button
                       type="button"
                       size="icon"

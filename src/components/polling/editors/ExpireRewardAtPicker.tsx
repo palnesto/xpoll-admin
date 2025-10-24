@@ -20,7 +20,7 @@ type Props = {
 export default function ExpireRewardAtPicker({
   control,
   name,
-  label = "Expire Reward At (optional)",
+  label = "Expire Reward At (Optional)",
 }: Props) {
   const { field, fieldState } = useController({ control, name });
   const current: Date | undefined =

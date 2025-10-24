@@ -48,7 +48,12 @@ export const ArchiveToggleOptionModal = () => {
       footer={<></>}
     >
       <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={onClose} disabled={isPending}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onClose}
+          disabled={isPending}
+        >
           Cancel
         </Button>
         <Button type="button" disabled={isPending} onClick={handleOnSubmit}>

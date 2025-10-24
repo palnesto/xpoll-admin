@@ -11,7 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { endpoints } from "@/api/endpoints";
 
-const EditSchema = z.object({ text: z.string().trim().min(3, "Required") });
+const EditSchema = z.object({ text: z.string().trim().min(1, "Required") });
 type FormVals = z.infer<typeof EditSchema>;
 
 export const EditOptionModal = () => {
@@ -72,10 +72,19 @@ export const EditOptionModal = () => {
           )}
         </div>
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose} disabled={isPending}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            disabled={isPending}
+          >
             Cancel
           </Button>
-          <Button type="submit" disabled={isPending || !form.formState.isValid}>
+          <Button
+            type="button"
+            onClick={handleOnSubmit}
+            disabled={isPending || !form.formState.isValid}
+          >
             Edit
           </Button>
         </div>
