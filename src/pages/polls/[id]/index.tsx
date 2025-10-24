@@ -188,7 +188,7 @@ const normalEditSchema = z
       .string()
       .datetime()
       .optional()
-      .or(z.literal("").optional())
+      .or(z.literal("").optional().nullable())
       .refine(
         (val) => {
           if (!val || val === "") return true; // allow empty / optional
@@ -238,6 +238,11 @@ export default function PollShowPage() {
   const poll: Poll | null = useMemo(() => {
     return data?.data?.data ?? data?.data ?? null;
   }, [data]);
+
+  const unArchivedOptionsLength =
+    poll?.options.filter((opt) => {
+      return opt?.archivedAt === null;
+    }).length ?? 0;
 
   const userDetails = useMemo(() => {
     const isExternalAuthor = poll?.externalAuthor;
@@ -292,6 +297,7 @@ export default function PollShowPage() {
     },
     mode: "onChange",
   });
+
   const { control, handleSubmit, reset, getValues, setValue, watch } = form;
 
   const { uploadImage, loading: isUploading } = useImageUpload();
@@ -508,8 +514,6 @@ export default function PollShowPage() {
         !arrEqUnordered(idsOnly.states, prevIds.states) ||
         !arrEqUnordered(idsOnly.cities, prevIds.cities);
 
-      console.log("[POLL SUBMIT:TG]", { nextTG, idsOnly, prevIds, geoChanged });
-
       if (geoChanged) payload.targetGeo = idsOnly; // ✅ server expects string[]
     }
 
@@ -527,7 +531,6 @@ export default function PollShowPage() {
     }
 
     // rewards diffs
-    // rewards diffs
     if (!isTrialPoll) {
       const prevRewards = (poll.rewards ?? []) as RewardRow[];
       const nowRewards = (v.rewards ?? []) as RewardRow[];
@@ -542,8 +545,11 @@ export default function PollShowPage() {
 
       // expireRewardAt diff
       const prevExpire = (poll.expireRewardAt ?? "").trim();
-      const nowExpire = (v.expireRewardAt ?? "").trim();
-      if (prevExpire !== nowExpire) {
+      const nowExpire =
+        v.expireRewardAt === null ? null : (v.expireRewardAt ?? "").trim();
+      if (nowExpire === null) {
+        payload.expireRewardAt = null;
+      } else if (prevExpire !== nowExpire) {
         payload.expireRewardAt = nowExpire ? nowExpire : undefined;
       }
     }
@@ -751,6 +757,7 @@ export default function PollShowPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                               {(poll.options ?? []).map((opt) => {
                                 const isArchived = !!opt.archivedAt;
+
                                 return (
                                   <div
                                     key={opt._id}
@@ -779,29 +786,30 @@ export default function PollShowPage() {
                                         </button>
                                       )}
 
-                                      {isArchived &&
-                                      activeCount + 1 > MAX_OPTIONS ? null : (
+                                      {!(
+                                        (isArchived &&
+                                          activeCount + 1 > MAX_OPTIONS) ||
+                                        (!isArchived &&
+                                          unArchivedOptionsLength <= 2)
+                                      ) && (
                                         <button
                                           type="button"
                                           className="rounded-md p-1 hover:bg-foreground/10"
-                                          onClick={() => {
+                                          onClick={() =>
                                             setIsArchiveToggleOption({
                                               pollId: (poll as any)._id,
                                               optionId: opt._id,
+                                              optionText: opt.text,
                                               shouldArchive: !isArchived,
-                                            });
-                                          }}
+                                            })
+                                          }
                                           aria-label={`Delete option ${opt.text}`}
                                           title="Delete option"
                                         >
                                           {!isArchived ? (
-                                            <Trash2
-                                              className={`w-4 h-4 text-red-600`}
-                                            />
+                                            <Trash2 className="w-4 h-4 text-red-600" />
                                           ) : (
-                                            <Recycle
-                                              className={`w-4 h-4 text-white`}
-                                            />
+                                            <Recycle className="w-4 h-4 text-white" />
                                           )}
                                         </button>
                                       )}
@@ -846,20 +854,21 @@ export default function PollShowPage() {
                     {/* Rewards (same as create) */}
                     {!isTrialPoll && (
                       <>
-                        <div className="flex gap-2 items-center">
-                          <Button
-                            type="button"
-                            size="icon"
-                            onClick={() => setActiveRewardIndex(-1)}
-                            className="w-fit p-2"
-                            disabled={
-                              fields?.length >= Object.keys(assetSpecs)?.length
-                            }
-                          >
-                            Add reward
-                          </Button>
-                        </div>
                         <FormCard title="Rewards">
+                          <div className="flex gap-2 items-center justify-end">
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={() => setActiveRewardIndex(-1)}
+                              className="w-fit p-2"
+                              disabled={
+                                fields?.length >=
+                                Object.keys(assetSpecs)?.length
+                              }
+                            >
+                              Add reward
+                            </Button>
+                          </div>
                           <RewardsList
                             fields={fields}
                             assetOptions={ASSET_OPTIONS as any}
@@ -870,6 +879,11 @@ export default function PollShowPage() {
                             hideEditButton={!isEditing}
                             hideDeleteButton={!isEditing}
                           />
+                          {form?.formState?.errors?.rewards?.message && (
+                            <p className="text-sm text-destructive">
+                              {form?.formState?.errors?.rewards?.message}
+                            </p>
+                          )}
                         </FormCard>
                       </>
                     )}
@@ -882,6 +896,9 @@ export default function PollShowPage() {
                         setValue={setValue}
                         basePath="targetGeo"
                         label="Target Geo (Optional)"
+                        selectProps={{
+                          menuPlacement: "top",
+                        }}
                       />
                     )}
 
@@ -895,8 +912,9 @@ export default function PollShowPage() {
                       )}
                       <div className="flex items-center gap-2">
                         <Button
-                          className="text-lg font-bold px-6 py-5"
                           type="button"
+                          size={"sm"}
+                          className="text-sm font-bold px-3 py-2.5"
                           variant="outline"
                           onClick={() => {
                             if (!poll) return;
@@ -965,8 +983,9 @@ export default function PollShowPage() {
                         </Button>
                         <Button
                           type="submit"
+                          size={"sm"}
+                          className="text-sm font-bold px-3 py-2.5"
                           disabled={isSaving || isUploading}
-                          className="text-lg font-bold px-6 py-5"
                         >
                           {isSaving || isUploading ? "Saving…" : "Save"}
                         </Button>
@@ -983,7 +1002,7 @@ export default function PollShowPage() {
           <section className="flex justify-between items-center w-full">
             <h1 className="text-2xl tracking-wider">Poll</h1>
             <Button
-              className="rounded-md p-1"
+              className="rounded-md px-2"
               onClick={() => setIsEditing(true)}
               aria-label="Edit poll"
               title="Edit poll"

@@ -94,7 +94,7 @@ export default function ExpireRewardAtPicker({
               <Button
                 type="button"
                 variant="secondary"
-                onClick={() => field.onChange("")}
+                onClick={() => field.onChange(null)}
               >
                 Clear
               </Button>

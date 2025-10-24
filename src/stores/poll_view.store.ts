@@ -14,6 +14,7 @@ type ArchiveToggleOptionValue = {
   pollId: string;
   optionId: string;
   shouldArchive: boolean;
+  optionText?: string;
 } | null;
 
 type PollViewStore = {

@@ -171,15 +171,18 @@ export default function MultiInfiniteSelect<
       placeholder: (provided: any) => ({
         ...provided,
         color: mutedFg,
+        fontSize: "0.9rem",
       }),
       singleValue: (provided: any) => ({
         ...provided,
         color: fg,
+        fontSize: "0.9rem",
       }),
       multiValue: (provided: any) => ({
         ...provided,
         borderRadius: 9999,
         background: muted,
+        fontSize: "0.9rem",
       }),
       multiValueLabel: (provided: any) => ({
         ...provided,
@@ -218,6 +221,7 @@ export default function MultiInfiniteSelect<
         ...provided,
         background: state.isFocused ? muted : "transparent",
         color: fg,
+        fontSize: "0.9rem",
         ":active": { background: muted },
       }),
     };

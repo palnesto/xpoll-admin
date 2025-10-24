@@ -7,7 +7,7 @@ import { assetSpecs } from "@/utils/asset";
 import { AssetType } from "@/utils/currency-assets/asset";
 import { amount, unwrapString } from "@/utils/currency-assets/base";
 import { capitalize } from "lodash";
-import { Pencil, Trash, Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "react-router";
 
@@ -139,28 +139,6 @@ export default function RewardsList({
                       )}
                     </div>
                   </div>
-                  {isEditing ? (
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        type="button"
-                        size="sm"
-                        onClick={() => onEdit(idx)}
-                      >
-                        <Pencil />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        type="button"
-                        size="sm"
-                        onClick={() => remove(idx)}
-                      >
-                        <Trash className="text-red-500" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <></>
-                  )}
                 </div>
                 {/* cards */}
                 <div className="flex gap-3 justify-center">
@@ -197,7 +175,7 @@ export default function RewardsList({
                   </>
                 ) : (
                   <p
-                    className="underline decoration-white/50 text-white/50 text-start underline-offset-4 cursor-pointer hover:decoration-white hover:text-white transition-colors duration-150"
+                    className="underline decoration-white/50 text-white/50 text-start underline-offset-4 cursor-pointer hover:decoration-white hover:text-white transition-colors duration-150 text-sm"
                     onClick={() => {
                       onEdit(idx);
                     }}

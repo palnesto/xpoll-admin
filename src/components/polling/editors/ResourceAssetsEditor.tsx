@@ -264,7 +264,8 @@ export default function ResourceAssetsEditor({
                     <div className="flex justify-end">
                       <Button
                         type="button"
-                        className="bg-zinc-800 text-white hover:bg-zinc-700 disabled:opacity-50"
+                        size={"sm"}
+                        className="bg-zinc-800 text-xs text-white hover:bg-zinc-700 disabled:opacity-50"
                         disabled={!ytInput.trim() || reachedMax}
                         onClick={addYouTube}
                       >

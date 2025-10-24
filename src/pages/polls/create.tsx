@@ -94,7 +94,7 @@ const formSchema = z
       .string()
       .datetime()
       .optional()
-      .or(z.literal("").optional())
+      .or(z.literal("").optional().nullable())
       .refine(
         (val) => {
           if (!val || val === "") return true; // allow empty / optional
@@ -152,20 +152,10 @@ export default function PollCreatePage() {
   const { control, handleSubmit, watch, setValue, formState } = form;
   const { errors, isValid, isSubmitting } = form.formState;
 
-  console.log({
-    watch,
-    errors,
-  });
-
   // Rewards array
   const { fields, append, remove, update } = useFieldArray({
     control,
     name: "rewards",
-  });
-
-  console.log({
-    error: formState.errors,
-    watch: watch(),
   });
 
   // API mutation with error logging
@@ -294,7 +284,7 @@ export default function PollCreatePage() {
     groupEnd();
 
     try {
-      console.log("payload", payload);
+      // console.log("payload", payload);
       mutate(payload as any);
     } catch (e) {
       group("❌ mutate threw (synchronous)");

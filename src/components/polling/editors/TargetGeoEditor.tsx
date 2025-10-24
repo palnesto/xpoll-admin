@@ -59,14 +59,6 @@ export default function TargetGeoEditor({
 
   // -------------------- NEW: hydrate controlled values on edit --------------------
 
-  console.log({
-    countriesRaw,
-    statesRaw,
-    citiesRaw,
-    selCountries,
-    selStates,
-    selCities,
-  });
   useEffect(() => {
     setSelCountries(asOptions(countriesRaw));
   }, [countriesRaw]);

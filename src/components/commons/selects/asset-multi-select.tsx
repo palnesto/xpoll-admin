@@ -38,6 +38,7 @@
 //     />
 //   );
 // }
+import { assetSpecs, AssetType } from "@/utils/currency-assets/asset";
 import React from "react";
 import Select, { GroupBase } from "react-select";
 
@@ -100,15 +101,18 @@ export default function AssetMultiSelect({
       placeholder: (p: any) => ({
         ...p,
         color: mutedFg,
+        fontSize: "0.9rem",
       }),
       singleValue: (p: any) => ({
         ...p,
         color: fg,
+        fontSize: "0.9rem",
       }),
       multiValue: (p: any) => ({
         ...p,
         borderRadius: 9999,
         background: muted,
+        fontSize: "0.9rem",
       }),
       multiValueLabel: (p: any) => ({
         ...p,
@@ -147,6 +151,7 @@ export default function AssetMultiSelect({
         ...p,
         background: state.isFocused ? muted : "transparent",
         color: fg,
+        fontSize: "0.9rem",
         ":active": { background: muted },
       }),
     };
@@ -185,6 +190,18 @@ export default function AssetMultiSelect({
       styles={mergeStyles(selectProps?.styles)}
       menuPortalTarget={selectProps?.menuPortalTarget ?? document.body}
       menuShouldScrollIntoView={false}
+      formatOptionLabel={(option) => {
+        return (
+          <div className="w-full flex items-center gap-2">
+            <img
+              className="aspect-square h-5"
+              src={assetSpecs[option.value as AssetType]?.img}
+              alt=""
+            />
+            <span>{assetSpecs[option.value as AssetType]?.parent}</span>
+          </div>
+        );
+      }}
       // allow callers to still override other props
       {...selectProps}
     />

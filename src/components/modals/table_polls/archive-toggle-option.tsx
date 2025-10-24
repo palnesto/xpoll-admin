@@ -16,14 +16,17 @@ export const ArchiveToggleOptionModal = () => {
     route: endpoints.entities.polls.edit.toggleArchiveOption,
     method: "PATCH",
     onSuccess: (resp) => {
-      appToast.success("Option removed");
+      const responseArchivedAt = resp?.data?.option?.archivedAt;
+      console.log("responseArchivedAt", responseArchivedAt);
+      appToast.success(
+        responseArchivedAt ? "Option archived" : "Option unarchived"
+      );
       queryClient.invalidateQueries();
       onClose();
     },
   });
 
   const handleOnSubmit = () => {
-    console.log("reaching submit", isArchiveToggleOption);
     const payload = {
       pollId: isArchiveToggleOption?.pollId,
       optionId: isArchiveToggleOption?.optionId,
@@ -41,24 +44,38 @@ export const ArchiveToggleOptionModal = () => {
       onClose={onClose}
       title={
         isArchiveToggleOption?.shouldArchive
-          ? "Archive Option"
-          : "Unarchive Option"
+          ? `Archive Option (${isArchiveToggleOption?.optionId})`
+          : `Unarchive Option (${isArchiveToggleOption?.optionId})`
       }
       onSubmit={() => {}}
       footer={<></>}
     >
-      <div className="flex justify-end gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onClose}
-          disabled={isPending}
-        >
-          Cancel
-        </Button>
-        <Button type="button" disabled={isPending} onClick={handleOnSubmit}>
-          {isArchiveToggleOption?.shouldArchive ? "Archive" : "Unarchive"}
-        </Button>
+      <div className="flex flex-col w-full gap-5">
+        <p className="text-white">
+          Option:{" "}
+          <span className="text-zinc-400">
+            {isArchiveToggleOption?.optionText}
+          </span>
+        </p>
+        <div className="flex justify-end gap-2">
+          <Button
+            type="button"
+            size={"sm"}
+            variant="outline"
+            onClick={onClose}
+            disabled={isPending}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            size={"sm"}
+            disabled={isPending}
+            onClick={handleOnSubmit}
+          >
+            {isArchiveToggleOption?.shouldArchive ? "Archive" : "Unarchive"}
+          </Button>
+        </div>
       </div>
     </CustomModal>
   );

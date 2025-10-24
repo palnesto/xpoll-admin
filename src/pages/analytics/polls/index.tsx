@@ -40,6 +40,7 @@ import { persist } from "zustand/middleware";
 import { useTablePollsStore } from "@/stores/table_polls.store";
 import { ConfirmDeletePollsModal } from "@/components/modals/table_polls/delete";
 import { cn } from "@/lib/utils";
+import { assetSpecs, AssetType } from "@/utils/currency-assets/asset";
 
 const PAGE_SIZE = 10;
 
@@ -356,7 +357,16 @@ const MemoPolls = () => {
       {assetOpts.map((o, idx) => (
         <Chip
           key={`a-${o.value}-${idx}`}
-          label={`Asset: ${o.label}`}
+          label={
+            <div className="w-full flex items-center gap-2">
+              <img
+                className="aspect-square h-5"
+                src={assetSpecs[o.value as AssetType]?.img}
+                alt=""
+              />
+              <span>{assetSpecs[o.value as AssetType]?.parent}</span>
+            </div>
+          }
           onRemove={() =>
             usePollFilters.getState().patch({
               page: 1,
@@ -611,32 +621,27 @@ const MemoPolls = () => {
                   aria-label="Toggle Trending"
                 />
               </label>
-
               {/* Direct dropdown shown only when ON */}
-              {trendingOn ? (
-                <Select
-                  value={trendingWindow}
-                  onValueChange={(v: TrendingWindow) => {
-                    setTrendingWindow(v);
-                    patch({ page: 1 });
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select window" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="hour">Hour</SelectItem>
-                    <SelectItem value="day">Day</SelectItem>
-                    <SelectItem value="week">Week</SelectItem>
-                    <SelectItem value="month">Month</SelectItem>
-                    <SelectItem value="quarter">Quarter</SelectItem>
-                    <SelectItem value="year">Year</SelectItem>
-                  </SelectContent>
-                </Select>
-              ) : (
-                // keep layout height consistent (optional)
-                <div className="h-9" />
-              )}
+              <Select
+                disabled={!trendingOn}
+                value={trendingWindow}
+                onValueChange={(v: TrendingWindow) => {
+                  setTrendingWindow(v);
+                  patch({ page: 1 });
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select window" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="hour">Hour</SelectItem>
+                  <SelectItem value="day">Day</SelectItem>
+                  <SelectItem value="week">Week</SelectItem>
+                  <SelectItem value="month">Month</SelectItem>
+                  <SelectItem value="quarter">Quarter</SelectItem>
+                  <SelectItem value="year">Year</SelectItem>
+                </SelectContent>
+              </Select>
             </section>
           </section>
 
