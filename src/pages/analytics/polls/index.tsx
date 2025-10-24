@@ -39,6 +39,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { useTablePollsStore } from "@/stores/table_polls.store";
 import { ConfirmDeletePollsModal } from "@/components/modals/table_polls/delete";
+import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 10;
 
@@ -660,6 +661,7 @@ const MemoPolls = () => {
         <div className="flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
           {entries?.map((poll: any) => {
             const checked = selectedApi.isSelected(poll._id);
+            const isExternalAuthor = !!poll.externalAuthor;
             return (
               <div key={poll._id} className="flex items-stretch gap-3">
                 {/* Checkbox on the left */}
@@ -679,49 +681,67 @@ const MemoPolls = () => {
                 </div>
 
                 {/* Card content */}
-                <Card className="@container/card bg-primary/5 rounded-3xl flex flex-row justify-between items-center gap-32 w-full">
+                <Card className="@container/card bg-primary/5 rounded-3xl flex flex-row justify-between items-start gap-32 w-full">
                   <CardHeader className="w-full">
-                    <CardTitle className="text-lg font-semibold @[250px]/card:text-xl overflow-hidden text-ellipsis whitespace-nowrap">
+                    <CardTitle
+                      onClick={() => {
+                        navigate(`/polls/${poll?._id}`);
+                      }}
+                      className="text-lg hover:underline cursor-pointer font-semibold @[250px]/card:text-xl overflow-hidden text-ellipsis whitespace-nowrap"
+                    >
                       {poll.title}
                     </CardTitle>
                     <CardDescription className="text-muted-foreground">
                       {poll.viewCount ?? 0} views • {poll.voteCount ?? 0} votes
                     </CardDescription>
                   </CardHeader>
-                  <CardFooter className="flex items-center gap-3">
-                    <Button
-                      onClick={() =>
-                        navigate(`/polls/${poll._id}`, {
-                          state: {
-                            isNavigationEditing: false,
-                          },
-                        })
-                      }
-                      variant="outline"
-                      className="w-fit md:h-12 rounded-2xl"
+                  <CardFooter className="flex flex-col gap-2 items-end">
+                    <span
+                      className={cn(
+                        "text-white w-fit text-xs px-1.5 py-1 rounded-xl font-semibold",
+                        {
+                          "bg-[#24aae6]": isExternalAuthor, // user
+                          "bg-[#fe5722]": !isExternalAuthor, // admin
+                        }
+                      )}
                     >
-                      <Eye />
-                    </Button>
-                    <Button
-                      onClick={() =>
-                        navigate(`/polls/${poll._id}`, {
-                          state: {
-                            isNavigationEditing: true,
-                          },
-                        })
-                      }
-                      variant="outline"
-                      className="w-fit md:h-12 rounded-2xl"
-                    >
-                      <Edit />
-                    </Button>
-                    <Button
-                      onClick={() => handleViewMore(poll._id, poll.title)}
-                      variant="outline"
-                      className="w-fir md:h-12 rounded-2xl"
-                    >
-                      <ChartNoAxesCombined />
-                    </Button>
+                      {isExternalAuthor ? "User Poll" : "Admin Poll"}
+                    </span>
+                    <div className="flex items-center gap-3">
+                      <Button
+                        onClick={() =>
+                          navigate(`/polls/${poll._id}`, {
+                            state: {
+                              isNavigationEditing: false,
+                            },
+                          })
+                        }
+                        variant="outline"
+                        className="w-fit md:h-12 rounded-2xl"
+                      >
+                        <Eye />
+                      </Button>
+                      <Button
+                        onClick={() =>
+                          navigate(`/polls/${poll._id}`, {
+                            state: {
+                              isNavigationEditing: true,
+                            },
+                          })
+                        }
+                        variant="outline"
+                        className="w-fit md:h-12 rounded-2xl"
+                      >
+                        <Edit />
+                      </Button>
+                      <Button
+                        onClick={() => handleViewMore(poll._id, poll.title)}
+                        variant="outline"
+                        className="w-fir md:h-12 rounded-2xl"
+                      >
+                        <ChartNoAxesCombined />
+                      </Button>
+                    </div>
                   </CardFooter>
                 </Card>
               </div>

@@ -238,6 +238,15 @@ export default function PollShowPage() {
   const poll: Poll | null = useMemo(() => {
     return data?.data?.data ?? data?.data ?? null;
   }, [data]);
+
+  const userDetails = useMemo(() => {
+    const isExternalAuthor = poll?.externalAuthor;
+    if (!isExternalAuthor) return null;
+    return {
+      username: poll?.externalAuthorInfo.username,
+      location: `${poll?.externalAuthorInfo?.city?.name}, ${poll?.externalAuthorInfo?.state?.name}, ${poll?.externalAuthorInfo?.country?.name}`,
+    };
+  }, [poll]);
   const isTrialPoll = !!(poll?.trialId || poll?.trial?._id);
 
   const [isEditing, setIsEditing] = useState(isNavigationEditing ?? false);
@@ -985,6 +994,20 @@ export default function PollShowPage() {
           <section className="space-y-7">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormCard title="Basic Info">
+                {userDetails && (
+                  <div>
+                    <div className="text-xs text-muted-foreground">User</div>
+                    <div className="font-medium">{userDetails?.username}</div>
+                  </div>
+                )}
+                {userDetails && (
+                  <div>
+                    <div className="text-xs text-muted-foreground">
+                      User Location
+                    </div>
+                    <div className="font-medium">{userDetails?.location}</div>
+                  </div>
+                )}
                 <div>
                   <div className="text-xs text-muted-foreground">ID</div>
                   <div className="font-mono break-all">{poll._id}</div>
