@@ -23,7 +23,7 @@ export default function ResourceAssetsEditor({
   control,
   name,
   minAssets = 0,
-  maxAssets = 10,
+  maxAssets = 3,
   resourceAssetTypes = ["image", "ytVideo"],
   mediaAllowed,
   isEditing: isEditingProp,

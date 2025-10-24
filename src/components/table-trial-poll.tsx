@@ -8,6 +8,7 @@ import { DEFAULT_PAGE_SIZE } from "@/constants";
 import { fmt, PaginatedTable } from "@/components/paginated-table";
 import { useTablePollsStore } from "@/stores/table_polls.store";
 import { ConfirmDeletePollsModal } from "@/components/modals/table_polls/delete";
+import { utcToAdminFormatted } from "@/utils/time";
 
 export default function TrialPollTable({ trialId }: { trialId: string }) {
   const navigate = useNavigate();
@@ -73,7 +74,7 @@ export default function TrialPollTable({ trialId }: { trialId: string }) {
     {
       key: "createdAt",
       header: "Created At",
-      render: (v: any) => <span>{fmt(v)}</span>,
+      render: (v: any) => <span>{utcToAdminFormatted(v)}</span>,
     },
     // {
     //   key: "archivedAt",
@@ -88,19 +89,24 @@ export default function TrialPollTable({ trialId }: { trialId: string }) {
     },
   ] as const;
 
+  if (!data) return null;
+
   return (
-    <div>
-      <PaginatedTable
-        title="Polls in this Trial"
-        columns={columns}
-        tableData={tableData}
-        data={data}
-        page={page}
-        setPage={setPage}
-        pageSize={pageSize}
-        isFetching={isFetching}
-      />
+    <>
+      <div className="min-h-[80vh] h-[80vh]">
+        <PaginatedTable
+          title="Polls in this Trial"
+          columns={columns}
+          tableData={tableData}
+          data={data}
+          page={page}
+          setPage={setPage}
+          pageSize={pageSize}
+          isFetching={isFetching}
+          usingRef={false}
+        />
+      </div>
       {isDeleting?.length > 0 && <ConfirmDeletePollsModal url={url} />}
-    </div>
+    </>
   );
 }

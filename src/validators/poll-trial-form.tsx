@@ -1,6 +1,7 @@
 // this file contains zod schemas for the poll create/edit form
 
 import { assets, assetSpecs } from "@/utils/currency-assets/asset";
+import { extractYouTubeId } from "@/utils/youtube";
 import z from "zod";
 
 export const __MIN_TITLE_LEN__ = 3;
@@ -88,7 +89,7 @@ export const rewardRowZ = z
     path: ["rewardAmountCap"],
   });
 
-export const resourceAssetFormZ = z.union([
+export const pollResourceAsset = z.union([
   z.object({
     type: z.literal(RESOURCE_TYPES_STRING.YOUTUBE),
     value: z.string().min(1),
@@ -98,6 +99,10 @@ export const resourceAssetFormZ = z.union([
     value: z.array(z.union([z.instanceof(File), z.string()])).nullable(),
   }),
 ]);
+export const trialResourceAsset = z.object({
+  type: z.literal(RESOURCE_TYPES_STRING.IMAGE),
+  value: z.array(z.union([z.instanceof(File), z.string()])).nullable(),
+});
 
 const locationItemZ = z.object({
   _id: z.string().min(1),
@@ -162,3 +167,46 @@ export const expireRewardAtZod = z
       message: "Expiry date must not be in the past",
     }
   );
+
+export const pollResourceAssetFormZ = z.array(pollResourceAsset).default([]);
+export const trialResourceAssetFormZ = z
+  .array(trialResourceAsset)
+  .min(1)
+  .default([]);
+
+export type OutputResourceAsset = {
+  [K in ResourceType]: { type: K; value: string };
+}[ResourceType];
+
+export type ResourceAsset = { type: ResourceType; value: string };
+
+export function toComparableAssets(arr?: OutputResourceAsset[]) {
+  return (arr ?? []).map((a) =>
+    a.type === RESOURCE_TYPES_STRING.YOUTUBE
+      ? `yt:${extractYouTubeId(a.value)}`
+      : `img:${a.value}`
+  );
+}
+
+export function renderGeoList(
+  list?: Array<{ _id: string; name: string } | string>
+) {
+  if (!Array.isArray(list) || list.length === 0)
+    return <span className="text-zinc-400 text-sm">No Location Selected</span>;
+  const names = list
+    .map((item) =>
+      typeof item === "string" ? item : item?.name || item?._id || ""
+    )
+    .filter(Boolean);
+  return (
+    <div className="flex flex-wrap gap-2">
+      {names.map((name, idx) => {
+        return (
+          <span key={idx + name} className="bg-gray-950 py-1 px-2 rounded-lg">
+            {name}
+          </span>
+        );
+      })}
+    </div>
+  );
+}

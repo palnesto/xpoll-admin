@@ -34,11 +34,12 @@ import {
   expireRewardAtZod,
   optionsZod,
   RESOURCE_TYPES_STRING,
-  resourceAssetFormZ,
-  ResourceType,
+  pollResourceAssetFormZ,
   rewardsZod,
   targetGeoZod,
   titleZod,
+  _MAX_RESOURCE_ASSETS_COUNT_,
+  OutputResourceAsset,
 } from "@/validators/poll-trial-form";
 
 const formSchema = z.object({
@@ -47,13 +48,10 @@ const formSchema = z.object({
   options: optionsZod,
   rewards: rewardsZod,
   targetGeo: targetGeoZod,
-  resourceAssets: z.array(resourceAssetFormZ).default([]),
+  resourceAssets: pollResourceAssetFormZ,
   expireRewardAt: expireRewardAtZod,
 });
 type FormValues = z.infer<typeof formSchema>;
-export type OutputResourceAsset = {
-  [K in ResourceType]: { type: K; value: string };
-}[ResourceType];
 
 export default function PollCreatePage() {
   const navigate = useNavigate();
@@ -261,7 +259,7 @@ export default function PollCreatePage() {
                     <ResourceAssetsEditor
                       control={control}
                       name="resourceAssets"
-                      maxAssets={3}
+                      maxAssets={_MAX_RESOURCE_ASSETS_COUNT_}
                       isEditing={true}
                     />
                   </FormCard>

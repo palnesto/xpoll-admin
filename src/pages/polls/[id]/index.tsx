@@ -61,16 +61,17 @@ import {
   descriptionZod,
   expireRewardAtZod,
   RESOURCE_TYPES_STRING,
-  resourceAssetFormZ,
-  ResourceType,
+  pollResourceAssetFormZ,
   REWARD_TYPE,
   rewardsZod,
   RewardType,
   targetGeoZod,
   titleZod,
+  OutputResourceAsset,
+  ResourceAsset,
+  toComparableAssets,
+  renderGeoList,
 } from "@/validators/poll-trial-form";
-
-export type ResourceAsset = { type: ResourceType; value: string };
 
 type PollOption = {
   _id: string;
@@ -134,7 +135,7 @@ const baseSchema = {
   title: titleZod,
   description: descriptionZod,
   targetGeo: targetGeoZod,
-  resourceAssets: z.array(resourceAssetFormZ).default([]),
+  resourceAssets: pollResourceAssetFormZ,
 };
 const trialEditSchema = z.object(baseSchema);
 const normalEditSchema = z.object({
@@ -144,16 +145,6 @@ const normalEditSchema = z.object({
 });
 
 type EditValues = z.infer<typeof normalEditSchema>;
-export type OutputResourceAsset = {
-  [K in ResourceType]: { type: K; value: string };
-}[ResourceType];
-function toComparableAssets(arr?: OutputResourceAsset[]) {
-  return (arr ?? []).map((a) =>
-    a.type === RESOURCE_TYPES_STRING.YOUTUBE
-      ? `yt:${extractYouTubeId(a.value)}`
-      : `img:${a.value}`
-  );
-}
 
 export default function PollShowPage() {
   const navigate = useNavigate();
@@ -173,6 +164,9 @@ export default function PollShowPage() {
     return data?.data?.data ?? data?.data ?? null;
   }, [data]);
 
+  const trialId = poll?.trialId;
+
+  console.log("trialId", trialId);
   const unArchivedOptionsLength =
     poll?.options.filter((opt) => {
       return opt?.archivedAt === null;
@@ -189,28 +183,6 @@ export default function PollShowPage() {
   const isTrialPoll = !!(poll?.trialId || poll?.trial?._id);
 
   const [isEditing, setIsEditing] = useState(isNavigationEditing ?? false);
-  function renderGeoList(list?: Array<{ _id: string; name: string } | string>) {
-    if (!Array.isArray(list) || list.length === 0)
-      return (
-        <span className="text-zinc-400 text-sm">No Location Selected</span>
-      );
-    const names = list
-      .map((item) =>
-        typeof item === "string" ? item : item?.name || item?._id || ""
-      )
-      .filter(Boolean);
-    return (
-      <div className="flex flex-wrap gap-2">
-        {names.map((name, idx) => {
-          return (
-            <span key={idx + name} className="bg-gray-950 py-1 px-2 rounded-lg">
-              {name}
-            </span>
-          );
-        })}
-      </div>
-    );
-  }
 
   const form = useForm<EditValues>({
     resolver: zodResolver(isTrialPoll ? trialEditSchema : normalEditSchema),
@@ -227,7 +199,7 @@ export default function PollShowPage() {
         },
       ],
       targetGeo: { countries: [], states: [], cities: [] },
-      expireRewardAt: "",
+      expireRewardAt: null,
     },
     mode: "onChange",
   });
@@ -579,6 +551,11 @@ export default function PollShowPage() {
           <div className="flex justify-between items-center w-full">
             <h1 className="text-2xl tracking-wider">Edit Poll</h1>
           </div>
+          {!!trialId && (
+            <p className="bg-sidebar px-2 py-2">
+              <strong>Trial:</strong> {trialId}
+            </p>
+          )}
           <Form {...form}>
             <form className="space-y-6" onSubmit={onSubmitEdit}>
               <TwoPane
@@ -852,93 +829,93 @@ export default function PollShowPage() {
                           name="expireRewardAt"
                         />
                       )}
-                      <div className="flex items-center gap-2">
-                        <Button
-                          type="button"
-                          size={"sm"}
-                          className="text-sm font-bold px-3 py-2.5"
-                          variant="outline"
-                          onClick={() => {
-                            if (!poll) return;
-                            const initialAssets: EditValues["resourceAssets"] =
-                              Array.isArray(poll.resourceAssets) &&
-                              poll.resourceAssets.length > 0
-                                ? poll.resourceAssets.map((a) =>
-                                    a.type === RESOURCE_TYPES_STRING.IMAGE
-                                      ? {
-                                          type: RESOURCE_TYPES_STRING.IMAGE,
-                                          value: [a.value],
-                                        }
-                                      : {
-                                          type: RESOURCE_TYPES_STRING.YOUTUBE,
-                                          value: extractYouTubeId(a.value),
-                                        }
-                                  )
-                                : poll.media
-                                ? [
-                                    {
-                                      type: RESOURCE_TYPES_STRING.IMAGE,
-                                      value: [poll.media],
-                                    },
-                                  ]
-                                : [];
-
-                            const initialRewards: EditValues["rewards"] =
-                              Array.isArray(poll.rewards) &&
-                              poll.rewards.length > 0
-                                ? poll.rewards.map((r) => ({
-                                    assetId: r.assetId as any,
-                                    amount: Number(r.amount), // convert
-                                    rewardAmountCap: Number(r.rewardAmountCap), // convert
-                                    rewardType: r.rewardType as RewardType,
-                                  }))
-                                : [
-                                    {
-                                      assetId: ASSET_OPTIONS[0].value,
-                                      amount: 1,
-                                      rewardAmountCap: 1,
-                                      rewardType: REWARD_TYPE.MAX,
-                                    },
-                                  ];
-
-                            reset({
-                              title: poll.title ?? "",
-                              description: poll.description ?? "",
-                              resourceAssets: initialAssets,
-                              rewards: isTrialPoll ? [] : initialRewards,
-                              targetGeo: {
-                                countries: Array.isArray(
-                                  poll.targetGeo?.countries
-                                )
-                                  ? poll.targetGeo!.countries
-                                  : [],
-                                states: Array.isArray(poll.targetGeo?.states)
-                                  ? poll.targetGeo!.states
-                                  : [],
-                                cities: Array.isArray(poll.targetGeo?.cities)
-                                  ? poll.targetGeo!.cities
-                                  : [],
-                              },
-                              expireRewardAt: isTrialPoll
-                                ? ""
-                                : poll.expireRewardAt ?? "",
-                            });
-                            setIsEditing(false);
-                          }}
-                          disabled={isSaving || isUploading}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          type="submit"
-                          size={"sm"}
-                          className="text-sm font-bold px-3 py-2.5"
-                          disabled={isSaving || isUploading}
-                        >
-                          {isSaving || isUploading ? "Saving…" : "Save"}
-                        </Button>
-                      </div>
                     </section>
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        type="button"
+                        size={"sm"}
+                        className="text-sm font-bold px-3 py-2.5"
+                        variant="outline"
+                        onClick={() => {
+                          if (!poll) return;
+                          const initialAssets: EditValues["resourceAssets"] =
+                            Array.isArray(poll.resourceAssets) &&
+                            poll.resourceAssets.length > 0
+                              ? poll.resourceAssets.map((a) =>
+                                  a.type === RESOURCE_TYPES_STRING.IMAGE
+                                    ? {
+                                        type: RESOURCE_TYPES_STRING.IMAGE,
+                                        value: [a.value],
+                                      }
+                                    : {
+                                        type: RESOURCE_TYPES_STRING.YOUTUBE,
+                                        value: extractYouTubeId(a.value),
+                                      }
+                                )
+                              : poll.media
+                              ? [
+                                  {
+                                    type: RESOURCE_TYPES_STRING.IMAGE,
+                                    value: [poll.media],
+                                  },
+                                ]
+                              : [];
+
+                          const initialRewards: EditValues["rewards"] =
+                            Array.isArray(poll.rewards) &&
+                            poll.rewards.length > 0
+                              ? poll.rewards.map((r) => ({
+                                  assetId: r.assetId as any,
+                                  amount: Number(r.amount), // convert
+                                  rewardAmountCap: Number(r.rewardAmountCap), // convert
+                                  rewardType: r.rewardType as RewardType,
+                                }))
+                              : [
+                                  {
+                                    assetId: ASSET_OPTIONS[0].value,
+                                    amount: 1,
+                                    rewardAmountCap: 1,
+                                    rewardType: REWARD_TYPE.MAX,
+                                  },
+                                ];
+
+                          reset({
+                            title: poll.title ?? "",
+                            description: poll.description ?? "",
+                            resourceAssets: initialAssets,
+                            rewards: isTrialPoll ? [] : initialRewards,
+                            targetGeo: {
+                              countries: Array.isArray(
+                                poll.targetGeo?.countries
+                              )
+                                ? poll.targetGeo!.countries
+                                : [],
+                              states: Array.isArray(poll.targetGeo?.states)
+                                ? poll.targetGeo!.states
+                                : [],
+                              cities: Array.isArray(poll.targetGeo?.cities)
+                                ? poll.targetGeo!.cities
+                                : [],
+                            },
+                            expireRewardAt: isTrialPoll
+                              ? ""
+                              : poll.expireRewardAt ?? "",
+                          });
+                          setIsEditing(false);
+                        }}
+                        disabled={isSaving || isUploading}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        size={"sm"}
+                        className="text-sm font-bold px-3 py-2.5"
+                        disabled={isSaving || isUploading}
+                      >
+                        {isSaving || isUploading ? "Saving…" : "Save"}
+                      </Button>
+                    </div>
                   </div>
                 }
               />
@@ -951,14 +928,24 @@ export default function PollShowPage() {
             <h1 className="text-2xl tracking-wider">Poll</h1>
             <Button
               className="rounded-md px-2"
-              onClick={() => setIsEditing(true)}
               aria-label="Edit poll"
               title="Edit poll"
+              onClick={() => setIsEditing(true)}
             >
               {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               <Edit className="w-4 h-4" />
             </Button>
           </section>
+          {!!trialId && (
+            <p
+              onClick={() => {
+                navigate(`/trials/${trialId}`);
+              }}
+              className="bg-sidebar px-2 py-2 hover:underline cursor-pointer"
+            >
+              <strong>Trial:</strong> {trialId}
+            </p>
+          )}
           <section className="space-y-7">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormCard title="Basic Info">
@@ -982,14 +969,14 @@ export default function PollShowPage() {
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground">Title</div>
-                  <div className="font-medium">{poll.title}</div>
+                  <div className="font-medium break-words">{poll.title}</div>
                 </div>
 
                 <div>
                   <div className="text-xs text-muted-foreground">
                     Description
                   </div>
-                  <div>{poll.description || "-"}</div>
+                  <div className="break-words">{poll.description || "-"}</div>
                 </div>
               </FormCard>
 

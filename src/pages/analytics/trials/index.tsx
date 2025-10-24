@@ -637,7 +637,12 @@ const MemoTrials = () => {
                 {/* Card content */}
                 <Card className="@container/card bg-primary/5 rounded-3xl flex flex-row justify-between items-center gap-32 w-full">
                   <CardHeader className="w-full">
-                    <CardTitle className="text-lg font-semibold @[250px]/card:text-xl overflow-hidden text-ellipsis whitespace-nowrap">
+                    <CardTitle
+                      onClick={() => {
+                        navigate(`/trials/${trial?._id}`);
+                      }}
+                      className="text-lg font-semibold @[250px]/card:text-xl overflow-hidden text-ellipsis whitespace-nowrap hover:underline cursor-pointer"
+                    >
                       {trial.title}
                     </CardTitle>
                     <CardDescription className="text-muted-foreground">

@@ -3,15 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { useForm, useFieldArray } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-
 import { endpoints } from "@/api/endpoints";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { queryClient } from "@/api/queryClient";
 import { appToast } from "@/utils/toast";
-
 import { Button } from "@/components/ui/button";
-import { Loader2, Trash2 } from "lucide-react";
-
+import { Loader2 } from "lucide-react";
 import ResourceAssetsEditor from "@/components/polling/editors/ResourceAssetsEditor";
 import TargetGeoEditor from "@/components/polling/editors/TargetGeoEditor";
 import ExpireRewardAtPicker from "@/components/polling/editors/ExpireRewardAtPicker";
@@ -25,101 +22,49 @@ import { FormInput } from "@/components/form/input";
 import { FormTextarea } from "@/components/form/textarea";
 import RewardsList from "@/components/polling/editors/RewardsList";
 import RewardDetailPanel from "@/components/polling/editors/RewardDetailPanel";
-import { assetSpecs, type AssetType } from "@/utils/currency-assets/asset";
-import { optionZ } from "../polls/create";
-import { AssetOption } from "@/components/commons/selects/asset-multi-select";
-
-const ASSET_OPTIONS: AssetOption[] = (
-  [
-    { value: "xOcta" },
-    { value: "xMYST" },
-    { value: "xDrop" },
-    { value: "xPoll" },
-  ] as const
-).map((a) => ({
-  value: a.value,
-  label: assetSpecs[a.value as AssetType].parentSymbol,
-}));
-
-const TOTAL_LEVELS = 10 as const;
-
-const resourceAssetZ = z.union([
-  z.object({ type: z.literal("youtube"), value: z.string().min(11) }),
-  z.object({
-    type: z.literal("image"),
-    value: z.array(z.union([z.instanceof(File), z.string()])).nullable(),
-  }),
-]);
-const rewardRowZ = z
-  .object({
-    assetId: z.enum(["xOcta", "xMYST", "xDrop", "xPoll"]),
-    amount: z.coerce.number().int().min(1),
-    rewardAmountCap: z.coerce.number().int().min(1),
-    rewardType: z.enum(["max", "min"]).default("max"),
-  })
-  .refine((r) => r.rewardAmountCap >= r.amount, {
-    message: "rewardAmountCap must be >= amount",
-    path: ["rewardAmountCap"],
-  });
-
-const locationItemZ = z.object({
-  _id: z.string().min(1),
-  name: z.string().min(1),
-});
-const idArrayFromLocation = z
-  .array(locationItemZ)
-  .transform((list) => list.map((x) => x._id))
-  .pipe(z.array(z.string().min(1)));
+import {
+  _MAX_RESOURCE_ASSETS_COUNT_,
+  ASSET_OPTIONS,
+  descriptionZod,
+  expireRewardAtZod,
+  optionsZod,
+  OutputResourceAsset,
+  pollResourceAssetFormZ,
+  RESOURCE_TYPES_STRING,
+  ResourceType,
+  rewardsZod,
+  targetGeoZod,
+  titleZod,
+  trialResourceAssetFormZ,
+} from "@/validators/poll-trial-form";
+import { assetSpecs } from "@/utils/currency-assets/asset";
 
 const trialFormZ = z
   .object({
-    title: z.string().min(3).trim(),
-    description: z.string().min(3).trim(),
-    rewards: z.array(rewardRowZ).optional(),
-    expireRewardAt: z
-      .string()
-      .datetime()
-      .optional()
-      .or(z.literal("").optional())
-      .optional(),
-    targetGeo: z.object({
-      countries: idArrayFromLocation.default([]),
-      states: idArrayFromLocation.default([]),
-      cities: idArrayFromLocation.default([]),
-    }),
-    resourceAssets: z.array(resourceAssetZ).default([]),
+    title: titleZod,
+    description: descriptionZod,
+    rewards: rewardsZod,
+    expireRewardAt: expireRewardAtZod,
+    targetGeo: targetGeoZod,
+    resourceAssets: trialResourceAssetFormZ,
   })
   .strict();
 
 const subPollZ = z
   .object({
-    title: z.string().min(3).trim(),
-    description: z.string().min(3).trim(),
-    resourceAssets: z.array(resourceAssetZ).default([]),
-    options: z.array(optionZ).min(2).max(4),
+    title: titleZod,
+    description: descriptionZod,
+    resourceAssets: pollResourceAssetFormZ,
+    options: optionsZod,
   })
   .strict();
 
-const formSchema = z
-  .object({
-    trial: trialFormZ,
-    polls: z.array(subPollZ).min(1),
-  })
-  .superRefine((val, ctx) => {
-    const ids = (val.trial.rewards ?? []).map((r) => r.assetId);
-    const dup = ids.find((a, i) => ids.indexOf(a) !== i);
-    if (dup)
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["trial", "rewards"],
-        message: `Duplicate reward assetId: ${dup}`,
-      });
-  });
+const formSchema = z.object({
+  trial: trialFormZ,
+  polls: z.array(subPollZ).min(1),
+});
 
 type FormValues = z.infer<typeof formSchema>;
-type OutputResourceAsset =
-  | { type: "youtube"; value: string }
-  | { type: "image"; value: string };
 
 /* =========================================================
    Component
@@ -137,7 +82,7 @@ export default function TrialCreatePage() {
         resourceAssets: [],
         rewards: [],
         targetGeo: { countries: [], states: [], cities: [] },
-        expireRewardAt: "",
+        expireRewardAt: null,
       },
       polls: [
         {
@@ -184,17 +129,23 @@ export default function TrialCreatePage() {
   const isBusy = isPending || imageUploading;
 
   const normalizeAssets = async (
-    arr?: { type: "image" | "youtube"; value: any }[]
+    arr?: { type: ResourceType; value: any }[]
   ): Promise<OutputResourceAsset[]> => {
     const items = arr ?? [];
     return Promise.all(
       items.map(async (a) => {
-        if (a.type === "youtube")
-          return { type: "youtube", value: extractYouTubeId(String(a.value)) };
+        if (a.type === RESOURCE_TYPES_STRING.YOUTUBE)
+          return {
+            type: RESOURCE_TYPES_STRING.YOUTUBE,
+            value: extractYouTubeId(String(a.value)),
+          };
         const list = (a.value ?? []) as (File | string)[];
         let first = list[0];
         if (first instanceof File) first = await uploadImage(first);
-        return { type: "image", value: typeof first === "string" ? first : "" };
+        return {
+          type: RESOURCE_TYPES_STRING.IMAGE,
+          value: typeof first === "string" ? first : "",
+        };
       })
     );
   };
@@ -263,8 +214,7 @@ export default function TrialCreatePage() {
               activeRewardIndex !== null && (
                 <RewardDetailPanel
                   index={activeRewardIndex}
-                  assetOptions={ASSET_OPTIONS as any}
-                  totalLevels={TOTAL_LEVELS}
+                  assetOptions={ASSET_OPTIONS}
                   onClose={() => setActiveRewardIndex(null)}
                   rewards={fields}
                   append={append}
@@ -306,41 +256,47 @@ export default function TrialCreatePage() {
                       control={control}
                       name="trial.resourceAssets"
                       label="Media (Images / YouTube)"
+                      mediaAllowed={[RESOURCE_TYPES_STRING.IMAGE]}
+                      maxAssets={_MAX_RESOURCE_ASSETS_COUNT_}
                       isEditing={true}
                     />
+                    {form.formState.errors.trial?.resourceAssets && (
+                      <p className="mt-2 text-sm text-destructive">
+                        {(form.formState.errors.trial.resourceAssets as any)
+                          .message ?? "Add at least 1 media"}
+                      </p>
+                    )}
                   </FormCard>
                 </div>
 
                 <FormCard title="Rewards">
-                  <div className="flex gap-2 items-center">
+                  <div className="flex gap-2 items-center justify-end">
                     <Button
+                      type="button"
                       size="icon"
                       onClick={() => setActiveRewardIndex(-1)}
                       className="w-fit p-2"
+                      disabled={
+                        fields?.length >= Object.keys(assetSpecs)?.length
+                      }
                     >
                       Add reward
                     </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      onClick={() => fields.length && remove(0)}
-                      disabled={!fields.length}
-                      className="cursor-pointer disabled:cursor-not-allowed"
-                    >
-                      <Trash2 className="text-red-600" />
-                    </Button>
                   </div>
-                  {fields.length > 0 ? (
+                  {fields.length > 0 && (
                     <RewardsList
                       fields={fields}
-                      assetOptions={ASSET_OPTIONS as any}
+                      assetOptions={ASSET_OPTIONS}
                       onEdit={setActiveRewardIndex}
                       onAdd={() => setActiveRewardIndex(-1)}
                       remove={remove}
                       allAssets={ASSET_OPTIONS.map((a) => a.value)}
                     />
-                  ) : (
-                    <></>
+                  )}
+                  {form?.formState?.errors.rewards?.message && (
+                    <p className="text-sm text-destructive">
+                      {form?.formState?.errors.rewards?.message}
+                    </p>
                   )}
                 </FormCard>
 

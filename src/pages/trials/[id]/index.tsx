@@ -2,13 +2,11 @@ import { useMemo, useState, useEffect } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-
 import { endpoints } from "@/api/endpoints";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { queryClient } from "@/api/queryClient";
 import { appToast } from "@/utils/toast";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -19,9 +17,8 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { fmt } from "@/components/paginated-table";
 import TrialPollTable from "@/components/table-trial-poll";
-import { Pencil, Trash2, Loader2 } from "lucide-react";
+import { Loader2, Edit } from "lucide-react";
 import ResourceAssetsEditor from "@/components/polling/editors/ResourceAssetsEditor";
 import ExpireRewardAtPicker from "@/components/polling/editors/ExpireRewardAtPicker";
 import TargetGeoEditor from "@/components/polling/editors/TargetGeoEditor";
@@ -33,17 +30,23 @@ import RewardDetailPanel from "@/components/polling/editors/RewardDetailPanel";
 import RewardsList from "@/components/polling/editors/RewardsList";
 import {
   arrEqUnorderedById,
-  ASSET_OPTIONS,
   cmpTrialRewards,
   editSchema,
   EditValues,
-  OutputResourceAsset,
-  renderGeoList,
-  toComparableAssets,
-  TOTAL_LEVELS,
   Trial,
   TrialReward,
 } from "@/components/types/trial";
+import {
+  _MAX_RESOURCE_ASSETS_COUNT_,
+  ASSET_OPTIONS,
+  OutputResourceAsset,
+  renderGeoList,
+  RESOURCE_TYPES_STRING,
+  REWARD_TYPE,
+  toComparableAssets,
+} from "@/validators/poll-trial-form";
+import { assetSpecs } from "@/utils/currency-assets/asset";
+import { utcToAdminFormatted } from "@/utils/time";
 
 export default function TrialShowPage() {
   const navigate = useNavigate();
@@ -72,25 +75,11 @@ export default function TrialShowPage() {
       resourceAssets: [],
       rewards: [],
       targetGeo: { countries: [], states: [], cities: [] },
-      expireRewardAt: "",
+      expireRewardAt: null,
     },
     mode: "onChange",
   });
   const { control, handleSubmit, reset, setValue, watch } = form;
-  // Debug subscription – logs every change across the form
-  useEffect(() => {
-    const sub = form.watch((value, { name, type }) => {
-      console.log("[FORM.WATCH]", {
-        name,
-        type,
-        targetGeo: value?.targetGeo,
-        countries: value?.targetGeo?.countries,
-        states: value?.targetGeo?.states,
-        cities: value?.targetGeo?.cities,
-      });
-    });
-    return () => sub.unsubscribe();
-  }, [form]);
 
   const { uploadImage, loading: isUploading } = useImageUpload();
   const { fields, append, remove, update } = useFieldArray({
@@ -104,9 +93,12 @@ export default function TrialShowPage() {
     const initialAssets: EditValues["resourceAssets"] =
       Array.isArray(trial.resourceAssets) && trial.resourceAssets.length > 0
         ? trial.resourceAssets.map((a) =>
-            a.type === "image"
-              ? { type: "image", value: [a.value] }
-              : { type: "youtube", value: extractYouTubeId(a.value) }
+            a.type === RESOURCE_TYPES_STRING.IMAGE
+              ? { type: RESOURCE_TYPES_STRING.IMAGE, value: [a.value] }
+              : {
+                  type: RESOURCE_TYPES_STRING.YOUTUBE,
+                  value: extractYouTubeId(a.value),
+                }
           )
         : [];
 
@@ -116,7 +108,7 @@ export default function TrialShowPage() {
             assetId: r.assetId as any,
             amount: Number(r.amount ?? 1),
             rewardAmountCap: Number(r.rewardAmountCap ?? r.amount ?? 1),
-            rewardType: "max",
+            rewardType: REWARD_TYPE.MAX,
           }))
         : [];
     // inside useEffect hydration in TrialShowPage
@@ -146,7 +138,7 @@ export default function TrialShowPage() {
       description: trial.description ?? "",
       resourceAssets: initialAssets,
       rewards: initialRewards,
-      targetGeo: initialTG, // 👈 same normalized TG
+      targetGeo: initialTG,
       expireRewardAt: trial.expireRewardAt ?? "",
     });
   }, [trial, reset]);
@@ -160,10 +152,7 @@ export default function TrialShowPage() {
     method: "PUT",
     onSuccess: () => {
       appToast.success("Trial updated");
-      queryClient.invalidateQueries({ queryKey: [showRoute] });
-      queryClient.invalidateQueries({
-        queryKey: [endpoints.entities.trials.all],
-      });
+      queryClient.invalidateQueries({ queryKey: ["GET", showRoute] });
       setIsEditing(false);
       navigate(location.pathname, { replace: true });
     },
@@ -181,12 +170,8 @@ export default function TrialShowPage() {
       navigate("/trials");
     },
   });
-  // near the top of the component (inside TrialShowPage)
   const handleDelete = async () => {
     if (!id || isDeleting) return;
-    // (optional) quick confirm
-    // if (!window.confirm("Delete this trial?")) return;
-
     try {
       await doDelete({ ids: [id] }); // 👈 sends { ids: [id] }
     } catch (e) {
@@ -201,15 +186,21 @@ export default function TrialShowPage() {
     const items = arr ?? [];
     return Promise.all(
       items.map(async (a) => {
-        if (a.type === "youtube") {
-          return { type: "youtube", value: extractYouTubeId(String(a.value)) };
+        if (a.type === RESOURCE_TYPES_STRING.YOUTUBE) {
+          return {
+            type: RESOURCE_TYPES_STRING.YOUTUBE,
+            value: extractYouTubeId(String(a.value)),
+          };
         }
         const list = (a.value ?? []) as (File | string)[];
         let first = list[0];
         if (first instanceof File) {
           first = await uploadImage(first);
         }
-        return { type: "image", value: typeof first === "string" ? first : "" };
+        return {
+          type: RESOURCE_TYPES_STRING.IMAGE,
+          value: typeof first === "string" ? first : "",
+        };
       })
     );
   };
@@ -223,9 +214,12 @@ export default function TrialShowPage() {
     const normalizedNow = await normalizeAssetsForSave(v.resourceAssets);
     const prevAssets: OutputResourceAsset[] = (trial.resourceAssets ?? []).map(
       (a) =>
-        a.type === "youtube"
-          ? { type: "youtube", value: extractYouTubeId(a.value) }
-          : { type: "image", value: a.value }
+        a.type === RESOURCE_TYPES_STRING.YOUTUBE
+          ? {
+              type: RESOURCE_TYPES_STRING.YOUTUBE,
+              value: extractYouTubeId(a.value),
+            }
+          : { type: RESOURCE_TYPES_STRING.IMAGE, value: a.value }
     );
 
     if (v.title !== (trial.title ?? "")) payload.title = v.title;
@@ -279,15 +273,6 @@ export default function TrialShowPage() {
       !arrEqUnorderedById(nextTG.countries, prevTG.countries) ||
       !arrEqUnorderedById(nextTG.states, prevTG.states) ||
       !arrEqUnorderedById(nextTG.cities, prevTG.cities);
-
-    // Debug what the form currently holds
-    console.log("[SUBMIT:TG:FORM]", {
-      nextTG,
-      nextCountries: nextTG.countries,
-      nextStates: nextTG.states,
-      nextCities: nextTG.cities,
-    });
-
     if (geoChanged) {
       const idsOnly = {
         countries: (nextTG.countries ?? []).map((x) =>
@@ -300,34 +285,15 @@ export default function TrialShowPage() {
           typeof x === "string" ? x : x._id
         ),
       };
-
-      // Guard: make sure all are strings (server Zod expects strings)
-      const allStrings =
-        idsOnly.countries.every((x) => typeof x === "string") &&
-        idsOnly.states.every((x) => typeof x === "string") &&
-        idsOnly.cities.every((x) => typeof x === "string");
-
-      console.log("[SUBMIT:TG:DIFF]", {
-        prevIds: {
-          countries: (prevTG.countries ?? []).map((x: any) => x?._id ?? x),
-          states: (prevTG.states ?? []).map((x: any) => x?._id ?? x),
-          cities: (prevTG.cities ?? []).map((x: any) => x?._id ?? x),
-        },
-        nextIds: idsOnly,
-        geoChanged,
-        allStrings,
-      });
-
-      payload.targetGeo = idsOnly; // ✅ IDs only
+      payload.targetGeo = idsOnly;
     }
 
-    console.log("[SUBMIT:payload]", payload);
+    console.log("payload", payload);
 
     if (Object.keys(payload).length <= 1) {
       setIsEditing(false);
       return;
     }
-
     await updateTrial(payload);
   });
 
@@ -366,7 +332,7 @@ export default function TrialShowPage() {
     Array.isArray(trial.resourceAssets) && trial.resourceAssets.length > 0
       ? trial.resourceAssets
       : trial.media
-      ? [{ type: "image", value: trial.media }]
+      ? [{ type: RESOURCE_TYPES_STRING.IMAGE, value: trial.media }]
       : [];
 
   const isBusy = isLoading || isSaving || isUploading;
@@ -397,8 +363,7 @@ export default function TrialShowPage() {
                   activeRewardIndex !== null && (
                     <RewardDetailPanel
                       index={activeRewardIndex}
-                      assetOptions={ASSET_OPTIONS as any}
-                      totalLevels={TOTAL_LEVELS}
+                      assetOptions={ASSET_OPTIONS}
                       onClose={() => setActiveRewardIndex(null)}
                       rewards={fields}
                       append={append}
@@ -456,7 +421,8 @@ export default function TrialShowPage() {
                         <ResourceAssetsEditor
                           control={control}
                           name="resourceAssets"
-                          mediaAllowed={["image"]}
+                          mediaAllowed={[RESOURCE_TYPES_STRING.IMAGE]}
+                          maxAssets={_MAX_RESOURCE_ASSETS_COUNT_}
                           isEditing={true}
                         />
                         {form.formState.errors.resourceAssets && (
@@ -470,14 +436,34 @@ export default function TrialShowPage() {
 
                     {/* Rewards (same component, just wrapped for visual parity) */}
                     <FormCard title="Rewards">
-                      <RewardsList
-                        fields={fields}
-                        assetOptions={ASSET_OPTIONS as any}
-                        onEdit={setActiveRewardIndex}
-                        onAdd={() => setActiveRewardIndex(-1)}
-                        remove={remove}
-                        allAssets={ASSET_OPTIONS.map((a) => a.value)}
-                      />
+                      <div className="flex gap-2 items-center justify-end">
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => setActiveRewardIndex(-1)}
+                          className="w-fit p-2"
+                          disabled={
+                            fields?.length >= Object.keys(assetSpecs)?.length
+                          }
+                        >
+                          Add reward
+                        </Button>
+                      </div>
+                      {fields.length > 0 && (
+                        <RewardsList
+                          fields={fields}
+                          assetOptions={ASSET_OPTIONS as any}
+                          onEdit={setActiveRewardIndex}
+                          onAdd={() => setActiveRewardIndex(-1)}
+                          remove={remove}
+                          allAssets={ASSET_OPTIONS?.map((a) => a.value)}
+                        />
+                      )}
+                      {form?.formState?.errors.rewards?.message && (
+                        <p className="text-sm text-destructive">
+                          {form?.formState?.errors.rewards?.message}
+                        </p>
+                      )}
                     </FormCard>
 
                     {/* Expire Reward At */}
@@ -496,9 +482,11 @@ export default function TrialShowPage() {
                     />
 
                     {/* Actions */}
-                    <div className="flex items-center gap-2 pt-2">
+                    <div className="flex items-center justify-end gap-2">
                       <Button
                         type="button"
+                        size={"sm"}
+                        className="text-sm font-bold px-3 py-2.5"
                         variant="outline"
                         onClick={() => {
                           if (!trial) return;
@@ -507,10 +495,13 @@ export default function TrialShowPage() {
                             Array.isArray(trial.resourceAssets) &&
                             trial.resourceAssets.length > 0
                               ? trial.resourceAssets.map((a) =>
-                                  a.type === "image"
-                                    ? { type: "image", value: [a.value] }
+                                  a.type === RESOURCE_TYPES_STRING.IMAGE
+                                    ? {
+                                        type: RESOURCE_TYPES_STRING.IMAGE,
+                                        value: [a.value],
+                                      }
                                     : {
-                                        type: "youtube",
+                                        type: RESOURCE_TYPES_STRING.YOUTUBE,
                                         value: extractYouTubeId(a.value),
                                       }
                                 )
@@ -525,7 +516,7 @@ export default function TrialShowPage() {
                                   rewardAmountCap: Number(
                                     r.rewardAmountCap ?? r.amount ?? 1
                                   ),
-                                  rewardType: "max",
+                                  rewardType: REWARD_TYPE.MAX,
                                 }))
                               : [];
 
@@ -555,7 +546,11 @@ export default function TrialShowPage() {
                       >
                         Cancel
                       </Button>
-                      <Button type="submit" disabled={isSaving || isUploading}>
+                      <Button
+                        type="submit"
+                        size={"sm"}
+                        disabled={isSaving || isUploading}
+                      >
                         {isSaving || isUploading ? "Saving…" : "Save"}
                       </Button>
                     </div>
@@ -572,15 +567,15 @@ export default function TrialShowPage() {
             <h1 className="text-2xl tracking-wider">Trial</h1>
             <div className="flex items-center gap-2">
               <Button
-                variant="outline"
-                onClick={() => setIsEditing(true)}
-                aria-label="Edit trial"
+                className="rounded-md px-2"
+                aria-label="Edit poll"
                 title="Edit trial"
+                onClick={() => setIsEditing(true)}
               >
                 {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                <Pencil className="w-4 h-4" />
+                <Edit className="w-4 h-4" />
               </Button>
-              <Button
+              {/* <Button
                 variant="destructive"
                 onClick={handleDelete}
                 disabled={isDeleting}
@@ -592,7 +587,7 @@ export default function TrialShowPage() {
                 ) : (
                   <Trash2 className="w-4 h-4" />
                 )}
-              </Button>
+              </Button> */}
             </div>
           </section>
 
@@ -605,13 +600,13 @@ export default function TrialShowPage() {
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground">Title</div>
-                  <div className="font-medium">{trial.title}</div>
+                  <div className="font-medium break-words">{trial.title}</div>
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground">
                     Description
                   </div>
-                  <div>{trial.description || "-"}</div>
+                  <div className="break-words">{trial.description || "-"}</div>
                 </div>
               </FormCard>
 
@@ -619,7 +614,7 @@ export default function TrialShowPage() {
                 {viewAssets.length ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
                     {viewAssets.map((a, i) => {
-                      return a.type === "youtube" ? (
+                      return a.type === RESOURCE_TYPES_STRING.YOUTUBE ? (
                         <div
                           key={`yt-${i}`}
                           className="flex items-center justify-between rounded-md border p-3"
@@ -641,7 +636,7 @@ export default function TrialShowPage() {
                           <div className="flex items-center gap-3">
                             <img
                               src={a.value}
-                              alt="image"
+                              alt="alt-image"
                               className="h-16 w-16 rounded object-cover"
                             />
                             <div className="text-xs text-muted-foreground">
@@ -665,38 +660,51 @@ export default function TrialShowPage() {
                 onAdd={() => setActiveRewardIndex(-1)}
                 remove={remove}
                 allAssets={ASSET_OPTIONS.map((a) => a.value)}
+                showDistribution={true}
+                hideEditButton={!isEditing}
+                hideDeleteButton={!isEditing}
               />
             </FormCard>
-            <div className="grid grid-cols-1 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormCard title="Target Geo">
-                <h2 className="break-all">
-                  Countries –{renderGeoList(trial.targetGeo?.countries as any)}
-                </h2>
-                <h2 className="break-all">
-                  States –{renderGeoList(trial.targetGeo?.states as any)}
-                </h2>
-                <h2 className="break-all">
-                  Cities –{renderGeoList(trial.targetGeo?.cities as any)}
-                </h2>
-
-                <section className="flex items-center gap-2">
-                  <h2>Created At - </h2>
-                  <p className="text-xs text-muted-foreground">
-                    {fmt(trial.createdAt)}
-                  </p>
-                </section>
-                <section className="flex items-center gap-2">
-                  <h2>Archived At - </h2>
-                  <p className="text-xs text-muted-foreground">
-                    {fmt(trial.archivedAt)}
-                  </p>
-                </section>
-                <section className="flex items-center gap-2">
-                  <h2>Expire Reward At - </h2>
-                  <p className="text-xs text-muted-foreground">
-                    {trial.expireRewardAt ? fmt(trial.expireRewardAt) : "-"}
-                  </p>
-                </section>
+                <div className="flex flex-col gap-2">
+                  <span className="text-sm font-semibold">Countries</span>{" "}
+                  {renderGeoList(trial.targetGeo?.countries ?? [])}
+                </div>
+                <div className="flex flex-col gap-2">
+                  <span className="text-sm font-semibold">States</span>{" "}
+                  {renderGeoList(trial.targetGeo?.states ?? [])}
+                </div>
+                <div className="flex flex-col gap-2">
+                  <span className="text-sm font-semibold">Cities</span>{" "}
+                  {renderGeoList(trial.targetGeo?.cities ?? [])}
+                </div>
+              </FormCard>
+              <FormCard title="Details">
+                {trial?.createdAt && (
+                  <section className="flex items-center gap-2">
+                    <h2>Created At - </h2>
+                    <p className="text-xs text-muted-foreground">
+                      {utcToAdminFormatted(trial.createdAt)}
+                    </p>
+                  </section>
+                )}
+                {trial?.expireRewardAt && (
+                  <section className="flex items-center gap-2">
+                    <h2>Expire Rewards At - </h2>
+                    <p className="text-xs text-muted-foreground">
+                      {utcToAdminFormatted(trial.expireRewardAt)}
+                    </p>
+                  </section>
+                )}
+                {trial?.archivedAt && (
+                  <section className="flex items-center gap-2">
+                    <h2>Archived At - </h2>
+                    <p className="text-xs text-muted-foreground">
+                      {utcToAdminFormatted(trial?.archivedAt)}
+                    </p>
+                  </section>
+                )}
               </FormCard>
             </div>
           </section>
@@ -704,7 +712,11 @@ export default function TrialShowPage() {
       )}
 
       {/* Existing polls table (unchanged) */}
-      <TrialPollTable trialId={id} />
+      {!isEditing && (
+        <div className="h-full" key={`table-id-${isEditing}`}>
+          <TrialPollTable trialId={id} />
+        </div>
+      )}
 
       {/* Delete confirm inline (unchanged logic; UI matches Poll page button style) */}
       {isDeleteOpen && (

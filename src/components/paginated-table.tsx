@@ -26,6 +26,7 @@ type PaginatedTableProps<T> = Exclude<TablePageProps<T>, "data"> & {
   page: number;
   setPage: (p: number) => void;
   pageSize?: any;
+  usingRef?: boolean;
 };
 
 export const fmt = (v?: string | null) =>
@@ -42,6 +43,7 @@ export const PaginatedTable = ({
   page,
   setPage,
   pageSize,
+  usingRef = true,
 }: PaginatedTableProps<any>) => {
   const btnCss = "aspect-square h-8 px-2";
   const iconSize = 16;
@@ -116,7 +118,7 @@ export const PaginatedTable = ({
   }, [currentPage, totalPages]);
 
   return (
-    <>
+    <div className="h-full">
       {/* Render only current page’s rows */}
       <TablePage
         title={title}
@@ -124,6 +126,7 @@ export const PaginatedTable = ({
         onCreate={onCreate}
         columns={columns as any}
         data={tableData}
+        usingRef={usingRef}
       />
 
       {/* Server Pagination Controls */}
@@ -178,6 +181,6 @@ export const PaginatedTable = ({
           Loading page {currentPage}…
         </div>
       )}
-    </>
+    </div>
   );
 };

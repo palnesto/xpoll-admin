@@ -27,6 +27,7 @@ export type TablePageProps<T> = {
   onCreate?: () => void;
   columns: TableColumn<T>[];
   data: T[];
+  usingRef?: boolean;
 };
 
 export function TablePage<T>({
@@ -35,6 +36,7 @@ export function TablePage<T>({
   onCreate,
   columns,
   data,
+  usingRef = true,
 }: TablePageProps<T>) {
   const headerRef = useRef<HTMLDivElement | null>(null);
   const tableRef = useRef<HTMLDivElement | null>(null);
@@ -133,7 +135,7 @@ export function TablePage<T>({
       )}
       <div
         className="border-2 border-muted scrollbar-x"
-        ref={tableRef}
+        ref={usingRef ? tableRef : undefined}
         style={{
           overflowX: "auto",
           borderRadius: "8px",

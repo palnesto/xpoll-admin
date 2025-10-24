@@ -53,7 +53,7 @@ export default function TwoPane({
       {/* Right wrapper (always mounted, animates width) */}
       <div
         ref={rightRef}
-        className={`relative overflow-hidden transition-all duration-500 ${rightClassName}`}
+        className={`relative overflow-hidden transition-all duration-500 ml-10 ${rightClassName}`}
         style={{
           flex: isRightOpen ? `0 0 ${rightWidth}` : "0 0 0px",
         }}
