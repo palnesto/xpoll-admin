@@ -701,6 +701,7 @@ export default function PollShowPage() {
                           control={control}
                           name="resourceAssets"
                           label="Media (Images / YouTube)"
+                          maxAssets={3}
                           isEditing={true}
                         />
                       </FormCard>
