@@ -10,8 +10,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { endpoints } from "@/api/endpoints";
+import { optionTextZod } from "@/validators/poll-trial-form";
 
-const EditSchema = z.object({ text: z.string().trim().min(1, "Required") });
+const EditSchema = z.object({ text: optionTextZod });
 type FormVals = z.infer<typeof EditSchema>;
 
 export const EditOptionModal = () => {

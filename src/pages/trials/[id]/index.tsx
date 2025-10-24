@@ -46,7 +46,12 @@ import {
   toComparableAssets,
 } from "@/validators/poll-trial-form";
 import { assetSpecs } from "@/utils/currency-assets/asset";
-import { utcToAdminFormatted } from "@/utils/time";
+import {
+  __SYSYEM_STANDARAD_DATE_FORMAT__,
+  localAdminISOtoUTC,
+  utcToAdminFormatted,
+} from "@/utils/time";
+import dayjs from "dayjs";
 
 export default function TrialShowPage() {
   const navigate = useNavigate();
@@ -250,8 +255,19 @@ export default function TrialShowPage() {
     }
 
     const prevExpire = (trial.expireRewardAt ?? "").trim();
-    const nowExpire = (v.expireRewardAt ?? "").trim();
-    if (prevExpire !== nowExpire) {
+    const nowExpire =
+      v.expireRewardAt === null
+        ? null
+        : (
+            localAdminISOtoUTC(
+              dayjs(v.expireRewardAt?.trim()).format(
+                __SYSYEM_STANDARAD_DATE_FORMAT__
+              )
+            ) ?? ""
+          ).trim();
+    if (nowExpire === null) {
+      payload.expireRewardAt = null;
+    } else if (prevExpire !== nowExpire) {
       payload.expireRewardAt = nowExpire ? nowExpire : undefined;
     }
 

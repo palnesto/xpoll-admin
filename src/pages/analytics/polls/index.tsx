@@ -41,6 +41,7 @@ import { useTablePollsStore } from "@/stores/table_polls.store";
 import { ConfirmDeletePollsModal } from "@/components/modals/table_polls/delete";
 import { cn } from "@/lib/utils";
 import { assetSpecs, AssetType } from "@/utils/currency-assets/asset";
+import { utcToAdminFormatted } from "@/utils/time";
 
 const PAGE_SIZE = 10;
 
@@ -664,6 +665,20 @@ const MemoPolls = () => {
           {entries?.map((poll: any) => {
             const checked = selectedApi.isSelected(poll._id);
             const isExternalAuthor = !!poll.externalAuthor;
+            const expireRewardAt = poll.expireRewardAt;
+            const expiry: null | {
+              isExpired: boolean;
+              value: string;
+            } = expireRewardAt
+              ? (() => {
+                  const now = new Date();
+                  const expiryDate = new Date(expireRewardAt);
+                  return {
+                    isExpired: expiryDate.getTime() < now.getTime(),
+                    value: expiryDate.toISOString(),
+                  };
+                })()
+              : null;
             return (
               <div key={poll._id} className="flex items-stretch gap-3">
                 {/* Checkbox on the left */}
@@ -694,13 +709,16 @@ const MemoPolls = () => {
                       {poll.title}
                     </CardTitle>
                     <CardDescription className="text-muted-foreground">
-                      {poll.viewCount ?? 0} views • {poll.voteCount ?? 0} votes
+                      <p>
+                        {poll.viewCount ?? 0} views • {poll.voteCount ?? 0}{" "}
+                        votes
+                      </p>
                     </CardDescription>
                   </CardHeader>
                   <CardFooter className="flex flex-col gap-2 items-end">
                     <span
                       className={cn(
-                        "text-white w-fit text-xs px-1.5 py-1 rounded-xl font-semibold",
+                        "text-white w-fit text-xs px-1.5 py-1 rounded-xl font-semibold shrink-0",
                         {
                           "bg-[#24aae6]": isExternalAuthor, // user
                           "bg-[#fe5722]": !isExternalAuthor, // admin
@@ -709,6 +727,7 @@ const MemoPolls = () => {
                     >
                       {isExternalAuthor ? "User Poll" : "Admin Poll"}
                     </span>
+
                     <div className="flex items-center gap-3">
                       <Button
                         onClick={() =>
@@ -744,6 +763,21 @@ const MemoPolls = () => {
                         <ChartNoAxesCombined />
                       </Button>
                     </div>
+                    <p className="mt-2 text-xs text-zinc-400">
+                      Expiry:{" "}
+                      {expiry ? (
+                        <span
+                          className={cn({
+                            "text-red-700": expiry.isExpired,
+                            "text-zinc-400": !expiry.isExpired,
+                          })}
+                        >
+                          {utcToAdminFormatted(expiry?.value)}
+                        </span>
+                      ) : (
+                        "No Expiry"
+                      )}
+                    </p>
                   </CardFooter>
                 </Card>
               </div>

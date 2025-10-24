@@ -53,7 +53,11 @@ import RewardDetailPanel from "@/components/polling/editors/RewardDetailPanel";
 import RewardsList from "@/components/polling/editors/RewardsList";
 import ResourceAssetsPreview from "@/components/polling/editors/ResourceAssetsPreview";
 import { assetSpecs, AssetType } from "@/utils/currency-assets/asset";
-import { utcToAdminFormatted } from "@/utils/time";
+import {
+  __SYSYEM_STANDARAD_DATE_FORMAT__,
+  localAdminISOtoUTC,
+  utcToAdminFormatted,
+} from "@/utils/time";
 import {
   __MAX_OPTIONS_COUNT__,
   _MAX_RESOURCE_ASSETS_COUNT_,
@@ -72,6 +76,7 @@ import {
   toComparableAssets,
   renderGeoList,
 } from "@/validators/poll-trial-form";
+import dayjs from "dayjs";
 
 type PollOption = {
   _id: string;
@@ -473,7 +478,15 @@ export default function PollShowPage() {
       // expireRewardAt diff
       const prevExpire = (poll.expireRewardAt ?? "").trim();
       const nowExpire =
-        v.expireRewardAt === null ? null : (v.expireRewardAt ?? "").trim();
+        v.expireRewardAt === null
+          ? null
+          : (
+              localAdminISOtoUTC(
+                dayjs(v.expireRewardAt?.trim()).format(
+                  __SYSYEM_STANDARAD_DATE_FORMAT__
+                )
+              ) ?? ""
+            ).trim();
       if (nowExpire === null) {
         payload.expireRewardAt = null;
       } else if (prevExpire !== nowExpire) {

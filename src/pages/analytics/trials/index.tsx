@@ -40,6 +40,8 @@ import { useTableTrialsStore } from "@/stores/table_trials.store";
 import { Opt, Tri, useTrialFilters } from "@/stores/useTrialFilters";
 import { ConfirmDeleteTrialPollsModal } from "@/components/modals/table_trials/delete";
 import { assetSpecs, AssetType } from "@/utils/currency-assets/asset";
+import { cn } from "@/lib/utils";
+import { utcToAdminFormatted } from "@/utils/time";
 
 const PAGE_SIZE = 10;
 
@@ -616,6 +618,25 @@ const MemoTrials = () => {
         <div className="flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
           {entries?.map((trial: any) => {
             const checked = selectedApi.isSelected(trial._id);
+            const expireRewardAt = trial.expireRewardAt;
+            const expiry: null | {
+              isExpired: boolean;
+              value: string;
+            } = expireRewardAt
+              ? (() => {
+                  const now = new Date();
+                  const expiryDate = new Date(expireRewardAt);
+                  return {
+                    isExpired: expiryDate.getTime() < now.getTime(),
+                    value: expiryDate.toISOString(),
+                  };
+                })()
+              : null;
+
+            console.log({
+              expireRewardAt,
+              expiry,
+            });
             return (
               <div key={trial._id} className="flex items-stretch gap-3">
                 {/* Checkbox on the left */}
@@ -650,33 +671,51 @@ const MemoTrials = () => {
                       responses
                     </CardDescription>
                   </CardHeader>
-                  <CardFooter className="flex items-center gap-3">
-                    <Button
-                      onClick={() =>
-                        navigate(`/trials/${trial._id}`, {
-                          state: {
-                            isNavigationEditing: false,
-                          },
-                        })
-                      }
-                      variant="outline"
-                      className="w-fit md:h-12 rounded-2xl"
-                    >
-                      <Eye />
-                    </Button>
-                    <Button
-                      onClick={() =>
-                        navigate(`/trials/${trial._id}`, {
-                          state: {
-                            isNavigationEditing: true,
-                          },
-                        })
-                      }
-                      variant="outline"
-                      className="w-fit md:h-12 rounded-2xl"
-                    >
-                      <Edit />
-                    </Button>
+                  <CardFooter className="flex flex-col gap-2 items-end">
+                    <div className="flex items-center gap-3">
+                      <Button
+                        onClick={() =>
+                          navigate(`/trials/${trial._id}`, {
+                            state: {
+                              isNavigationEditing: false,
+                            },
+                          })
+                        }
+                        variant="outline"
+                        className="w-fit md:h-12 rounded-2xl"
+                      >
+                        <Eye />
+                      </Button>
+                      <Button
+                        onClick={() =>
+                          navigate(`/trials/${trial._id}`, {
+                            state: {
+                              isNavigationEditing: true,
+                            },
+                          })
+                        }
+                        variant="outline"
+                        className="w-fit md:h-12 rounded-2xl"
+                      >
+                        <Edit />
+                      </Button>
+                    </div>
+                    <p className="mt-2 text-xs text-zinc-400">
+                      Expiry:{" "}
+                      {expiry ? (
+                        <span
+                          className={cn({
+                            "text-red-700": expiry.isExpired,
+                            "text-zinc-400": !expiry.isExpired,
+                          })}
+                        >
+                          {utcToAdminFormatted(expiry?.value)}
+                        </span>
+                      ) : (
+                        "No Expiry"
+                      )}
+                    </p>
+
                     {/* <Button
                       onClick={() => handleViewMore(trial._id, trial.title)}
                       variant="outline"

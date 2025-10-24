@@ -38,6 +38,11 @@ import {
   trialResourceAssetFormZ,
 } from "@/validators/poll-trial-form";
 import { assetSpecs } from "@/utils/currency-assets/asset";
+import {
+  __SYSYEM_STANDARAD_DATE_FORMAT__,
+  localAdminISOtoUTC,
+} from "@/utils/time";
+import dayjs from "dayjs";
 
 const trialFormZ = z
   .object({
@@ -121,7 +126,7 @@ export default function TrialCreatePage() {
       queryClient.invalidateQueries({
         queryKey: [endpoints.entities.trials.all],
       });
-      navigate("/trials");
+      navigate("/analytics/trials");
     },
   });
 
@@ -168,7 +173,11 @@ export default function TrialCreatePage() {
           : {}),
         targetGeo: v.trial.targetGeo,
         expireRewardAt: v.trial.expireRewardAt?.trim()
-          ? v.trial.expireRewardAt
+          ? localAdminISOtoUTC(
+              dayjs(v.trial.expireRewardAt?.trim()).format(
+                __SYSYEM_STANDARAD_DATE_FORMAT__
+              )
+            )
           : undefined,
       },
       polls: await Promise.all(

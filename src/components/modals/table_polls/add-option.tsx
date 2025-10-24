@@ -10,8 +10,9 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { endpoints } from "@/api/endpoints";
+import { optionTextZod } from "@/validators/poll-trial-form";
 
-const AddSchema = z.object({ text: z.string().trim().min(1, "Required") });
+const AddSchema = z.object({ text: optionTextZod });
 type FormVals = z.infer<typeof AddSchema>;
 
 export const AddOptionModal = () => {
