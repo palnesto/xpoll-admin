@@ -27,6 +27,8 @@ type Props = {
   remove: (index: number) => void;
   allAssets: string[];
   showDistribution?: boolean;
+  hideEditButton?: boolean;
+  hideDeleteButton?: boolean;
 };
 function toParentAmount(
   assetId: AssetType,
@@ -55,6 +57,8 @@ export default function RewardsList({
   remove,
   allAssets,
   showDistribution = false,
+  hideEditButton = false,
+  hideDeleteButton = false,
 }: Props) {
   const takenAssets = fields.map((f) => f.assetId);
   const canAdd = takenAssets.length < allAssets.length;
@@ -92,7 +96,7 @@ export default function RewardsList({
           const rewardType = field?.rewardType ?? "max";
           return (
             <Card
-              key={field.id || idx}
+              key={`${field.id}${idx}`}
               className="p-4 flex justify-between items-center bg-dark-sidebar border-zinc-800"
             >
               {/* new */}
@@ -111,24 +115,28 @@ export default function RewardsList({
                     </div>
 
                     <div>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="outline"
-                        onClick={() => onEdit(idx)}
-                      >
-                        <Pencil />
-                      </Button>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="outline"
-                        onClick={() => fields.length && remove(idx)}
-                        disabled={!fields.length}
-                        className="cursor-pointer disabled:cursor-not-allowed"
-                      >
-                        <Trash2 className="text-red-600" />
-                      </Button>
+                      {!hideEditButton && (
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          onClick={() => onEdit(idx)}
+                        >
+                          <Pencil />
+                        </Button>
+                      )}
+                      {!hideDeleteButton && (
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          onClick={() => fields.length && remove(idx)}
+                          disabled={!fields.length}
+                          className="cursor-pointer disabled:cursor-not-allowed"
+                        >
+                          <Trash2 className="text-red-600" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                   {isEditing ? (

@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import RewardCurveTable from "@/components/commons/reward-curve-table";
 import { assetSpecs, AssetType } from "@/utils/currency-assets/asset";
 import { amount, unwrapString } from "@/utils/currency-assets/base";
 import { RewardsAccordion } from "@/components/reward-table/rewards-accordion";
@@ -230,7 +229,6 @@ function useClampedParentInput(params: {
 export default function RewardDetailPanel({
   index,
   assetOptions,
-  totalLevels,
   onClose,
   rewards,
   append,
@@ -250,35 +248,59 @@ export default function RewardDetailPanel({
     );
   }, [assetOptions, takenAssets, isAddMode, index, rewards]);
 
-  const [draft, setDraft] = useState<DraftReward>({
-    assetId: isAddMode
-      ? availableAssetOptions[0]?.value ?? ""
-      : rewards[index]?.assetId ?? assetOptions[0].value,
-    amount: !isAddMode ? String(rewards[index]?.amount ?? "") : "",
-    rewardAmountCap: !isAddMode
-      ? String(rewards[index]?.rewardAmountCap ?? "")
-      : "",
-    rewardType: !isAddMode ? rewards[index]?.rewardType ?? "max" : "max",
-  });
+  // Helper to construct a fresh draft from props
+  const makeDraft = (): DraftReward => {
+    if (!isAddMode) {
+      const curr = rewards[index];
+      return {
+        assetId: curr?.assetId ?? availableAssetOptions[0]?.value ?? "",
+        amount: curr?.amount != null ? String(curr.amount) : "",
+        rewardAmountCap:
+          curr?.rewardAmountCap != null ? String(curr.rewardAmountCap) : "",
+        rewardType: (curr?.rewardType as RewardType) ?? "max",
+      };
+    }
+    // Add mode
+    return {
+      assetId: availableAssetOptions[0]?.value ?? "",
+      amount: "",
+      rewardAmountCap: "",
+      rewardType: "max",
+    };
+  };
+
+  const [draft, setDraft] = useState<DraftReward>(makeDraft);
+
+  // 🔁 Re-sync draft whenever the selection / list / options change
+  useEffect(() => {
+    setDraft(makeDraft());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index, rewards, availableAssetOptions.length]);
 
   // Controllers (no cross-field clamping here—just store what the user types)
   const amountField = useClampedParentInput({
-    assetId: draft.assetId as AssetType,
+    assetId: (draft.assetId ||
+      availableAssetOptions[0]?.value ||
+      "xOcta") as AssetType,
     baseValue: draft.amount,
     onBaseChange: (nextBase) => setDraft((d) => ({ ...d, amount: nextBase })),
   });
 
   const capField = useClampedParentInput({
-    assetId: draft.assetId as AssetType,
+    assetId: (draft.assetId ||
+      availableAssetOptions[0]?.value ||
+      "xOcta") as AssetType,
     baseValue: draft.rewardAmountCap,
     onBaseChange: (nextBase) =>
       setDraft((d) => ({ ...d, rewardAmountCap: nextBase })),
   });
 
-  // Cross-field validation (no mutation)
   const amountNum = Number(draft.amount || 0);
   const capNum = Number(draft.rewardAmountCap || 0);
   const crossInvalid = capNum > 0 && amountNum > capNum;
+
+  const noAssetSelectable =
+    !draft.assetId && availableAssetOptions.length === 0;
 
   const handleAdd = () => {
     if (
@@ -330,6 +352,7 @@ export default function RewardDetailPanel({
         value={draft.assetId}
         onChange={(e) => setDraft((d) => ({ ...d, assetId: e.target.value }))}
         className="w-full rounded-md bg-zinc-800 p-2"
+        disabled={noAssetSelectable}
       >
         {availableAssetOptions.map((a) => (
           <option key={a.value} value={a.value}>
@@ -338,7 +361,7 @@ export default function RewardDetailPanel({
         ))}
       </select>
 
-      {/* Amount (PARENT-facing; stores BASE in draft.amount) */}
+      {/* Amount */}
       <div>
         <div className="flex flex-col gap-2 text-zinc-400">
           <p className="text-xs">Amount Per Person</p>
@@ -350,6 +373,7 @@ export default function RewardDetailPanel({
             placeholder={amountField.placeholder}
             onChange={(e) => amountField.onChange(e.target.value)}
             onBlur={amountField.onBlur}
+            disabled={!draft.assetId}
           />
         </div>
         <div className="mt-1 flex items-center justify-between">
@@ -357,8 +381,17 @@ export default function RewardDetailPanel({
             {amountField.value ? (
               <>
                 ≈{" "}
-                {toParentAmount(draft.assetId as AssetType, draft.amount || 0)}{" "}
-                {assetSpecs[draft.assetId as AssetType]?.parent}
+                {toParentAmount(
+                  (draft.assetId ||
+                    availableAssetOptions[0]?.value) as AssetType,
+                  draft.amount || 0
+                )}{" "}
+                {
+                  assetSpecs[
+                    (draft.assetId ||
+                      availableAssetOptions[0]?.value) as AssetType
+                  ]?.parent
+                }
               </>
             ) : (
               "\u00A0"
@@ -374,7 +407,7 @@ export default function RewardDetailPanel({
         </div>
       </div>
 
-      {/* Reward Cap (PARENT-facing; stores BASE in draft.rewardAmountCap) */}
+      {/* Cap */}
       <div>
         <div className="flex flex-col gap-2 text-zinc-400">
           <p className="text-xs">Reward Cap</p>
@@ -388,6 +421,7 @@ export default function RewardDetailPanel({
               .replace("100", "1000")}
             onChange={(e) => capField.onChange(e.target.value)}
             onBlur={capField.onBlur}
+            disabled={!draft.assetId}
           />
         </div>
         <div className="mt-1 flex items-center justify-between">
@@ -396,10 +430,16 @@ export default function RewardDetailPanel({
               <>
                 ≈{" "}
                 {toParentAmount(
-                  draft.assetId as AssetType,
+                  (draft.assetId ||
+                    availableAssetOptions[0]?.value) as AssetType,
                   draft.rewardAmountCap || 0
                 )}{" "}
-                {assetSpecs[draft.assetId as AssetType]?.parent}
+                {
+                  assetSpecs[
+                    (draft.assetId ||
+                      availableAssetOptions[0]?.value) as AssetType
+                  ]?.parent
+                }
               </>
             ) : (
               "\u00A0"
@@ -415,7 +455,7 @@ export default function RewardDetailPanel({
         </div>
       </div>
 
-      {/* Cross-field error (Amount must not exceed Cap) */}
+      {/* Cross-field error */}
       {crossInvalid && (
         <p className="text-sm text-red-400">
           Amount per user cannot exceed the Reward cap.
@@ -429,6 +469,7 @@ export default function RewardDetailPanel({
           setDraft((d) => ({ ...d, rewardType: e.target.value as RewardType }))
         }
         className="w-full rounded-md bg-zinc-800 p-2"
+        disabled={!draft.assetId}
       >
         <option value="max">Max</option>
         <option value="min">Min</option>
@@ -440,7 +481,11 @@ export default function RewardDetailPanel({
         rewardType={draft.rewardType}
         perUserReward={draft.amount}
         rewardCap={draft.rewardAmountCap}
-        asset={draft.assetId as AssetType}
+        asset={
+          (draft.assetId ||
+            availableAssetOptions[0]?.value ||
+            "xOcta") as AssetType
+        }
         size="sm"
       />
 

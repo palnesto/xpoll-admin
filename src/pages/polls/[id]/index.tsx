@@ -56,6 +56,7 @@ import RewardDetailPanel from "@/components/polling/editors/RewardDetailPanel";
 import RewardsList from "@/components/polling/editors/RewardsList";
 import ResourceAssetsPreview from "@/components/polling/editors/ResourceAssetsPreview";
 import { AssetOption } from "@/components/commons/selects/asset-multi-select";
+import { assetSpecs } from "@/utils/currency-assets/asset";
 
 /* ---------- constants ---------- */
 const TOTAL_LEVELS = 10 as const;
@@ -266,8 +267,8 @@ export default function PollShowPage() {
       rewards: [
         {
           assetId: ASSET_OPTIONS[0].value as any,
-          amount: "",
-          rewardAmountCap: "",
+          amount: 1,
+          rewardAmountCap: 1,
           rewardType: "max",
         },
       ],
@@ -824,16 +825,33 @@ export default function PollShowPage() {
 
                     {/* Rewards (same as create) */}
                     {!isTrialPoll && (
-                      <FormCard title="Rewards">
-                        <RewardsList
-                          fields={fields}
-                          assetOptions={ASSET_OPTIONS as any}
-                          onEdit={setActiveRewardIndex}
-                          onAdd={() => setActiveRewardIndex(-1)}
-                          remove={remove}
-                          allAssets={ASSET_OPTIONS.map((a) => a.value)}
-                        />
-                      </FormCard>
+                      <>
+                        <div className="flex gap-2 items-center">
+                          <Button
+                            type="button"
+                            size="icon"
+                            onClick={() => setActiveRewardIndex(-1)}
+                            className="w-fit p-2"
+                            disabled={
+                              fields?.length >= Object.keys(assetSpecs)?.length
+                            }
+                          >
+                            Add reward
+                          </Button>
+                        </div>
+                        <FormCard title="Rewards">
+                          <RewardsList
+                            fields={fields}
+                            assetOptions={ASSET_OPTIONS as any}
+                            onEdit={setActiveRewardIndex}
+                            onAdd={() => setActiveRewardIndex(-1)}
+                            remove={remove}
+                            allAssets={ASSET_OPTIONS.map((a) => a.value)}
+                            hideEditButton={!isEditing}
+                            hideDeleteButton={!isEditing}
+                          />
+                        </FormCard>
+                      </>
                     )}
 
                     {/* Target Geo (hidden for trial polls) */}
@@ -1072,6 +1090,8 @@ export default function PollShowPage() {
                 remove={remove}
                 allAssets={ASSET_OPTIONS.map((a) => a.value)}
                 showDistribution={true}
+                hideEditButton={!isEditing}
+                hideDeleteButton={!isEditing}
               />
             </FormCard>
             {/* Hide Target Geo block entirely for trial polls */}
