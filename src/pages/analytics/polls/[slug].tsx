@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import {
   Pie,
@@ -480,10 +480,6 @@ const MemoIndividualPolls = () => {
     });
   }, [countryOpts, stateOpts, cityOpts, granularity, includeArchived]); // eslint-disable-line
 
-  const handleBack = () => {
-    navigate(`/analytics/polls`);
-  };
-
   const detailsUrl = useMemo(() => {
     if (!slug) return "";
     const base = endpoints.entities.polls.getdetailsById(String(slug));
@@ -509,6 +505,14 @@ const MemoIndividualPolls = () => {
   const { data, isLoading, error, refetch } = useApiQuery(detailsUrl, {
     key: ["poll-details", detailsUrl],
   } as any);
+
+  const trialIdIfExists = data?.data?.data?.trial?.trial?._id ?? null;
+
+  const handleBack = useCallback(() => {
+    if (trialIdIfExists) {
+      navigate(`/trials/${trialIdIfExists}`);
+    } else navigate(`/analytics/polls`);
+  }, [navigate, trialIdIfExists]);
 
   useEffect(() => {
     try {

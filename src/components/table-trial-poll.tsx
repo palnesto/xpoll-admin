@@ -95,7 +95,7 @@ export default function TrialPollTable({ trialId }: { trialId: string }) {
     <>
       <div className="min-h-[80vh] h-[80vh]">
         <PaginatedTable
-          title="Polls in this Trial"
+          title="Polls in this Trail"
           columns={columns}
           tableData={tableData}
           data={data}

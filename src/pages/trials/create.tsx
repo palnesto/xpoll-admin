@@ -199,7 +199,7 @@ export default function TrialCreatePage() {
       <div className="p-6 space-y-8 w-full">
         {/* Header (matches Create Poll) */}
         <div className="flex justify-between items-center w-full">
-          <h1 className="text-2xl tracking-wider">Create Trial</h1>
+          <h1 className="text-2xl tracking-wider">Create Trail</h1>
           <Button
             type="submit"
             form="trial-form"
@@ -207,7 +207,7 @@ export default function TrialCreatePage() {
             className="text-base font-light tracking-wide"
           >
             {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Create Trial
+            Create Trail
           </Button>
         </div>
 
@@ -241,8 +241,8 @@ export default function TrialCreatePage() {
                       name="trial.title"
                       render={({ field }) => (
                         <FormInput
-                          label="Trial Title"
-                          placeholder="Enter trial title"
+                          label="Trail Title"
+                          placeholder="Enter trail title"
                           {...field}
                         />
                       )}

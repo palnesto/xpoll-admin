@@ -456,9 +456,9 @@ const MemoTrials = () => {
         <section className="flex flex-col gap-4">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex flex-col gap-1">
-              <h1 className="text-3xl font-bold">Trials</h1>
+              <h1 className="text-3xl font-bold">Trails</h1>
               <p className="text-muted-foreground">
-                View detailed analytics of all the trials
+                View detailed analytics of all the trails
               </p>
             </div>
             <div>
@@ -466,7 +466,7 @@ const MemoTrials = () => {
                 variant="default"
                 onClick={() => navigate("/trials/create")}
               >
-                <Plus /> Create New Trial
+                <Plus /> Create New Trail
               </Button>
             </div>
           </div>
@@ -636,10 +636,6 @@ const MemoTrials = () => {
                 })()
               : null;
 
-            console.log({
-              expireRewardAt,
-              expiry,
-            });
             return (
               <div key={trial._id} className="flex items-stretch gap-3">
                 {/* Checkbox on the left */}

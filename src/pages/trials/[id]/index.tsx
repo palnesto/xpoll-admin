@@ -359,7 +359,7 @@ export default function TrialShowPage() {
         <div className="p-6 space-y-8 w-full">
           {/* ===== Header (parity with Poll edit) ===== */}
           <div className="flex justify-between items-center w-full">
-            <h1 className="text-2xl tracking-wider">Edit Trial</h1>
+            <h1 className="text-2xl tracking-wider">Edit Trail</h1>
             {/* <Button
               type="submit"
               form="trial-form"
@@ -398,12 +398,12 @@ export default function TrialShowPage() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel className="text-xs text-muted-foreground">
-                                Title
+                                Trial Title
                               </FormLabel>
                               <FormControl>
                                 <Input
                                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                  placeholder="Trial title"
+                                  placeholder="Trail title"
                                   {...field}
                                 />
                               </FormControl>
@@ -580,7 +580,7 @@ export default function TrialShowPage() {
         <>
           {/* ===== VIEW MODE (parity with Poll view) ===== */}
           <section className="flex justify-between items-center w-full">
-            <h1 className="text-2xl tracking-wider">Trial</h1>
+            <h1 className="text-2xl tracking-wider">Trail</h1>
             <div className="flex items-center gap-2">
               <Button
                 className="rounded-md px-2"

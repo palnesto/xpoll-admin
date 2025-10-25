@@ -5,6 +5,8 @@ import { DEFAULT_PAGE_SIZE } from "@/constants";
 import { fmt, PaginatedTable } from "@/components/paginated-table";
 import { amount, unwrapString } from "@/utils/currency-assets/base";
 import { assetSpecs } from "@/utils/currency-assets/asset";
+import { utcToAdminFormatted } from "@/utils/time";
+import { capitalize } from "lodash";
 
 function LegsGrid({ legs }: { legs: any[] }) {
   if (!Array.isArray(legs) || legs.length === 0) return <span>--</span>;
@@ -85,7 +87,11 @@ export const AllLedgerTable = () => {
         return {
           ...r,
           username: meta.username ?? "Admin",
-          action: r.action ?? "--",
+          action: r.action
+            ? r.action === "trial-reward"
+              ? capitalize("trail reward")
+              : capitalize(r.action)
+            : "--",
           // keep legs on the row so the column renderer can use it
           legs: Array.isArray(r.legs) ? r.legs : [],
           createdAt: r.createdAt,
@@ -108,7 +114,7 @@ export const AllLedgerTable = () => {
     {
       key: "createdAt",
       header: "Created At",
-      render: (val: any) => <span>{fmt(val)}</span>,
+      render: (val: any) => <span>{utcToAdminFormatted(val)}</span>,
     },
     // {
     //   key: "archivedAt",

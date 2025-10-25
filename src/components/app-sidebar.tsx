@@ -144,7 +144,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             isActive: isAnalyticsPoll,
           },
           {
-            title: "Trials Analytics",
+            title: "Trails Analytics",
             url: "/analytics/trials",
             isActive: isAnalyticsTrials,
           },
