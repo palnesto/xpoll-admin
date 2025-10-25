@@ -5,9 +5,10 @@ import { useApiQuery } from "@/hooks/useApiQuery";
 import { ThreeDotMenu } from "@/components/commons/three-dot-menu";
 import { Eye, Trash } from "lucide-react";
 import { DEFAULT_PAGE_SIZE } from "@/constants";
-import { fmt, PaginatedTable } from "@/components/paginated-table";
+import { PaginatedTable } from "@/components/paginated-table";
 import { useTableTrialsStore } from "@/stores/table_trials.store";
 import { ConfirmDeleteTrialPollsModal } from "@/components/modals/table_trials/delete";
+import { utcToAdminFormatted } from "@/utils/time";
 
 export default function Trials() {
   const navigate = useNavigate();
@@ -57,12 +58,12 @@ export default function Trials() {
     {
       key: "createdAt",
       header: "Created At",
-      render: (val: any) => <span>{fmt(val)}</span>,
+      render: (val: any) => <span>{utcToAdminFormatted(val)}</span>,
     },
     {
       key: "archivedAt",
       header: "Archived At",
-      render: (val: any) => <span>{fmt(val)}</span>,
+      render: (val: any) => <span>{utcToAdminFormatted(val)}</span>,
     },
     {
       key: "tableOptions",

@@ -5,10 +5,11 @@ import { useApiQuery } from "@/hooks/useApiQuery";
 import { ThreeDotMenu } from "@/components/commons/three-dot-menu";
 import { Eye, Trash } from "lucide-react";
 import { DEFAULT_PAGE_SIZE } from "@/constants";
-import { fmt, PaginatedTable } from "@/components/paginated-table";
+import { PaginatedTable } from "@/components/paginated-table";
 
 import { useTablePollsStore } from "@/stores/table_polls.store";
 import { ConfirmDeletePollsModal } from "@/components/modals/table_polls/delete";
+import { utcToAdminFormatted } from "@/utils/time";
 
 export default function Polls() {
   const navigate = useNavigate();
@@ -82,12 +83,12 @@ export default function Polls() {
     {
       key: "createdAt",
       header: "Created At",
-      render: (val: any) => <span>{fmt(val)}</span>,
+      render: (val: any) => <span>{utcToAdminFormatted(val)}</span>,
     },
     {
       key: "archivedAt",
       header: "Archived At",
-      render: (val: any) => <span>{fmt(val)}</span>,
+      render: (val: any) => <span>{utcToAdminFormatted(val)}</span>,
     },
     {
       key: "tableOptions",

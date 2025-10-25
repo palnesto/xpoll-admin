@@ -6,6 +6,7 @@ import { appToast } from "@/utils/toast";
 import { endpoints } from "@/api/endpoints";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
+import { useApiQuery } from "@/hooks/useApiQuery";
 
 type Props = {
   ids: string[];
@@ -14,6 +15,9 @@ type Props = {
 };
 
 export function ApproveSellIntentModal({ ids, onClose, invalidateKey }: Props) {
+  const { data } = useApiQuery(endpoints.adminMe);
+  const internalAccountId = data?.data?.data?.id;
+  console.log("internalAccountId", internalAccountId);
   const [txnHash, setTxnHash] = useState<string>("");
   const { mutate, isPending } = useApiMutation<any, any>({
     route: endpoints.entities.actions.createSellApprove,
@@ -44,12 +48,24 @@ export function ApproveSellIntentModal({ ids, onClose, invalidateKey }: Props) {
           <Button
             onClick={() => {
               if (!txnHash) return;
-              else if (txnHash.length < 25) {
+              if (!internalAccountId) {
+                appToast.error("internalAccountId not passed");
+                return;
+              } else if (txnHash.length < 25) {
                 appToast.error("Invalid transaction hash");
                 console.log("invalid txnHash", txnHash);
                 return;
               }
-              mutate({ actionIds: ids, txnHash: txnHash.trim() });
+              const actionIds = ids?.map((id) => {
+                return {
+                  actionId: id,
+                  txnHash: txnHash.trim(),
+                };
+              });
+              mutate({
+                actionIds,
+                internalAccountId,
+              });
             }}
             disabled={isPending}
           >

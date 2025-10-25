@@ -126,10 +126,11 @@ const MemoTrials = () => {
     //   },
     // },
     {
-      label: "Delete",
+      label: "Archive",
       btnClassName: "bg-red-600 hover:bg-red-700 text-white",
-      onClick: () => {
-        setIsDeleting(selectedIds);
+      onClick: (items, api) => {
+        console.log("Delete trials:", items);
+        setIsDeleting(items);
       },
     },
   ];
@@ -471,6 +472,8 @@ const MemoTrials = () => {
             </div>
           </div>
 
+          <PollAndTrialFilterNote />
+
           <div className="flex justify-between w-full gap-2">
             <Input
               className="md:w-[40dvw]"
@@ -614,8 +617,6 @@ const MemoTrials = () => {
             <span className="text-sm text-muted-foreground">Loading…</span>
           </div>
         )}
-
-        <PollAndTrialFilterNote />
 
         {/* Trial list with per-card checkbox */}
         <div className="flex flex-col gap-4 max-h-[70vh] overflow-y-auto">

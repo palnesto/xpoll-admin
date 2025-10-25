@@ -4,11 +4,12 @@ import { useApiQuery } from "@/hooks/useApiQuery";
 import { ThreeDotMenu } from "@/components/commons/three-dot-menu";
 import { ArchiveRestore, ArchiveX } from "lucide-react";
 import { DEFAULT_PAGE_SIZE } from "@/constants";
-import { fmt, PaginatedTable } from "@/components/paginated-table";
+import { PaginatedTable } from "@/components/paginated-table";
 import { useTableSellIntentStore } from "@/stores/table_sell_intent";
 import { amount, unwrapString } from "@/utils/currency-assets/base";
 import { generateStatus } from "../sell-intent";
 import { assetSpecs } from "@/utils/currency-assets/asset";
+import { utcToAdminFormatted } from "@/utils/time";
 
 export default function SellIntent() {
   const [page, setPage] = useState<number>(1);
@@ -90,12 +91,12 @@ export default function SellIntent() {
     {
       key: "createdAt",
       header: "Rejected At",
-      render: (val: any) => <span>{fmt(val)}</span>,
+      render: (val: any) => <span>{utcToAdminFormatted(val)}</span>,
     },
     // {
     //   key: "archivedAt",
     //   header: "Archived At",
-    //   render: (val: any) => <span>{fmt(val)}</span>,
+    //   render: (val: any) => <span>{utcToAdminFormatted(val)}</span>,
     // },
   ] as const;
 

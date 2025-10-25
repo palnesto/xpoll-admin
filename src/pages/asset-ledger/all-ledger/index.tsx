@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { endpoints } from "@/api/endpoints";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { DEFAULT_PAGE_SIZE } from "@/constants";
-import { fmt, PaginatedTable } from "@/components/paginated-table";
+import { PaginatedTable } from "@/components/paginated-table";
 import { amount, unwrapString } from "@/utils/currency-assets/base";
 import { assetSpecs } from "@/utils/currency-assets/asset";
 import { utcToAdminFormatted } from "@/utils/time";
@@ -119,7 +119,7 @@ export const AllLedgerTable = () => {
     // {
     //   key: "archivedAt",
     //   header: "Archived At",
-    //   render: (val: any) => <span>{fmt(val)}</span>,
+    //   render: (val: any) => <span>{utcToAdminFormatted(val)}</span>,
     // },
   ] as const;
 

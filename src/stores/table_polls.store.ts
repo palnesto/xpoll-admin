@@ -1,7 +1,7 @@
 import { create } from "zustand";
 
 type DeletePollsState = {
-  pollId: string;
+  trialId: string;
   title: string;
 };
 type TablePollsId = string;

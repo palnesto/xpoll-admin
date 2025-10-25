@@ -2,10 +2,11 @@ import { useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { endpoints } from "@/api/endpoints";
 import { useApiQuery } from "@/hooks/useApiQuery";
-import { PaginatedTable, fmt } from "@/components/paginated-table";
+import { PaginatedTable } from "@/components/paginated-table";
 import { DEFAULT_PAGE_SIZE } from "@/constants";
 import { ThreeDotMenu } from "@/components/commons/three-dot-menu";
 import { Pencil, Archive } from "lucide-react";
+import { utcToAdminFormatted } from "@/utils/time";
 
 export default function SlugsTable() {
   const navigate = useNavigate();
@@ -58,12 +59,12 @@ export default function SlugsTable() {
     {
       key: "createdAt",
       header: "Created At",
-      render: (val: any) => <span>{fmt(val)}</span>,
+      render: (val: any) => <span>{utcToAdminFormatted(val)}</span>,
     },
     {
       key: "archivedAt",
       header: "Archived At",
-      render: (val: any) => <span>{fmt(val)}</span>,
+      render: (val: any) => <span>{utcToAdminFormatted(val)}</span>,
     },
     {
       key: "tableOptions",

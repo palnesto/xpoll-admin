@@ -77,6 +77,8 @@ import {
   renderGeoList,
 } from "@/validators/poll-trial-form";
 import dayjs from "dayjs";
+import { useTablePollsStore } from "@/stores/table_polls.store";
+import { ConfirmDeletePollsModal } from "@/components/modals/table_polls/delete";
 
 type PollOption = {
   _id: string;
@@ -170,6 +172,7 @@ export default function PollShowPage() {
   }, [data]);
 
   const trialId = poll?.trialId;
+  const isArchived = poll?.archivedAt !== null;
   const unArchivedOptionsLength =
     poll?.options.filter((opt) => {
       return opt?.archivedAt === null;
@@ -269,7 +272,7 @@ export default function PollShowPage() {
       resourceAssets: initialAssets,
       rewards: initialRewards,
       targetGeo: initialTG,
-      expireRewardAt: poll.expireRewardAt ?? "",
+      expireRewardAt: poll.expireRewardAt ?? null,
     });
   }, [poll, reset]);
 
@@ -499,6 +502,9 @@ export default function PollShowPage() {
   const activeCount = (poll?.options ?? []).filter((o) => !o.archivedAt).length;
   const canAddOption = activeCount < __MAX_OPTIONS_COUNT__;
 
+  const setIsDeleting = useTablePollsStore((s) => s.setIsDeleting);
+  const isDeleting = useTablePollsStore((s) => s.isDeleting);
+
   // ===== option modals =====
   const isAddOption = usePollViewStore((s) => s.isAddOption);
   const setIsAddOption = usePollViewStore((s) => s.setIsAddOption);
@@ -551,597 +557,638 @@ export default function PollShowPage() {
       : [];
   const isBusy = isLoading || isUploading || isSaving;
   return (
-    <div className="space-y-6">
-      {isEditing ? (
-        <div className="p-6 space-y-8 w-full">
-          <div className="flex justify-between items-center w-full">
-            <h1 className="text-2xl tracking-wider">Edit Poll</h1>
-          </div>
-          {!!trialId && (
-            <p className="bg-sidebar px-2 py-2">
-              <strong>Trial:</strong> {trialId}
-            </p>
-          )}
-          <Form {...form}>
-            <form className="space-y-6" onSubmit={onSubmitEdit}>
-              <TwoPane
-                isRightOpen={activeRewardIndex !== null}
-                right={
-                  activeRewardIndex !== null && (
-                    <RewardDetailPanel
-                      index={activeRewardIndex}
-                      assetOptions={ASSET_OPTIONS as any}
-                      onClose={() => setActiveRewardIndex(null)}
-                      rewards={fields}
-                      append={append}
-                      update={update}
-                    />
-                  )
-                }
-                left={
-                  <div className="flex flex-col gap-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <FormCard title="Basic Info">
-                        <FormField
-                          control={control}
-                          name="title"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs text-muted-foreground">
-                                Title
-                              </FormLabel>
-                              <FormControl>
-                                <input
-                                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                  placeholder="Poll title"
-                                  required
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        {/* Description (same as create) */}
-                        <FormField
-                          control={control}
-                          name="description"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs text-muted-foreground">
-                                Description
-                              </FormLabel>
-                              <FormControl>
-                                <textarea
-                                  placeholder="Short description"
-                                  className="flex h-28 w-full rounded-md border border-input bg-transparent text-foreground px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </FormCard>
-
-                      {/* Resource Assets (same as create) */}
-                      <FormCard
-                        title="Resource Assets (Optional)"
-                        subtitle="Max.: 3"
-                      >
-                        <ResourceAssetsEditor
-                          control={control}
-                          name="resourceAssets"
-                          label="Media (Images / YouTube)"
-                          maxAssets={_MAX_RESOURCE_ASSETS_COUNT_}
-                          isEditing={true}
-                        />
-                      </FormCard>
-                    </div>
-                    <FormCard title="Add Options">
-                      {/* ===== Options card (kept at bottom exactly as before) ===== */}
-                      <Card>
-                        <CardHeader className="flex flex-row items-center justify-between">
-                          <CardTitle>Options</CardTitle>
-                          <TooltipProvider delayDuration={0}>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <button
-                                  type="button"
-                                  className={`rounded-md p-1 hover:bg-foreground/10 ${
-                                    !canAddOption
-                                      ? "opacity-50 cursor-not-allowed"
-                                      : ""
-                                  }`}
-                                  onClick={() => {
-                                    if (!canAddOption) return;
-                                    setIsAddOption({
-                                      pollId: (poll as any)._id,
-                                    });
-                                  }}
-                                  aria-label="Add option"
-                                  title={
-                                    canAddOption
-                                      ? "Add option"
-                                      : `Max ${__MAX_OPTIONS_COUNT__} active options`
-                                  }
-                                  disabled={!canAddOption}
-                                >
-                                  <PlusSquare className="w-4 h-4" />
-                                </button>
-                              </TooltipTrigger>
-                              {!canAddOption && (
-                                <TooltipContent>
-                                  Maximum of {__MAX_OPTIONS_COUNT__} active
-                                  options
-                                </TooltipContent>
-                              )}
-                            </Tooltip>
-                          </TooltipProvider>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          {poll?.options?.length ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                              {(poll.options ?? []).map((opt) => {
-                                const isArchived = !!opt.archivedAt;
-
-                                return (
-                                  <div
-                                    key={opt._id}
-                                    className={cn(
-                                      "relative border rounded-lg p-3 hover:bg-muted/30",
-                                      isArchived &&
-                                        "opacity-50 cursor-not-allowed"
-                                    )}
-                                  >
-                                    <div className="absolute right-2 top-2 flex items-center gap-2">
-                                      {!isArchived && (
-                                        <button
-                                          type="button"
-                                          className="rounded-md p-1 hover:bg-foreground/10"
-                                          onClick={() =>
-                                            setIsEditOption({
-                                              pollId: (poll as any)._id,
-                                              optionId: opt._id,
-                                              oldText: opt.text,
-                                            })
-                                          }
-                                          aria-label="Edit option"
-                                          title="Edit option"
-                                        >
-                                          <Pencil className="w-4 h-4" />
-                                        </button>
-                                      )}
-
-                                      {!(
-                                        (isArchived &&
-                                          activeCount + 1 >
-                                            __MAX_OPTIONS_COUNT__) ||
-                                        (!isArchived &&
-                                          unArchivedOptionsLength <= 2)
-                                      ) && (
-                                        <button
-                                          type="button"
-                                          className="rounded-md p-1 hover:bg-foreground/10"
-                                          onClick={() =>
-                                            setIsArchiveToggleOption({
-                                              pollId: (poll as any)._id,
-                                              optionId: opt._id,
-                                              optionText: opt.text,
-                                              shouldArchive: !isArchived,
-                                            })
-                                          }
-                                          aria-label={`Delete option ${opt.text}`}
-                                          title="Delete option"
-                                        >
-                                          {!isArchived ? (
-                                            <Trash2 className="w-4 h-4 text-red-600" />
-                                          ) : (
-                                            <Recycle className="w-4 h-4 text-white" />
-                                          )}
-                                        </button>
-                                      )}
-                                    </div>
-
-                                    <div className="pr-10">
-                                      <div className="text-xs text-muted-foreground mb-1">
-                                        Option ID
-                                      </div>
-                                      <div className="font-mono text-xs break-all mb-2">
-                                        {opt._id}
-                                      </div>
-                                      <div
-                                        className={cn(
-                                          "text-sm",
-                                          isArchived &&
-                                            "line-through opacity-60"
-                                        )}
-                                      >
-                                        {opt.text}
-                                      </div>
-                                      <div className="text-xs text-muted-foreground mt-2">
-                                        Archived:{" "}
-                                        {opt.archivedAt
-                                          ? utcToAdminFormatted(opt.archivedAt)
-                                          : "-"}
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            <div className="text-sm text-muted-foreground">
-                              No options were found on this poll.
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    </FormCard>
-
-                    {/* Rewards (same as create) */}
-                    {!isTrialPoll && (
-                      <>
-                        <FormCard title="Rewards">
-                          <div className="flex gap-2 items-center justify-end">
-                            <Button
-                              type="button"
-                              size="sm"
-                              onClick={() => setActiveRewardIndex(-1)}
-                              className="w-fit p-2"
-                              disabled={
-                                fields?.length >=
-                                Object.keys(assetSpecs)?.length
-                              }
-                            >
-                              Add reward
-                            </Button>
-                          </div>
-                          <RewardsList
-                            fields={fields}
-                            assetOptions={ASSET_OPTIONS as any}
-                            onEdit={setActiveRewardIndex}
-                            onAdd={() => setActiveRewardIndex(-1)}
-                            remove={remove}
-                            allAssets={ASSET_OPTIONS.map((a) => a.value)}
-                            hideEditButton={!isEditing}
-                            hideDeleteButton={!isEditing}
-                          />
-                          {form?.formState?.errors?.rewards?.message && (
-                            <p className="text-sm text-destructive">
-                              {form?.formState?.errors?.rewards?.message}
-                            </p>
-                          )}
-                        </FormCard>
-                      </>
-                    )}
-                    {!isTrialPoll && (
-                      <TargetGeoEditor
-                        control={control}
-                        watch={watch}
-                        setValue={setValue}
-                        basePath="targetGeo"
-                        label="Target Geo (Optional)"
-                        selectProps={{
-                          menuPlacement: "top",
-                        }}
+    <>
+      <div
+        className={cn("space-y-6 py-3 px-5 rounded-xl", {
+          "bg-red-500/10": isArchived,
+        })}
+      >
+        {isEditing ? (
+          <div className="p-6 space-y-8 w-full">
+            <div className="flex justify-between items-center w-full">
+              <h1 className="text-2xl tracking-wider">Edit Poll</h1>
+            </div>
+            {!!trialId && (
+              <p className="bg-sidebar px-2 py-2">
+                <strong>Trail:</strong> {trialId}
+              </p>
+            )}
+            <Form {...form}>
+              <form className="space-y-6" onSubmit={onSubmitEdit}>
+                <TwoPane
+                  isRightOpen={activeRewardIndex !== null}
+                  right={
+                    activeRewardIndex !== null && (
+                      <RewardDetailPanel
+                        index={activeRewardIndex}
+                        assetOptions={ASSET_OPTIONS as any}
+                        onClose={() => setActiveRewardIndex(null)}
+                        rewards={fields}
+                        append={append}
+                        update={update}
                       />
-                    )}
-                    <section className="flex items-end justify-between">
+                    )
+                  }
+                  left={
+                    <div className="flex flex-col gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormCard title="Basic Info">
+                          <FormField
+                            control={control}
+                            name="title"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs text-muted-foreground">
+                                  Title
+                                </FormLabel>
+                                <FormControl>
+                                  <input
+                                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                    placeholder="Poll title"
+                                    required
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          {/* Description (same as create) */}
+                          <FormField
+                            control={control}
+                            name="description"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs text-muted-foreground">
+                                  Description
+                                </FormLabel>
+                                <FormControl>
+                                  <textarea
+                                    placeholder="Short description"
+                                    className="flex h-28 w-full rounded-md border border-input bg-transparent text-foreground px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </FormCard>
+
+                        {/* Resource Assets (same as create) */}
+                        <FormCard
+                          title="Resource Assets (Optional)"
+                          subtitle="Max.: 3"
+                        >
+                          <ResourceAssetsEditor
+                            control={control}
+                            name="resourceAssets"
+                            label="Media (Images / YouTube)"
+                            maxAssets={_MAX_RESOURCE_ASSETS_COUNT_}
+                            isEditing={true}
+                          />
+                        </FormCard>
+                      </div>
+                      <FormCard title="Add Options">
+                        {/* ===== Options card (kept at bottom exactly as before) ===== */}
+                        <Card>
+                          <CardHeader className="flex flex-row items-center justify-between">
+                            <CardTitle>Options</CardTitle>
+                            <TooltipProvider delayDuration={0}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    type="button"
+                                    className={`rounded-md p-1 hover:bg-foreground/10 ${
+                                      !canAddOption
+                                        ? "opacity-50 cursor-not-allowed"
+                                        : ""
+                                    }`}
+                                    onClick={() => {
+                                      if (!canAddOption) return;
+                                      setIsAddOption({
+                                        pollId: (poll as any)._id,
+                                      });
+                                    }}
+                                    aria-label="Add option"
+                                    title={
+                                      canAddOption
+                                        ? "Add option"
+                                        : `Max ${__MAX_OPTIONS_COUNT__} active options`
+                                    }
+                                    disabled={!canAddOption}
+                                  >
+                                    <PlusSquare className="w-4 h-4" />
+                                  </button>
+                                </TooltipTrigger>
+                                {!canAddOption && (
+                                  <TooltipContent>
+                                    Maximum of {__MAX_OPTIONS_COUNT__} active
+                                    options
+                                  </TooltipContent>
+                                )}
+                              </Tooltip>
+                            </TooltipProvider>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            {poll?.options?.length ? (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {(poll.options ?? []).map((opt) => {
+                                  const isArchived = !!opt.archivedAt;
+
+                                  return (
+                                    <div
+                                      key={opt._id}
+                                      className={cn(
+                                        "relative border rounded-lg p-3 hover:bg-muted/30",
+                                        isArchived &&
+                                          "opacity-50 cursor-not-allowed"
+                                      )}
+                                    >
+                                      <div className="absolute right-2 top-2 flex items-center gap-2">
+                                        {!isArchived && (
+                                          <button
+                                            type="button"
+                                            className="rounded-md p-1 hover:bg-foreground/10"
+                                            onClick={() =>
+                                              setIsEditOption({
+                                                pollId: (poll as any)._id,
+                                                optionId: opt._id,
+                                                oldText: opt.text,
+                                              })
+                                            }
+                                            aria-label="Edit option"
+                                            title="Edit option"
+                                          >
+                                            <Pencil className="w-4 h-4" />
+                                          </button>
+                                        )}
+
+                                        {!(
+                                          (isArchived &&
+                                            activeCount + 1 >
+                                              __MAX_OPTIONS_COUNT__) ||
+                                          (!isArchived &&
+                                            unArchivedOptionsLength <= 2)
+                                        ) && (
+                                          <button
+                                            type="button"
+                                            className="rounded-md p-1 hover:bg-foreground/10"
+                                            onClick={() =>
+                                              setIsArchiveToggleOption({
+                                                pollId: (poll as any)._id,
+                                                optionId: opt._id,
+                                                optionText: opt.text,
+                                                shouldArchive: !isArchived,
+                                              })
+                                            }
+                                            aria-label={`Delete option ${opt.text}`}
+                                            title="Delete option"
+                                          >
+                                            {!isArchived ? (
+                                              <Trash2 className="w-4 h-4 text-red-600" />
+                                            ) : (
+                                              <Recycle className="w-4 h-4 text-white" />
+                                            )}
+                                          </button>
+                                        )}
+                                      </div>
+
+                                      <div className="pr-10">
+                                        <div className="text-xs text-muted-foreground mb-1">
+                                          Option ID
+                                        </div>
+                                        <div className="font-mono text-xs break-all mb-2">
+                                          {opt._id}
+                                        </div>
+                                        <div
+                                          className={cn(
+                                            "text-sm",
+                                            isArchived &&
+                                              "line-through opacity-60"
+                                          )}
+                                        >
+                                          {opt.text}
+                                        </div>
+                                        <div className="text-xs text-muted-foreground mt-2">
+                                          Archived:{" "}
+                                          {opt.archivedAt
+                                            ? utcToAdminFormatted(
+                                                opt.archivedAt
+                                              )
+                                            : "-"}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <div className="text-sm text-muted-foreground">
+                                No options were found on this poll.
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </FormCard>
+
+                      {/* Rewards (same as create) */}
                       {!isTrialPoll && (
-                        <ExpireRewardAtPicker
+                        <>
+                          <FormCard title="Rewards">
+                            <div className="flex gap-2 items-center justify-end">
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={() => setActiveRewardIndex(-1)}
+                                className="w-fit p-2"
+                                disabled={
+                                  fields?.length >=
+                                  Object.keys(assetSpecs)?.length
+                                }
+                              >
+                                Add reward
+                              </Button>
+                            </div>
+                            <RewardsList
+                              fields={fields}
+                              assetOptions={ASSET_OPTIONS as any}
+                              onEdit={setActiveRewardIndex}
+                              onAdd={() => setActiveRewardIndex(-1)}
+                              remove={remove}
+                              allAssets={ASSET_OPTIONS.map((a) => a.value)}
+                              hideEditButton={!isEditing}
+                              hideDeleteButton={!isEditing}
+                            />
+                            {form?.formState?.errors?.rewards?.message && (
+                              <p className="text-sm text-destructive">
+                                {form?.formState?.errors?.rewards?.message}
+                              </p>
+                            )}
+                          </FormCard>
+                        </>
+                      )}
+                      {!isTrialPoll && (
+                        <TargetGeoEditor
                           control={control}
-                          name="expireRewardAt"
+                          watch={watch}
+                          setValue={setValue}
+                          basePath="targetGeo"
+                          label="Target Geo (Optional)"
+                          selectProps={{
+                            menuPlacement: "top",
+                          }}
                         />
                       )}
-                    </section>
-                    <div className="flex items-center justify-end gap-2">
-                      <Button
-                        type="button"
-                        size={"sm"}
-                        className="text-sm font-bold px-3 py-2.5"
-                        variant="outline"
-                        onClick={() => {
-                          if (!poll) return;
-                          const initialAssets: EditValues["resourceAssets"] =
-                            Array.isArray(poll.resourceAssets) &&
-                            poll.resourceAssets.length > 0
-                              ? poll.resourceAssets.map((a) =>
-                                  a.type === RESOURCE_TYPES_STRING.IMAGE
-                                    ? {
-                                        type: RESOURCE_TYPES_STRING.IMAGE,
-                                        value: [a.value],
-                                      }
-                                    : {
-                                        type: RESOURCE_TYPES_STRING.YOUTUBE,
-                                        value: extractYouTubeId(a.value),
-                                      }
+                      <section className="flex items-end justify-between">
+                        {!isTrialPoll && (
+                          <ExpireRewardAtPicker
+                            control={control}
+                            name="expireRewardAt"
+                          />
+                        )}
+                      </section>
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          type="button"
+                          size={"sm"}
+                          className="text-sm font-bold px-3 py-2.5"
+                          variant="outline"
+                          onClick={() => {
+                            if (!poll) return;
+                            const initialAssets: EditValues["resourceAssets"] =
+                              Array.isArray(poll.resourceAssets) &&
+                              poll.resourceAssets.length > 0
+                                ? poll.resourceAssets.map((a) =>
+                                    a.type === RESOURCE_TYPES_STRING.IMAGE
+                                      ? {
+                                          type: RESOURCE_TYPES_STRING.IMAGE,
+                                          value: [a.value],
+                                        }
+                                      : {
+                                          type: RESOURCE_TYPES_STRING.YOUTUBE,
+                                          value: extractYouTubeId(a.value),
+                                        }
+                                  )
+                                : poll.media
+                                ? [
+                                    {
+                                      type: RESOURCE_TYPES_STRING.IMAGE,
+                                      value: [poll.media],
+                                    },
+                                  ]
+                                : [];
+
+                            const initialRewards: EditValues["rewards"] =
+                              Array.isArray(poll.rewards) &&
+                              poll.rewards.length > 0
+                                ? poll.rewards.map((r) => ({
+                                    assetId: r.assetId as any,
+                                    amount: Number(r.amount), // convert
+                                    rewardAmountCap: Number(r.rewardAmountCap), // convert
+                                    rewardType: r.rewardType as RewardType,
+                                  }))
+                                : [
+                                    {
+                                      assetId: ASSET_OPTIONS[0].value,
+                                      amount: 1,
+                                      rewardAmountCap: 1,
+                                      rewardType: REWARD_TYPE.MAX,
+                                    },
+                                  ];
+
+                            reset({
+                              title: poll.title ?? "",
+                              description: poll.description ?? "",
+                              resourceAssets: initialAssets,
+                              rewards: isTrialPoll ? [] : initialRewards,
+                              targetGeo: {
+                                countries: Array.isArray(
+                                  poll.targetGeo?.countries
                                 )
-                              : poll.media
-                              ? [
-                                  {
-                                    type: RESOURCE_TYPES_STRING.IMAGE,
-                                    value: [poll.media],
-                                  },
-                                ]
-                              : [];
-
-                          const initialRewards: EditValues["rewards"] =
-                            Array.isArray(poll.rewards) &&
-                            poll.rewards.length > 0
-                              ? poll.rewards.map((r) => ({
-                                  assetId: r.assetId as any,
-                                  amount: Number(r.amount), // convert
-                                  rewardAmountCap: Number(r.rewardAmountCap), // convert
-                                  rewardType: r.rewardType as RewardType,
-                                }))
-                              : [
-                                  {
-                                    assetId: ASSET_OPTIONS[0].value,
-                                    amount: 1,
-                                    rewardAmountCap: 1,
-                                    rewardType: REWARD_TYPE.MAX,
-                                  },
-                                ];
-
-                          reset({
-                            title: poll.title ?? "",
-                            description: poll.description ?? "",
-                            resourceAssets: initialAssets,
-                            rewards: isTrialPoll ? [] : initialRewards,
-                            targetGeo: {
-                              countries: Array.isArray(
-                                poll.targetGeo?.countries
-                              )
-                                ? poll.targetGeo!.countries
-                                : [],
-                              states: Array.isArray(poll.targetGeo?.states)
-                                ? poll.targetGeo!.states
-                                : [],
-                              cities: Array.isArray(poll.targetGeo?.cities)
-                                ? poll.targetGeo!.cities
-                                : [],
-                            },
-                            expireRewardAt: isTrialPoll
-                              ? ""
-                              : poll.expireRewardAt ?? "",
-                          });
-                          setIsEditing(false);
-                        }}
-                        disabled={isSaving || isUploading}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        type="submit"
-                        size={"sm"}
-                        className="text-sm font-bold px-3 py-2.5"
-                        disabled={isSaving || isUploading}
-                      >
-                        {isSaving || isUploading ? "Saving…" : "Save"}
-                      </Button>
+                                  ? poll.targetGeo!.countries
+                                  : [],
+                                states: Array.isArray(poll.targetGeo?.states)
+                                  ? poll.targetGeo!.states
+                                  : [],
+                                cities: Array.isArray(poll.targetGeo?.cities)
+                                  ? poll.targetGeo!.cities
+                                  : [],
+                              },
+                              expireRewardAt: isTrialPoll
+                                ? ""
+                                : poll.expireRewardAt ?? "",
+                            });
+                            setIsEditing(false);
+                          }}
+                          disabled={isSaving || isUploading}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="submit"
+                          size={"sm"}
+                          className="text-sm font-bold px-3 py-2.5"
+                          disabled={isSaving || isUploading}
+                        >
+                          {isSaving || isUploading ? "Saving…" : "Save"}
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                }
-              />
-            </form>
-          </Form>
-        </div>
-      ) : (
-        <>
-          <section className="flex justify-between items-center w-full">
-            <h1 className="text-2xl tracking-wider">Poll</h1>
-            <Button
-              className="rounded-md px-2"
-              aria-label="Edit poll"
-              title="Edit poll"
-              onClick={() => setIsEditing(true)}
-            >
-              {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              <Edit className="w-4 h-4" />
-            </Button>
-          </section>
-          {!!trialId && (
-            <p
-              onClick={() => {
-                navigate(`/trials/${trialId}`);
-              }}
-              className="bg-sidebar px-2 py-2 hover:underline cursor-pointer"
-            >
-              <strong>Trial:</strong> {trialId}
-            </p>
-          )}
-          <section className="space-y-7">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormCard title="Basic Info">
-                {userDetails && (
-                  <div>
-                    <div className="text-xs text-muted-foreground">User</div>
-                    <div className="font-medium">{userDetails?.username}</div>
-                  </div>
+                  }
+                />
+              </form>
+            </Form>
+          </div>
+        ) : (
+          <>
+            <section className="flex justify-between items-center w-full">
+              <h1 className="text-2xl tracking-wider">Poll</h1>
+              <div className="flex items-center gap-2">
+                {!isArchived && (
+                  <Button
+                    className="rounded-md px-2"
+                    aria-label="Edit poll"
+                    title="Edit poll"
+                    onClick={() => setIsEditing(true)}
+                  >
+                    {isBusy && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    <Edit className="w-4 h-4" />
+                  </Button>
                 )}
-                {userDetails && (
+
+                {!!poll && !trialId && !isArchived && (
+                  <Button
+                    variant={"destructive"}
+                    className="rounded-md px-2"
+                    aria-label="Delete poll"
+                    title="Edit poll"
+                    onClick={() => {
+                      setIsDeleting([
+                        {
+                          pollId: poll._id,
+                          title: poll.title,
+                        },
+                      ]);
+                    }}
+                  >
+                    {isBusy && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+            </section>
+            {!!trialId && (
+              <p
+                onClick={() => {
+                  navigate(`/trials/${trialId}`);
+                }}
+                className="bg-sidebar px-2 py-2 hover:underline cursor-pointer"
+              >
+                <strong>Trail:</strong> {trialId}
+              </p>
+            )}
+            <section className="space-y-7">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormCard title="Basic Info">
+                  {userDetails && (
+                    <div>
+                      <div className="text-xs text-muted-foreground">User</div>
+                      <div className="font-medium">{userDetails?.username}</div>
+                    </div>
+                  )}
+                  {userDetails && (
+                    <div>
+                      <div className="text-xs text-muted-foreground">
+                        User Location
+                      </div>
+                      <div className="font-medium">{userDetails?.location}</div>
+                    </div>
+                  )}
+                  <div>
+                    <div className="text-xs text-muted-foreground">ID</div>
+                    <div className="font-mono break-all">{poll._id}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">Title</div>
+                    <div className="font-medium break-words">{poll.title}</div>
+                  </div>
+
                   <div>
                     <div className="text-xs text-muted-foreground">
-                      User Location
+                      Description
                     </div>
-                    <div className="font-medium">{userDetails?.location}</div>
+                    <div className="break-words">{poll.description || "-"}</div>
                   </div>
-                )}
-                <div>
-                  <div className="text-xs text-muted-foreground">ID</div>
-                  <div className="font-mono break-all">{poll._id}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground">Title</div>
-                  <div className="font-medium break-words">{poll.title}</div>
-                </div>
+                </FormCard>
 
-                <div>
-                  <div className="text-xs text-muted-foreground">
-                    Description
-                  </div>
-                  <div className="break-words">{poll.description || "-"}</div>
-                </div>
-              </FormCard>
-
-              <FormCard title="Resource Assets">
-                {viewAssets.length ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
-                    {viewAssets.map((a, i) => {
-                      return a.type === RESOURCE_TYPES_STRING.YOUTUBE ? (
-                        <>
-                          <div
-                            key={`yt-${i}`}
-                            className="flex items-center justify-between rounded-md border p-1 h-16 w-full"
-                          >
-                            <a
-                              target="_blank"
-                              href={`https://www.youtube.com/watch?v=${a.value}`}
-                              rel="noreferrer"
+                <FormCard title="Resource Assets">
+                  {viewAssets.length ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                      {viewAssets.map((a, i) => {
+                        return a.type === RESOURCE_TYPES_STRING.YOUTUBE ? (
+                          <>
+                            <div
+                              key={`yt-${i}`}
+                              className="flex items-center justify-between rounded-md border p-1 h-16 w-full"
                             >
+                              <a
+                                target="_blank"
+                                href={`https://www.youtube.com/watch?v=${a.value}`}
+                                rel="noreferrer"
+                              >
+                                <ResourceAssetsPreview
+                                  src={getYTImageUrl(extractYouTubeId(a.value))}
+                                  label={"Youtube"}
+                                />
+                              </a>
+                            </div>
+                          </>
+                        ) : (
+                          <div
+                            key={`img-${i}`}
+                            className="flex items-center h-16 justify-between gap-3 rounded-md border p-1 w-full"
+                          >
+                            <a target="_blank" href={a.value} rel="noreferrer">
                               <ResourceAssetsPreview
-                                src={getYTImageUrl(extractYouTubeId(a.value))}
-                                label={"Youtube"}
+                                src={a.value}
+                                label={"Image"}
                               />
                             </a>
-                          </div>
-                        </>
-                      ) : (
-                        <div
-                          key={`img-${i}`}
-                          className="flex items-center h-16 justify-between gap-3 rounded-md border p-1 w-full"
-                        >
-                          <a target="_blank" href={a.value} rel="noreferrer">
-                            <ResourceAssetsPreview
-                              src={a.value}
-                              label={"Image"}
-                            />
-                          </a>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-sm text-muted-foreground">-</div>
-                )}
-              </FormCard>
-            </div>
-            <FormCard title="Options">
-              <Card>
-                <CardContent className="space-y-4">
-                  {poll?.options?.length ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {(poll.options ?? []).map((opt) => {
-                        const isArchived = !!opt.archivedAt;
-                        return (
-                          <div
-                            key={opt._id}
-                            className={cn(
-                              "relative border rounded-lg p-3 hover:bg-muted/30",
-                              isArchived && "opacity-50 cursor-not-allowed"
-                            )}
-                          >
-                            <div className="pr-10">
-                              <div className="text-xs text-muted-foreground mb-1">
-                                Option ID
-                              </div>
-                              <div className="font-mono text-xs break-all mb-2">
-                                {opt._id}
-                              </div>
-                              <div
-                                className={cn(
-                                  "text-sm",
-                                  isArchived && "line-through opacity-60"
-                                )}
-                              >
-                                {opt.text}
-                              </div>
-                              <div className="text-xs text-muted-foreground mt-2">
-                                Archived:{" "}
-                                {opt.archivedAt
-                                  ? utcToAdminFormatted(opt.archivedAt)
-                                  : "-"}
-                              </div>
-                            </div>
                           </div>
                         );
                       })}
                     </div>
                   ) : (
-                    <div className="text-sm text-muted-foreground">
-                      No options were found on this poll.
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </FormCard>
-            <FormCard title="Rewards">
-              <RewardsList
-                fields={fields}
-                assetOptions={ASSET_OPTIONS}
-                onEdit={setActiveRewardIndex}
-                onAdd={() => setActiveRewardIndex(-1)}
-                remove={remove}
-                allAssets={ASSET_OPTIONS.map((a) => a.value)}
-                showDistribution={true}
-                hideEditButton={!isEditing}
-                hideDeleteButton={!isEditing}
-              />
-            </FormCard>
-            {/* Hide Target Geo block entirely for trial polls */}
-            {!isTrialPoll && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormCard title="Target Geo">
-                  <div className="flex flex-col gap-2">
-                    <span className="text-sm font-semibold">Countries</span>{" "}
-                    {renderGeoList(poll.targetGeo?.countries ?? [])}
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <span className="text-sm font-semibold">States</span>{" "}
-                    {renderGeoList(poll.targetGeo?.states ?? [])}
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <span className="text-sm font-semibold">Cities</span>{" "}
-                    {renderGeoList(poll.targetGeo?.cities ?? [])}
-                  </div>
-                </FormCard>
-                <FormCard title="Details">
-                  {poll?.createdAt && (
-                    <section className="flex items-center gap-2">
-                      <h2>Created At - </h2>
-                      <p className="text-xs text-muted-foreground">
-                        {utcToAdminFormatted(poll.createdAt)}
-                      </p>
-                    </section>
-                  )}
-                  {poll?.expireRewardAt && (
-                    <section className="flex items-center gap-2">
-                      <h2>Expire Rewards At - </h2>
-                      <p className="text-xs text-muted-foreground">
-                        {utcToAdminFormatted(poll.expireRewardAt)}
-                      </p>
-                    </section>
-                  )}
-                  {poll?.archivedAt && (
-                    <section className="flex items-center gap-2">
-                      <h2>Archived At - </h2>
-                      <p className="text-xs text-muted-foreground">
-                        {utcToAdminFormatted(poll?.archivedAt)}
-                      </p>
-                    </section>
+                    <div className="text-sm text-muted-foreground">-</div>
                   )}
                 </FormCard>
               </div>
-            )}
-          </section>
-        </>
-      )}
+              <FormCard title="Options">
+                <Card>
+                  <CardContent className="space-y-4">
+                    {poll?.options?.length ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {(poll.options ?? []).map((opt) => {
+                          const isArchived = !!opt.archivedAt;
+                          return (
+                            <div
+                              key={opt._id}
+                              className={cn(
+                                "relative border rounded-lg p-3 hover:bg-muted/30",
+                                isArchived && "opacity-50 cursor-not-allowed"
+                              )}
+                            >
+                              <div className="pr-10">
+                                <div className="text-xs text-muted-foreground mb-1">
+                                  Option ID
+                                </div>
+                                <div className="font-mono text-xs break-all mb-2">
+                                  {opt._id}
+                                </div>
+                                <div
+                                  className={cn(
+                                    "text-sm",
+                                    isArchived && "line-through opacity-60"
+                                  )}
+                                >
+                                  {opt.text}
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-2">
+                                  Archived:{" "}
+                                  {opt.archivedAt
+                                    ? utcToAdminFormatted(opt.archivedAt)
+                                    : "-"}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">
+                        No options were found on this poll.
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </FormCard>
+              {!trialId && (
+                <FormCard title="Rewards">
+                  <RewardsList
+                    fields={fields}
+                    assetOptions={ASSET_OPTIONS}
+                    onEdit={setActiveRewardIndex}
+                    onAdd={() => setActiveRewardIndex(-1)}
+                    remove={remove}
+                    allAssets={ASSET_OPTIONS.map((a) => a.value)}
+                    showDistribution={true}
+                    hideEditButton={!isEditing}
+                    hideDeleteButton={!isEditing}
+                  />
+                </FormCard>
+              )}
+              {/* Hide Target Geo block entirely for trial polls */}
+              {!isTrialPoll && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormCard title="Target Geo">
+                    <div className="flex flex-col gap-2">
+                      <span className="text-sm font-semibold">Countries</span>{" "}
+                      {renderGeoList(poll.targetGeo?.countries ?? [])}
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <span className="text-sm font-semibold">States</span>{" "}
+                      {renderGeoList(poll.targetGeo?.states ?? [])}
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <span className="text-sm font-semibold">Cities</span>{" "}
+                      {renderGeoList(poll.targetGeo?.cities ?? [])}
+                    </div>
+                  </FormCard>
+                  <FormCard title="Details">
+                    {poll?.createdAt && (
+                      <section className="flex items-center gap-2">
+                        <h2>Created At - </h2>
+                        <p className="text-xs text-muted-foreground">
+                          {utcToAdminFormatted(poll.createdAt)}
+                        </p>
+                      </section>
+                    )}
+                    {poll?.expireRewardAt && (
+                      <section className="flex items-center gap-2">
+                        <h2>Expire Rewards At - </h2>
+                        <p className="text-xs text-muted-foreground">
+                          {utcToAdminFormatted(poll.expireRewardAt)}
+                        </p>
+                      </section>
+                    )}
+                    {poll?.archivedAt && (
+                      <section className="flex items-center gap-2">
+                        <h2>Archived At - </h2>
+                        <p className="text-xs text-muted-foreground">
+                          {utcToAdminFormatted(poll?.archivedAt)}
+                        </p>
+                      </section>
+                    )}
+                  </FormCard>
+                </div>
+              )}
+            </section>
+          </>
+        )}
 
-      {isAddOption && <AddOptionModal />}
-      {isEditOption && <EditOptionModal />}
-      {isArchiveToggleOption && <ArchiveToggleOptionModal />}
-    </div>
+        {isAddOption && <AddOptionModal />}
+        {isEditOption && <EditOptionModal />}
+        {isArchiveToggleOption && <ArchiveToggleOptionModal />}
+      </div>
+      {isDeleting && isDeleting?.length > 0 && (
+        <ConfirmDeletePollsModal url={showRoute} />
+      )}
+    </>
   );
 }

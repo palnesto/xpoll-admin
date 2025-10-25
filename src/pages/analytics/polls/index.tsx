@@ -125,14 +125,11 @@ const MemoPolls = () => {
     //   },
     // },
     {
-      label: "Delete",
+      label: "Archive",
       btnClassName: "bg-red-600 hover:bg-red-700 text-white",
       onClick: (items, api) => {
         console.log("Delete polls:", items);
         setIsDeleting(items);
-        // TODO: call your API here; on success:
-        // api.removeByIds(items.map(i => i.pollId));
-        // api.refresh();
       },
     },
   ];
@@ -468,6 +465,7 @@ const MemoPolls = () => {
                 View detailed analytics of all the polls
               </p>
             </div>
+
             <div>
               <Button
                 variant="default"
@@ -477,6 +475,7 @@ const MemoPolls = () => {
               </Button>
             </div>
           </div>
+          <PollAndTrialFilterNote />
 
           <div className="flex justify-between w-full gap-2">
             <Input
@@ -659,8 +658,6 @@ const MemoPolls = () => {
             <span className="text-sm text-muted-foreground">Loading…</span>
           </div>
         )}
-
-        <PollAndTrialFilterNote />
 
         {/* Poll list with per-card checkbox */}
         <div className="flex flex-col gap-4 max-h-[70vh] overflow-y-auto">

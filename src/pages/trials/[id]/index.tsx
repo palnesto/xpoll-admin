@@ -18,7 +18,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import TrialPollTable from "@/components/table-trial-poll";
-import { Loader2, Edit } from "lucide-react";
+import { Loader2, Edit, Trash2 } from "lucide-react";
 import ResourceAssetsEditor from "@/components/polling/editors/ResourceAssetsEditor";
 import ExpireRewardAtPicker from "@/components/polling/editors/ExpireRewardAtPicker";
 import TargetGeoEditor from "@/components/polling/editors/TargetGeoEditor";
@@ -52,6 +52,9 @@ import {
   utcToAdminFormatted,
 } from "@/utils/time";
 import dayjs from "dayjs";
+import { ConfirmDeleteTrialPollsModal } from "@/components/modals/table_trials/delete";
+import { useTableTrialsStore } from "@/stores/table_trials.store";
+import { cn } from "@/lib/utils";
 
 export default function TrialShowPage() {
   const navigate = useNavigate();
@@ -67,6 +70,8 @@ export default function TrialShowPage() {
   const trial: Trial | null = useMemo(() => {
     return data?.data?.data ?? data?.data ?? null;
   }, [data]);
+  const isArchived = trial?.archivedAt !== null;
+  console.log("isArchived", isArchived);
 
   const [isEditing, setIsEditing] = useState(isNavigationEditing ?? false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -83,6 +88,11 @@ export default function TrialShowPage() {
       expireRewardAt: null,
     },
     mode: "onChange",
+  });
+
+  console.log({
+    watch: form.watch(),
+    errors: form.formState.errors,
   });
   const { control, handleSubmit, reset, setValue, watch } = form;
 
@@ -144,7 +154,7 @@ export default function TrialShowPage() {
       resourceAssets: initialAssets,
       rewards: initialRewards,
       targetGeo: initialTG,
-      expireRewardAt: trial.expireRewardAt ?? "",
+      expireRewardAt: trial.expireRewardAt ?? null,
     });
   }, [trial, reset]);
 
@@ -163,7 +173,10 @@ export default function TrialShowPage() {
     },
   });
 
-  const { mutate: doDelete, isPending: isDeleting } = useApiMutation<any, any>({
+  const { mutate: doDelete, isPending: isDeletingMutating } = useApiMutation<
+    any,
+    any
+  >({
     route: endpoints.entities.trials.delete,
     method: "DELETE",
     onSuccess: () => {
@@ -176,13 +189,16 @@ export default function TrialShowPage() {
     },
   });
   const handleDelete = async () => {
-    if (!id || isDeleting) return;
+    if (!id || isDeletingMutating) return;
     try {
       await doDelete({ ids: [id] }); // 👈 sends { ids: [id] }
     } catch (e) {
       appToast.error("Failed to delete trial");
     }
   };
+
+  const setIsDeleting = useTableTrialsStore((s) => s.setIsDeleting);
+  const isDeleting = useTableTrialsStore((s) => s.isDeleting);
 
   /* ===== Helpers (unchanged) ===== */
   const normalizeAssetsForSave = async (
@@ -352,13 +368,18 @@ export default function TrialShowPage() {
   const isBusy = isLoading || isSaving || isUploading;
 
   return (
-    <div className="space-y-6">
-      {isEditing ? (
-        <div className="p-6 space-y-8 w-full">
-          {/* ===== Header (parity with Poll edit) ===== */}
-          <div className="flex justify-between items-center w-full">
-            <h1 className="text-2xl tracking-wider">Edit Trail</h1>
-            {/* <Button
+    <>
+      <div
+        className={cn("space-y-6 py-3 px-5 rounded-xl", {
+          "bg-red-500/10": isArchived,
+        })}
+      >
+        {isEditing ? (
+          <div className="p-6 space-y-8 w-full">
+            {/* ===== Header (parity with Poll edit) ===== */}
+            <div className="flex justify-between items-center w-full">
+              <h1 className="text-2xl tracking-wider">Edit Trail</h1>
+              {/* <Button
               type="submit"
               form="trial-form"
               disabled={isBusy}
@@ -367,394 +388,416 @@ export default function TrialShowPage() {
               {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save
             </Button> */}
-          </div>
+            </div>
 
-          <Form {...form}>
-            <form id="trial-form" className="space-y-6" onSubmit={onSubmitEdit}>
-              <TwoPane
-                isRightOpen={activeRewardIndex !== null}
-                right={
-                  activeRewardIndex !== null && (
-                    <RewardDetailPanel
-                      index={activeRewardIndex}
-                      assetOptions={ASSET_OPTIONS}
-                      onClose={() => setActiveRewardIndex(null)}
-                      rewards={fields}
-                      append={append}
-                      update={update}
-                    />
-                  )
-                }
-                left={
-                  <div className="flex flex-col gap-6">
-                    {/* Grid: Basic Info + Assets (parity) */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <FormCard title="Basic Info">
-                        <FormField
-                          control={control}
-                          name="title"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs text-muted-foreground">
-                                Trial Title
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                  placeholder="Trail title"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
+            <Form {...form}>
+              <form
+                id="trial-form"
+                className="space-y-6"
+                onSubmit={onSubmitEdit}
+              >
+                <TwoPane
+                  isRightOpen={activeRewardIndex !== null}
+                  right={
+                    activeRewardIndex !== null && (
+                      <RewardDetailPanel
+                        index={activeRewardIndex}
+                        assetOptions={ASSET_OPTIONS}
+                        onClose={() => setActiveRewardIndex(null)}
+                        rewards={fields}
+                        append={append}
+                        update={update}
+                      />
+                    )
+                  }
+                  left={
+                    <div className="flex flex-col gap-6">
+                      {/* Grid: Basic Info + Assets (parity) */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormCard title="Basic Info">
+                          <FormField
+                            control={control}
+                            name="title"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs text-muted-foreground">
+                                  Trial Title
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                    placeholder="Trail title"
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={control}
+                            name="description"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs text-muted-foreground">
+                                  Description
+                                </FormLabel>
+                                <FormControl>
+                                  <textarea
+                                    placeholder="Short description"
+                                    className="flex h-28 w-full rounded-md border border-input bg-transparent text-foreground px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </FormCard>
+
+                        <FormCard title="Resource Assets" subtitle="Min:1">
+                          <ResourceAssetsEditor
+                            control={control}
+                            name="resourceAssets"
+                            mediaAllowed={[RESOURCE_TYPES_STRING.IMAGE]}
+                            maxAssets={_MAX_RESOURCE_ASSETS_COUNT_}
+                            isEditing={true}
+                          />
+                          {form.formState.errors.resourceAssets && (
+                            <p className="mt-2 text-sm text-destructive">
+                              {(form.formState.errors.resourceAssets as any)
+                                .message ?? "Add at least 1 media"}
+                            </p>
                           )}
-                        />
+                        </FormCard>
+                      </div>
 
-                        <FormField
-                          control={control}
-                          name="description"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs text-muted-foreground">
-                                Description
-                              </FormLabel>
-                              <FormControl>
-                                <textarea
-                                  placeholder="Short description"
-                                  className="flex h-28 w-full rounded-md border border-input bg-transparent text-foreground px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </FormCard>
-
-                      <FormCard title="Resource Assets" subtitle="Min:1">
-                        <ResourceAssetsEditor
-                          control={control}
-                          name="resourceAssets"
-                          mediaAllowed={[RESOURCE_TYPES_STRING.IMAGE]}
-                          maxAssets={_MAX_RESOURCE_ASSETS_COUNT_}
-                          isEditing={true}
-                        />
-                        {form.formState.errors.resourceAssets && (
-                          <p className="mt-2 text-sm text-destructive">
-                            {(form.formState.errors.resourceAssets as any)
-                              .message ?? "Add at least 1 media"}
+                      {/* Rewards (same component, just wrapped for visual parity) */}
+                      <FormCard title="Rewards">
+                        <div className="flex gap-2 items-center justify-end">
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => setActiveRewardIndex(-1)}
+                            className="w-fit p-2"
+                            disabled={
+                              fields?.length >= Object.keys(assetSpecs)?.length
+                            }
+                          >
+                            Add reward
+                          </Button>
+                        </div>
+                        {fields.length > 0 && (
+                          <RewardsList
+                            fields={fields}
+                            assetOptions={ASSET_OPTIONS as any}
+                            onEdit={setActiveRewardIndex}
+                            onAdd={() => setActiveRewardIndex(-1)}
+                            remove={remove}
+                            allAssets={ASSET_OPTIONS?.map((a) => a.value)}
+                          />
+                        )}
+                        {form?.formState?.errors.rewards?.message && (
+                          <p className="text-sm text-destructive">
+                            {form?.formState?.errors.rewards?.message}
                           </p>
                         )}
                       </FormCard>
-                    </div>
 
-                    {/* Rewards (same component, just wrapped for visual parity) */}
-                    <FormCard title="Rewards">
-                      <div className="flex gap-2 items-center justify-end">
+                      {/* Expire Reward At */}
+                      <ExpireRewardAtPicker
+                        control={control}
+                        name="expireRewardAt"
+                      />
+
+                      {/* Target Geo */}
+                      <TargetGeoEditor
+                        control={control}
+                        watch={watch}
+                        setValue={setValue}
+                        basePath="targetGeo"
+                        label="Target Geo"
+                      />
+
+                      {/* Actions */}
+                      <div className="flex items-center justify-end gap-2">
                         <Button
                           type="button"
-                          size="sm"
-                          onClick={() => setActiveRewardIndex(-1)}
-                          className="w-fit p-2"
-                          disabled={
-                            fields?.length >= Object.keys(assetSpecs)?.length
-                          }
+                          size={"sm"}
+                          className="text-sm font-bold px-3 py-2.5"
+                          variant="outline"
+                          onClick={() => {
+                            if (!trial) return;
+
+                            const initialAssets: EditValues["resourceAssets"] =
+                              Array.isArray(trial.resourceAssets) &&
+                              trial.resourceAssets.length > 0
+                                ? trial.resourceAssets.map((a) =>
+                                    a.type === RESOURCE_TYPES_STRING.IMAGE
+                                      ? {
+                                          type: RESOURCE_TYPES_STRING.IMAGE,
+                                          value: [a.value],
+                                        }
+                                      : {
+                                          type: RESOURCE_TYPES_STRING.YOUTUBE,
+                                          value: extractYouTubeId(a.value),
+                                        }
+                                  )
+                                : [];
+
+                            const initialRewards: EditValues["rewards"] =
+                              Array.isArray(trial.rewards) &&
+                              trial.rewards.length > 0
+                                ? trial.rewards.map((r) => ({
+                                    assetId: r.assetId as any,
+                                    amount: Number(r.amount ?? 1),
+                                    rewardAmountCap: Number(
+                                      r.rewardAmountCap ?? r.amount ?? 1
+                                    ),
+                                    rewardType: REWARD_TYPE.MAX,
+                                  }))
+                                : [];
+
+                            reset({
+                              title: trial.title ?? "",
+                              description: trial.description ?? "",
+                              resourceAssets: initialAssets,
+                              rewards: initialRewards,
+                              targetGeo: {
+                                countries: Array.isArray(
+                                  trial.targetGeo?.countries
+                                )
+                                  ? trial.targetGeo!.countries
+                                  : [],
+                                states: Array.isArray(trial.targetGeo?.states)
+                                  ? trial.targetGeo!.states
+                                  : [],
+                                cities: Array.isArray(trial.targetGeo?.cities)
+                                  ? trial.targetGeo!.cities
+                                  : [],
+                              },
+                              expireRewardAt: trial.expireRewardAt ?? "",
+                            });
+                            setIsEditing(false);
+                          }}
+                          disabled={isSaving || isUploading}
                         >
-                          Add reward
+                          Cancel
+                        </Button>
+                        <Button
+                          type="submit"
+                          size={"sm"}
+                          disabled={isSaving || isUploading}
+                        >
+                          {isSaving || isUploading ? "Saving…" : "Save"}
                         </Button>
                       </div>
-                      {fields.length > 0 && (
-                        <RewardsList
-                          fields={fields}
-                          assetOptions={ASSET_OPTIONS as any}
-                          onEdit={setActiveRewardIndex}
-                          onAdd={() => setActiveRewardIndex(-1)}
-                          remove={remove}
-                          allAssets={ASSET_OPTIONS?.map((a) => a.value)}
-                        />
-                      )}
-                      {form?.formState?.errors.rewards?.message && (
-                        <p className="text-sm text-destructive">
-                          {form?.formState?.errors.rewards?.message}
-                        </p>
-                      )}
-                    </FormCard>
+                    </div>
+                  }
+                />
+              </form>
+            </Form>
+          </div>
+        ) : (
+          <>
+            {/* ===== VIEW MODE (parity with Poll view) ===== */}
+            <section className="flex justify-between items-center w-full">
+              <h1 className="text-2xl tracking-wider">Trail</h1>
+              <div className="flex items-center gap-2">
+                {!isArchived && (
+                  <Button
+                    className="rounded-md px-2"
+                    aria-label="Edit trial"
+                    title="Edit trial"
+                    onClick={() => setIsEditing(true)}
+                  >
+                    {isBusy && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                )}
+                {!!trial && !isArchived && (
+                  <Button
+                    variant={"destructive"}
+                    className="rounded-md px-2"
+                    aria-label="Delete trial"
+                    title="Edit poll"
+                    onClick={() => {
+                      setIsDeleting([
+                        {
+                          trialId: trial._id,
+                          title: trial.title,
+                        },
+                      ]);
+                    }}
+                  >
+                    {isBusy && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+            </section>
 
-                    {/* Expire Reward At */}
-                    <ExpireRewardAtPicker
-                      control={control}
-                      name="expireRewardAt"
-                    />
-
-                    {/* Target Geo */}
-                    <TargetGeoEditor
-                      control={control}
-                      watch={watch}
-                      setValue={setValue}
-                      basePath="targetGeo"
-                      label="Target Geo"
-                    />
-
-                    {/* Actions */}
-                    <div className="flex items-center justify-end gap-2">
-                      <Button
-                        type="button"
-                        size={"sm"}
-                        className="text-sm font-bold px-3 py-2.5"
-                        variant="outline"
-                        onClick={() => {
-                          if (!trial) return;
-
-                          const initialAssets: EditValues["resourceAssets"] =
-                            Array.isArray(trial.resourceAssets) &&
-                            trial.resourceAssets.length > 0
-                              ? trial.resourceAssets.map((a) =>
-                                  a.type === RESOURCE_TYPES_STRING.IMAGE
-                                    ? {
-                                        type: RESOURCE_TYPES_STRING.IMAGE,
-                                        value: [a.value],
-                                      }
-                                    : {
-                                        type: RESOURCE_TYPES_STRING.YOUTUBE,
-                                        value: extractYouTubeId(a.value),
-                                      }
-                                )
-                              : [];
-
-                          const initialRewards: EditValues["rewards"] =
-                            Array.isArray(trial.rewards) &&
-                            trial.rewards.length > 0
-                              ? trial.rewards.map((r) => ({
-                                  assetId: r.assetId as any,
-                                  amount: Number(r.amount ?? 1),
-                                  rewardAmountCap: Number(
-                                    r.rewardAmountCap ?? r.amount ?? 1
-                                  ),
-                                  rewardType: REWARD_TYPE.MAX,
-                                }))
-                              : [];
-
-                          reset({
-                            title: trial.title ?? "",
-                            description: trial.description ?? "",
-                            resourceAssets: initialAssets,
-                            rewards: initialRewards,
-                            targetGeo: {
-                              countries: Array.isArray(
-                                trial.targetGeo?.countries
-                              )
-                                ? trial.targetGeo!.countries
-                                : [],
-                              states: Array.isArray(trial.targetGeo?.states)
-                                ? trial.targetGeo!.states
-                                : [],
-                              cities: Array.isArray(trial.targetGeo?.cities)
-                                ? trial.targetGeo!.cities
-                                : [],
-                            },
-                            expireRewardAt: trial.expireRewardAt ?? "",
-                          });
-                          setIsEditing(false);
-                        }}
-                        disabled={isSaving || isUploading}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        type="submit"
-                        size={"sm"}
-                        disabled={isSaving || isUploading}
-                      >
-                        {isSaving || isUploading ? "Saving…" : "Save"}
-                      </Button>
+            <section className="space-y-7">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormCard title="Basic Info">
+                  <div>
+                    <div className="text-xs text-muted-foreground">ID</div>
+                    <div className="font-mono break-all">{trial._id}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">Title</div>
+                    <div className="font-medium break-words">{trial.title}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">
+                      Description
+                    </div>
+                    <div className="break-words">
+                      {trial.description || "-"}
                     </div>
                   </div>
-                }
-              />
-            </form>
-          </Form>
-        </div>
-      ) : (
-        <>
-          {/* ===== VIEW MODE (parity with Poll view) ===== */}
-          <section className="flex justify-between items-center w-full">
-            <h1 className="text-2xl tracking-wider">Trail</h1>
-            <div className="flex items-center gap-2">
-              <Button
-                className="rounded-md px-2"
-                aria-label="Edit poll"
-                title="Edit trial"
-                onClick={() => setIsEditing(true)}
-              >
-                {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                <Edit className="w-4 h-4" />
-              </Button>
-              {/* <Button
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={isDeleting}
-                aria-label="Delete trial"
-                title="Delete trial"
-              >
-                {isDeleting ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Trash2 className="w-4 h-4" />
-                )}
-              </Button> */}
-            </div>
-          </section>
+                </FormCard>
 
-          <section className="space-y-7">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormCard title="Basic Info">
-                <div>
-                  <div className="text-xs text-muted-foreground">ID</div>
-                  <div className="font-mono break-all">{trial._id}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground">Title</div>
-                  <div className="font-medium break-words">{trial.title}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground">
-                    Description
-                  </div>
-                  <div className="break-words">{trial.description || "-"}</div>
-                </div>
-              </FormCard>
-
-              <FormCard title="Resource Assets" subtitle="Max.: 3">
-                {viewAssets.length ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
-                    {viewAssets.map((a, i) => {
-                      return a.type === RESOURCE_TYPES_STRING.YOUTUBE ? (
-                        <div
-                          key={`yt-${i}`}
-                          className="flex items-center justify-between rounded-md border p-3"
-                        >
-                          <div className="flex min-w-0 flex-col">
-                            <div className="text-xs text-muted-foreground">
-                              YouTube
-                            </div>
-                            <div className="truncate text-sm font-medium">
-                              {extractYouTubeId(a.value)}
+                <FormCard title="Resource Assets" subtitle="Max.: 3">
+                  {viewAssets.length ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                      {viewAssets.map((a, i) => {
+                        return a.type === RESOURCE_TYPES_STRING.YOUTUBE ? (
+                          <div
+                            key={`yt-${i}`}
+                            className="flex items-center justify-between rounded-md border p-3"
+                          >
+                            <div className="flex min-w-0 flex-col">
+                              <div className="text-xs text-muted-foreground">
+                                YouTube
+                              </div>
+                              <div className="truncate text-sm font-medium">
+                                {extractYouTubeId(a.value)}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ) : (
-                        <div
-                          key={`img-${i}`}
-                          className="flex items-center justify-between gap-3 rounded-md border p-3"
-                        >
-                          <div className="flex items-center gap-3">
-                            <img
-                              src={a.value}
-                              alt="alt-image"
-                              className="h-16 w-16 rounded object-cover"
-                            />
-                            <div className="text-xs text-muted-foreground">
-                              Image
+                        ) : (
+                          <div
+                            key={`img-${i}`}
+                            className="flex items-center justify-between gap-3 rounded-md border p-3"
+                          >
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={a.value}
+                                alt="alt-image"
+                                className="h-16 w-16 rounded object-cover"
+                              />
+                              <div className="text-xs text-muted-foreground">
+                                Image
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground"></div>
+                  )}
+                </FormCard>
+              </div>
+              <FormCard title="Rewards">
+                <RewardsList
+                  fields={fields}
+                  assetOptions={ASSET_OPTIONS as any}
+                  onEdit={setActiveRewardIndex}
+                  onAdd={() => setActiveRewardIndex(-1)}
+                  remove={remove}
+                  allAssets={ASSET_OPTIONS.map((a) => a.value)}
+                  showDistribution={true}
+                  hideEditButton={!isEditing}
+                  hideDeleteButton={!isEditing}
+                />
+              </FormCard>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormCard title="Target Geo">
+                  <div className="flex flex-col gap-2">
+                    <span className="text-sm font-semibold">Countries</span>{" "}
+                    {renderGeoList(trial.targetGeo?.countries ?? [])}
                   </div>
-                ) : (
-                  <div className="text-sm text-muted-foreground"></div>
-                )}
-              </FormCard>
-            </div>
-            <FormCard title="Rewards">
-              <RewardsList
-                fields={fields}
-                assetOptions={ASSET_OPTIONS as any}
-                onEdit={setActiveRewardIndex}
-                onAdd={() => setActiveRewardIndex(-1)}
-                remove={remove}
-                allAssets={ASSET_OPTIONS.map((a) => a.value)}
-                showDistribution={true}
-                hideEditButton={!isEditing}
-                hideDeleteButton={!isEditing}
-              />
-            </FormCard>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormCard title="Target Geo">
-                <div className="flex flex-col gap-2">
-                  <span className="text-sm font-semibold">Countries</span>{" "}
-                  {renderGeoList(trial.targetGeo?.countries ?? [])}
-                </div>
-                <div className="flex flex-col gap-2">
-                  <span className="text-sm font-semibold">States</span>{" "}
-                  {renderGeoList(trial.targetGeo?.states ?? [])}
-                </div>
-                <div className="flex flex-col gap-2">
-                  <span className="text-sm font-semibold">Cities</span>{" "}
-                  {renderGeoList(trial.targetGeo?.cities ?? [])}
-                </div>
-              </FormCard>
-              <FormCard title="Details">
-                {trial?.createdAt && (
-                  <section className="flex items-center gap-2">
-                    <h2>Created At - </h2>
-                    <p className="text-xs text-muted-foreground">
-                      {utcToAdminFormatted(trial.createdAt)}
-                    </p>
-                  </section>
-                )}
-                {trial?.expireRewardAt && (
-                  <section className="flex items-center gap-2">
-                    <h2>Expire Rewards At - </h2>
-                    <p className="text-xs text-muted-foreground">
-                      {utcToAdminFormatted(trial.expireRewardAt)}
-                    </p>
-                  </section>
-                )}
-                {trial?.archivedAt && (
-                  <section className="flex items-center gap-2">
-                    <h2>Archived At - </h2>
-                    <p className="text-xs text-muted-foreground">
-                      {utcToAdminFormatted(trial?.archivedAt)}
-                    </p>
-                  </section>
-                )}
-              </FormCard>
-            </div>
-          </section>
-        </>
-      )}
+                  <div className="flex flex-col gap-2">
+                    <span className="text-sm font-semibold">States</span>{" "}
+                    {renderGeoList(trial.targetGeo?.states ?? [])}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <span className="text-sm font-semibold">Cities</span>{" "}
+                    {renderGeoList(trial.targetGeo?.cities ?? [])}
+                  </div>
+                </FormCard>
+                <FormCard title="Details">
+                  {trial?.createdAt && (
+                    <section className="flex items-center gap-2">
+                      <h2>Created At - </h2>
+                      <p className="text-xs text-muted-foreground">
+                        {utcToAdminFormatted(trial.createdAt)}
+                      </p>
+                    </section>
+                  )}
+                  {trial?.expireRewardAt && (
+                    <section className="flex items-center gap-2">
+                      <h2>Expire Rewards At - </h2>
+                      <p className="text-xs text-muted-foreground">
+                        {utcToAdminFormatted(trial.expireRewardAt)}
+                      </p>
+                    </section>
+                  )}
+                  {trial?.archivedAt && (
+                    <section className="flex items-center gap-2">
+                      <h2>Archived At - </h2>
+                      <p className="text-xs text-muted-foreground">
+                        {utcToAdminFormatted(trial?.archivedAt)}
+                      </p>
+                    </section>
+                  )}
+                </FormCard>
+              </div>
+            </section>
+          </>
+        )}
 
-      {/* Existing polls table (unchanged) */}
-      {!isEditing && (
-        <div className="h-full" key={`table-id-${isEditing}`}>
-          <TrialPollTable trialId={id} />
-        </div>
-      )}
-
-      {/* Delete confirm inline (unchanged logic; UI matches Poll page button style) */}
-      {isDeleteOpen && (
-        <div className="p-4 border rounded-md">
-          <p className="mb-4 text-sm">
-            Are you sure you want to delete this trial?
-          </p>
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setIsDeleteOpen(false)}
-              disabled={isDeleting}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => doDelete({ ids: [id] })}
-              disabled={isDeleting}
-            >
-              {isDeleting ? "Deleting…" : "Delete"}
-            </Button>
+        {/* Existing polls table (unchanged) */}
+        {!isEditing && (
+          <div className="h-full" key={`table-id-${isEditing}`}>
+            <TrialPollTable trialId={id} />
           </div>
-        </div>
+        )}
+
+        {/* Delete confirm inline (unchanged logic; UI matches Poll page button style) */}
+        {isDeleteOpen && (
+          <div className="p-4 border rounded-md">
+            <p className="mb-4 text-sm">
+              Are you sure you want to delete this trial?
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsDeleteOpen(false)}
+                disabled={isDeletingMutating}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => doDelete({ ids: [id] })}
+                disabled={isDeletingMutating}
+              >
+                {isDeletingMutating ? "Deleting…" : "Delete"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+      {isDeleting && isDeleting?.length > 0 && (
+        <ConfirmDeleteTrialPollsModal url={showRoute} />
       )}
-    </div>
+    </>
   );
 }

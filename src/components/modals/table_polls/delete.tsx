@@ -28,9 +28,10 @@ export function ConfirmDeletePollsModal({ url }: { url: string }) {
       route: endpoints.entities.polls.delete,
       method: "DELETE",
       onSuccess: () => {
-        appToast.success("Poll(s) deleted");
+        appToast.success("Poll(s) archived");
 
         const trimmed = trimUrl(url);
+        queryClient.invalidateQueries({ queryKey: ["GET", url] });
         queryClient.invalidateQueries({ queryKey: [url] });
         queryClient.invalidateQueries({ queryKey: [trimmed] });
         queryClient.invalidateQueries({
@@ -60,13 +61,13 @@ export function ConfirmDeletePollsModal({ url }: { url: string }) {
     <CustomModal
       isOpen={true}
       onClose={onClose}
-      title={"Delete Polls"}
+      title={"Archive Polls"}
       footer={<></>}
       onSubmit={() => {}}
     >
       <div className="space-y-4">
         <p>
-          Are you sure you want to delete{" "}
+          Are you sure you want to archive{" "}
           <span className="font-semibold">{isDeleting.length}</span>{" "}
           {isDeleting.length === 1 ? "poll" : "polls"}?
         </p>
@@ -76,7 +77,7 @@ export function ConfirmDeletePollsModal({ url }: { url: string }) {
           {/* Header row */}
           <div className="bg-muted text-muted-foreground border-b px-3 py-2 flex">
             <div className="w-2/3 font-medium">Title</div>
-            <div className="flex-1 font-medium">Poll ID</div>
+            <div className="flex-1 font-medium pl-3">Poll ID</div>
           </div>
 
           {/* Scrollable table body */}
@@ -110,7 +111,7 @@ export function ConfirmDeletePollsModal({ url }: { url: string }) {
             {isDeletingPoll && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
-            Delete
+            Archive
           </Button>
         </div>
       </div>

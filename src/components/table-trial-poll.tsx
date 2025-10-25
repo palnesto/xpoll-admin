@@ -3,9 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { endpoints } from "@/api/endpoints";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { ThreeDotMenu } from "@/components/commons/three-dot-menu";
-import { ChartNoAxesCombined, Edit, Eye, Trash } from "lucide-react";
+import { ChartNoAxesCombined, Edit, Eye } from "lucide-react";
 import { DEFAULT_PAGE_SIZE } from "@/constants";
-import { fmt, PaginatedTable } from "@/components/paginated-table";
+import { PaginatedTable } from "@/components/paginated-table";
 import { useTablePollsStore } from "@/stores/table_polls.store";
 import { ConfirmDeletePollsModal } from "@/components/modals/table_polls/delete";
 import { utcToAdminFormatted } from "@/utils/time";
@@ -48,12 +48,12 @@ export default function TrialPollTable({ trialId }: { trialId: string }) {
         icon: ChartNoAxesCombined,
         onClick: () => navigate(`/analytics/polls/${id}`),
       },
-      {
-        name: "Delete",
-        icon: Trash,
-        onClick: () => setIsDeleting([id]),
-        separatorBefore: true,
-      },
+      // {
+      //   name: "Delete",
+      //   icon: Trash,
+      //   onClick: () => setIsDeleting([id]),
+      //   separatorBefore: true,
+      // },
     ],
     [navigate, setIsDeleting]
   );
@@ -79,7 +79,7 @@ export default function TrialPollTable({ trialId }: { trialId: string }) {
     // {
     //   key: "archivedAt",
     //   header: "Archived At",
-    //   render: (v: any) => <span>{fmt(v)}</span>,
+    //   render: (v: any) => <span>{utcToAdminFormatted(v)}</span>,
     // },
     {
       key: "tableOptions",
