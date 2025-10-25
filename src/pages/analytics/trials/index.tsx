@@ -42,6 +42,7 @@ import { ConfirmDeleteTrialPollsModal } from "@/components/modals/table_trials/d
 import { assetSpecs, AssetType } from "@/utils/currency-assets/asset";
 import { cn } from "@/lib/utils";
 import { utcToAdminFormatted } from "@/utils/time";
+import { PollAndTrialFilterNote } from "../polls";
 
 const PAGE_SIZE = 10;
 
@@ -608,11 +609,13 @@ const MemoTrials = () => {
           <div className="text-red-500 text-sm">Failed to load trials.</div>
         ) : null}
 
-        <div className="flex items-center gap-2">
-          {(isLoading || isFetching) && (
+        {(isLoading || isFetching) && (
+          <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Loading…</span>
-          )}
-        </div>
+          </div>
+        )}
+
+        <PollAndTrialFilterNote />
 
         {/* Trial list with per-card checkbox */}
         <div className="flex flex-col gap-4 max-h-[70vh] overflow-y-auto">

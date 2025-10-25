@@ -22,6 +22,7 @@ import { ThreeDotMenu } from "@/components/commons/three-dot-menu";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { Send } from "lucide-react";
 import { CustomModal } from "@/components/modals/custom-modal";
+import { Button } from "@/components/ui/button";
 
 export const generateStatus = (status: string) => {
   return (
@@ -958,7 +959,7 @@ export default function SellIntent() {
 
       {/* Network filter */}
       <div className="rounded-xl border border-black/10 bg-sidebar p-4">
-        <h2 className="font-medium">Filter by Network</h2>
+        <h2 className="font-medium">Filter By Network</h2>
         <p className="text-sm mb-3 text-zinc-500">
           Select a network to show matching sell intent requests.
         </p>
@@ -966,17 +967,19 @@ export default function SellIntent() {
           {(["XRP", "SUI", "APTOS"] as WalletName[]).map((option) => {
             const isActive = selectedNetwork === option;
             return (
-              <button
+              <Button
                 key={option}
                 onClick={() => setSelectedNetwork(option)}
-                className={`px-4 py-2 rounded-lg text-sm transition border ${
-                  isActive
-                    ? "bg-black text-white border-black"
-                    : "bg-white text-black/70 border-black/10 hover:border-black/20"
-                }`}
+                className={cn(
+                  `px-4 py-2 rounded-lg text-sm transition border`,
+                  {
+                    "bg-black text-white active:bg-black active:text-white focus:bg-black focus:text-white":
+                      isActive,
+                  }
+                )}
               >
                 {option}
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -984,32 +987,32 @@ export default function SellIntent() {
 
       {/* Dummy requests table */}
       <div className="rounded-xl overflow-hidden">
-        <div className="flex flex-col gap-4 bg-sidebar px-6 py-5 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-4 bg-sidebar px-4 py-5 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="text-2xl font-semibold">Pending Withdrawals</h2>
-            <p className="mt-1 text-base max-w-2xl text-zinc-500">
+            <h2 className="text-base font-semibold">Pending Withdrawals</h2>
+            <p className="mt-1 text-sm max-w-2xl text-zinc-500">
               {selectedNetwork
-                ? `Approve transfers for ${selectedNetwork} sell intents using the connected admin wallet.`
-                : "Select a network to review pending sell intent requests."}
+                ? `Approve transfers for ${selectedNetwork} sell intents using the connected admin wallet`
+                : "Select a network to review pending sell intent requests"}
             </p>
           </div>
-          <div className="flex items-center gap-4 text-base">
+          <div className="flex items-center gap-4 text-sm">
             <span className="rounded-full px-4 py-1.5 bg-secondary">
               {anyPending
-                ? `${pendingFiltered.length} pending`
+                ? `${pendingFiltered.length} Pending`
                 : "All processed"}
             </span>
             {selectedNetwork && pendingFiltered.length > 0 && (
-              <button
+              <Button
                 onClick={() => setConfirmTransferOpen(true)}
-                className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-base font-medium text-white shadow-sm transition hover:bg-black/90 disabled:cursor-not-allowed disabled:border-black/5 disabled:bg-black/30"
+                className="flex items-center gap-2 rounded-full px-5 py-2.5 text-sm bg-white text-black active:bg-black active:text-white disabled:cursor-not-allowed disabled:border-black/5 disabled:bg-black/30"
                 disabled={isBatchProcessing || !!processingId}
               >
                 <Send className="h-4 w-4" />
                 {isBatchProcessing
                   ? "Processing…"
                   : `Transfer all ${selectedNetwork}`}
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -1084,7 +1087,7 @@ export default function SellIntent() {
             ? "No network selected"
             : filteredRequests.length
             ? anyPending
-              ? "Some requests are pending"
+              ? `${pendingFiltered.length} Pending Request(s)`
               : "All requests processed"
             : `No ${selectedNetwork} requests`}
         </div>
@@ -1102,7 +1105,7 @@ export default function SellIntent() {
             <div className="pointer-events-none absolute -top-24 -right-24 h-56 w-56 rounded-full blur-3xl opacity-30 bg-indigo-500" />
             <div className="pointer-events-none absolute -bottom-16 -left-16 h-40 w-40 rounded-full blur-3xl opacity-20 bg-fuchsia-500" />
 
-            <button
+            <Button
               onClick={() => {
                 setXamanQRModalOpen(false);
                 try {
@@ -1126,7 +1129,7 @@ export default function SellIntent() {
                   d="M6 18L18 6M6 6l12 12"
                 />
               </svg>
-            </button>
+            </Button>
 
             <div className="mb-4 text-center">
               <h4
@@ -1166,7 +1169,6 @@ export default function SellIntent() {
         submitButtonText={
           isBatchProcessing ? "Processing…" : "Confirm transfer"
         }
-        submitButtonClass="bg-black text-white"
         isSubmitting={isBatchProcessing}
         needX
       >
@@ -1265,27 +1267,28 @@ function WalletStatus({
   adminAddress: string;
 }) {
   return (
-    <div className="flex flex-col md:flex-1">
+    <div className="flex flex-col md:flex-1 gap-2">
       <div className="flex items-center gap-2">
-        <span>{label}:</span>
+        <span>{label}: </span>
         <span className={isConnected ? "text-green-700" : "text-red-700"}>
           {isConnected ? "Connected" : "Not connected"}
         </span>
       </div>
       {connectedAddress && (
-        <div className="mt-1">
-          Connected
-          <div>
-            <code className="font-mono bg-gray-100 px-2 py-0.5 rounded inline-block mt-0.5 ">
-              {connectedAddress.slice(0, 6)}...{connectedAddress.slice(-4)}
-            </code>
-          </div>
+        <div className="flex items-center gap-2">
+          <span>Connected: </span>
+          <span className="text-zinc-400">
+            {connectedAddress.slice(0, 6)}...{connectedAddress.slice(-4)}
+          </span>
         </div>
       )}
-      <div className="mt-1">Admin</div>
-      <code className="font-mono bg-black/50 px-2 py-0.5 rounded inline-block mt-0.5">
-        {adminAddress.slice(0, 30)}...
-      </code>
+
+      <div className="flex items-center gap-2">
+        <span>Admin: </span>
+        <span className="text-zinc-400">
+          {adminAddress.slice(0, 6)}...{adminAddress.slice(-4)}
+        </span>
+      </div>
     </div>
   );
 }

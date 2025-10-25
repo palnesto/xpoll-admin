@@ -105,26 +105,7 @@ function AssetRow({
 
   return (
     <div className="flex items-center justify-between py-1.5">
-      <div className="flex items-center gap-2 min-w-0">
-        {meta?.img ? (
-          <img src={meta.img} alt={meta?.symbol ?? id} className="h-5" />
-        ) : (
-          <div className="h-5 w-5 rounded bg-muted" />
-        )}
-        <div className="truncate">
-          <div className="text-sm font-medium truncate uppercase">
-            {meta?.parent ?? id}{" "}
-            <span className="text-muted-foreground">
-              ({meta?.symbol ?? id})
-            </span>
-          </div>
-          {/* <div className="text-xs text-muted-foreground">
-            {meta?.leastCountOf
-              ? `Least count of ${meta.leastCountOf}`
-              : "\u00A0"}
-          </div> */}
-        </div>
-      </div>
+      <AssetLabel assetId={id as AssetType} />
       <div className="text-sm font-semibold tabular-nums">{valueStr}</div>
     </div>
   );
@@ -195,9 +176,8 @@ function SummaryCard({
               key={assetId}
               className="flex items-center justify-between py-1.5"
             >
-              <div className="text-sm font-medium uppercase">
-                {meta?.parent ?? assetId} ({meta?.symbol ?? assetId})
-              </div>
+              <AssetLabel assetId={assetId as AssetType} />
+
               <div className="text-sm font-semibold tabular-nums">
                 {valueStr}
               </div>
@@ -269,28 +249,34 @@ function FundingNeedsCard({
                 }),
                 "0"
               );
-              const meta = assetSpecs[assetId as AssetType];
 
               return (
-                <div key={assetId} className="py-1.5">
+                <div
+                  key={assetId}
+                  className="py-1.5 flex flex-col w-full gap-2"
+                >
+                  {/* line 1 */}
                   <div className="flex items-center justify-between">
                     <div className="text-sm font-medium uppercase">
-                      {meta?.parent ?? assetId} ({meta?.symbol ?? assetId})
+                      {/* {meta?.parent ?? assetId} ({meta?.symbol ?? assetId}) */}
+                      <AssetLabel assetId={assetId as AssetType} />
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      outstanding:{" "}
+                      Outstanding:{" "}
                       <span className="font-medium">{outstandingStr}</span> ·
-                      balance: <span className="font-medium">{balanceStr}</span>
+                      Balance: <span className="font-medium">{balanceStr}</span>
                     </div>
                   </div>
+
+                  {/* line 2 */}
                   <div className="text-xs">
-                    shortfall:{" "}
+                    Shortfall:{" "}
                     <span className="font-semibold text-red-600">
                       {shortfallStr}
                     </span>{" "}
                     {v.surplus > 0 ? (
                       <>
-                        · surplus:{" "}
+                        · Surplus:{" "}
                         <span className="font-semibold text-green-600">
                           {surplusStr}
                         </span>
@@ -328,7 +314,7 @@ function FundingNeedsCard({
                     key={`${m.assetId}-${i}`}
                     className="flex justify-between text-sm"
                   >
-                    <span>{m.assetId}</span>
+                    <AssetLabel assetId={m.assetId as AssetType} />
                     <span className="font-semibold tabular-nums">{amtStr}</span>
                   </li>
                 );
@@ -408,7 +394,7 @@ function FundingNeedsCard({
 
 export default function SystemReportPage() {
   const route =
-    (endpoints as any)?.entities?.assetLedger?.systemReport ??
+    endpoints?.entities?.assetLedger?.systemReport ??
     "/internal/asset-ledger/system-report";
 
   const { data, isFetching, refetch } = useApiQuery(route, {
@@ -494,3 +480,23 @@ export default function SystemReportPage() {
     </div>
   );
 }
+
+export const AssetLabel = ({ assetId }: { assetId: AssetType }) => {
+  const img = assetSpecs[assetId]?.img;
+  const symbol = assetSpecs[assetId]?.symbol;
+  const parent = assetSpecs[assetId]?.parent;
+  return (
+    <div className="flex items-center gap-2 min-w-0">
+      {img ? (
+        <img src={img} alt={symbol ?? assetId} className="h-5" />
+      ) : (
+        <div className="h-5 w-5 rounded bg-muted" />
+      )}
+      <div className="truncate">
+        <div className="text-sm font-medium truncate uppercase">
+          {parent ?? assetId}
+        </div>
+      </div>
+    </div>
+  );
+};

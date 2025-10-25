@@ -654,11 +654,13 @@ const MemoPolls = () => {
           <div className="text-red-500 text-sm">Failed to load polls.</div>
         ) : null}
 
-        <div className="flex items-center gap-2">
-          {(isLoading || isFetching) && (
+        {(isLoading || isFetching) && (
+          <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Loading…</span>
-          )}
-        </div>
+          </div>
+        )}
+
+        <PollAndTrialFilterNote />
 
         {/* Poll list with per-card checkbox */}
         <div className="flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
@@ -853,3 +855,22 @@ const MemoPolls = () => {
 
 const Polls = memo(MemoPolls);
 export default Polls;
+
+export const PollAndTrialFilterNote = () => {
+  return (
+    <div className="flex flex-col bg-sidebar p-4 rounded-lg text-xs text-zinc-400 gap-1 border border-zinc-400/50">
+      {/* Note: */}
+      <p>Note:</p>
+      {/* 1. */}
+      <p>
+        1. Selecting a country will automatically include all its states and
+        cities. No separate selection is required.
+      </p>
+      {/* 2. */}
+      <p>
+        2. ⁠Selecting a state will automatically include all the cities within
+        it.
+      </p>
+    </div>
+  );
+};

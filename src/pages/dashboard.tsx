@@ -79,7 +79,7 @@ export const Dashboard = memo(function Dashboard() {
       label: "Number of Currencies",
       value: filteredStats?.assets?.totalCurrencies ?? 0,
     },
-    { label: "Trials", value: filteredStats?.content?.trials ?? 0 },
+    { label: "Trails", value: filteredStats?.content?.trials ?? 0 },
   ];
 
   const iconMap: Record<AssetType, string> = {

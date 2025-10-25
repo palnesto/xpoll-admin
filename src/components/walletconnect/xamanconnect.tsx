@@ -1,10 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import {
-  createXamanPayload,
-  getXamanPayload,
-  waitForXamanAccount,
-} from "@/lib/xaman";
+import { createXamanPayload, waitForXamanAccount } from "@/lib/xaman";
+import { Button } from "../ui/button";
 
 type ConnState = {
   connecting: boolean;
@@ -161,35 +158,36 @@ export default function XamanConnect({
         <div className="text-sm text-black/70 min-h-6 mb-3">
           {xrp.connected && xrp.address ? (
             <div className="flex items-center space-x-1">
-              <span>Connected: </span>
-              <code className="font-mono bg-gray-100 px-2 py-0.5 rounded">
+              <span className="text-zinc-400">Connected: </span>
+              <code className="text-zinc-400">
                 {`${xrp.address.slice(0, 6)}...${xrp.address.slice(-4)}`}
               </code>
             </div>
           ) : xrp.connected ? (
-            <span className="text-zinc-500">Connected</span>
+            <span className="text-zinc-400">Connected</span>
           ) : xrp.error ? (
             <span className="text-red-600">{xrp.error}</span>
           ) : (
-            <span className="text-zinc-500">Not connected</span>
+            <span className="text-zinc-400">Not connected</span>
           )}
         </div>
         <div className="flex gap-2">
           {!xrp.connected ? (
-            <button
+            <Button
               onClick={connectXaman}
               disabled={xrp.connecting}
-              className="px-3 py-2 rounded-md bg-foreground text-background text-sm disabled:opacity-60"
+              className="px-3 py-2 rounded-md text-sm disabled:opacity-60"
             >
               {xrp.connecting ? "Connecting…" : "Connect"}
-            </button>
+            </Button>
           ) : (
-            <button
+            <Button
+              variant={"destructive"}
               onClick={disconnectXaman}
-              className="px-3 py-2 rounded-md bg-gray-200 text-sm hover:bg-gray-300"
+              className="px-3 py-2 rounded-md text-sm"
             >
               Disconnect
-            </button>
+            </Button>
           )}
         </div>
       </section>
@@ -208,7 +206,7 @@ export default function XamanConnect({
             <div className="pointer-events-none absolute -bottom-16 -left-16 h-40 w-40 rounded-full blur-3xl opacity-20 bg-fuchsia-500" />
 
             {/* Close button */}
-            <button
+            <Button
               onClick={() => {
                 setXamanQRModalOpen(false);
                 cleanupXummSocket();
@@ -230,7 +228,7 @@ export default function XamanConnect({
                   d="M6 18L18 6M6 6l12 12"
                 />
               </svg>
-            </button>
+            </Button>
 
             {/* Header */}
             <div className="mb-4 text-center">
@@ -279,7 +277,7 @@ export default function XamanConnect({
                 </a>
               )}
 
-              <button
+              <Button
                 onClick={() => {
                   setXamanQRModalOpen(false);
                   cleanupXummSocket();
@@ -287,7 +285,7 @@ export default function XamanConnect({
                 className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 bg-white/10 text-white border border-white/15 hover:bg-white/15 active:bg-white/20 transition"
               >
                 Close
-              </button>
+              </Button>
             </div>
 
             {/* Help footer */}

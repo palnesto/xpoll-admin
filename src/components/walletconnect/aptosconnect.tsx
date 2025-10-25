@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { Button } from "../ui/button";
 
 type ConnState = {
   connecting: boolean;
@@ -71,35 +72,36 @@ export default function AptosConnect({
       <div className="text-sm min-h-6 mb-3">
         {isConnected && displayAddress ? (
           <div className="flex items-center space-x-1">
-            <span>Connected: </span>
-            <code className="font-mono bg-gray-100 px-2 py-0.5 rounded">
+            <span className="text-zinc-400">Connected: </span>
+            <code className="text-zinc-400">
               {`${displayAddress.slice(0, 6)}...${displayAddress.slice(-4)}`}
             </code>
           </div>
         ) : isConnected ? (
-          <span>Connected</span>
+          <span className="text-zinc-400">Connected</span>
         ) : aptos.error ? (
           <span className="text-red-600">{aptos.error}</span>
         ) : (
-          <span>Not connected</span>
+          <span className="text-zinc-400">Not connected</span>
         )}
       </div>
       <div className="flex gap-2 text-black">
         {!isConnected ? (
-          <button
+          <Button
             onClick={connectAptos}
             disabled={aptos.connecting}
-            className="px-3 py-2 rounded-md bg-foreground text-background text-sm disabled:opacity-60"
+            className="px-3 py-2 rounded-md text-sm disabled:opacity-60"
           >
             {aptos.connecting ? "Connecting…" : "Connect"}
-          </button>
+          </Button>
         ) : (
-          <button
+          <Button
+            variant={"destructive"}
             onClick={disconnectAptos}
-            className="px-3 py-2 rounded-md bg-gray-200 text-sm hover:bg-gray-300"
+            className="px-3 py-2 rounded-md text-sm"
           >
             Disconnect
-          </button>
+          </Button>
         )}
       </div>
     </section>

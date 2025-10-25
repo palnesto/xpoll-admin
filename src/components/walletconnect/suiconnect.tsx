@@ -5,6 +5,7 @@ import {
   useDisconnectWallet,
   useCurrentAccount,
 } from "@mysten/dapp-kit";
+import { Button } from "../ui/button";
 
 type ConnState = {
   connecting: boolean;
@@ -87,35 +88,36 @@ export default function SuiConnect({
       <div className="text-sm text-black/70 min-h-6 mb-3">
         {state.connected && state.address ? (
           <div className="flex items-center space-x-1">
-            <span>Connected: </span>
-            <code className="font-mono bg-gray-100 px-2 py-0.5 rounded">
+            <span className="text-zinc-400">Connected: </span>
+            <code className="text-zinc-400">
               {`${state.address.slice(0, 6)}...${state.address.slice(-4)}`}
             </code>
           </div>
         ) : state.connected ? (
-          <span className="text-zinc-500">Connected</span>
+          <span className="text-zinc-400">Connected</span>
         ) : state.error ? (
           <span className="text-red-600">{state.error}</span>
         ) : (
-          <span className="text-zinc-500">Not connected</span>
+          <span className="text-zinc-400">Not connected</span>
         )}
       </div>
       <div className="flex gap-2">
         {!state.connected ? (
-          <button
+          <Button
             onClick={connectSui}
             disabled={state.connecting}
-            className="px-3 py-2 rounded-md text-sm disabled:opacity-60 bg-foreground text-background"
+            className="px-3 py-2 rounded-md text-sm disabled:opacity-60"
           >
             {state.connecting ? "Connecting…" : "Connect"}
-          </button>
+          </Button>
         ) : (
-          <button
+          <Button
+            variant={"destructive"}
             onClick={disconnectSui}
-            className="px-3 py-2 rounded-md bg-gray-200 text-sm hover:bg-gray-300"
+            className="px-3 py-2 rounded-md text-sm"
           >
             Disconnect
-          </button>
+          </Button>
         )}
       </div>
     </section>

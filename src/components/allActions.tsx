@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
+// src/components/allActions.tsx
+import { useCallback, useMemo, useState, useEffect } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, FormProvider, Controller } from "react-hook-form";
@@ -26,10 +27,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { endpoints } from "@/api/endpoints";
-import { trimUrl } from "@/utils/formatter";
 import { queryClient } from "@/api/queryClient";
+import { appToast } from "@/utils/toast";
 
-type Asset = { _id: string; name: string; symbol: string; parent: string };
+// 🔽 NEW imports to support asset-aware clamped inputs
+import { assetSpecs, AssetType } from "@/utils/currency-assets/asset";
+import { amount, unwrapString } from "@/utils/currency-assets/base";
+import { AssetLabel } from "@/pages/asset-ledger/system-report";
+
+type Asset = { _id: string; name: string; symbol: string; parent?: string };
 
 const SYSTEM_ACCOUNTS = [
   { label: "Exchange", value: "bbbbbbbbbbbbbbbbbbbbbbbb" },
@@ -47,6 +53,7 @@ const baseActionSchema = z.object({
   assetId: z.enum(["xPoll", "xOcta", "xMYST", "xDrop"], {
     required_error: "Select an asset",
   }),
+  // kept as BASE integer for API; UI component converts parent -> base
   amount: z.coerce.number().int().min(1, "Min 1"),
 });
 
@@ -62,7 +69,174 @@ const fundWithdrawSchema = baseActionSchema.extend({
 type MintBurnValues = z.infer<typeof baseActionSchema>;
 type FundWithdrawValues = z.infer<typeof fundWithdrawSchema>;
 
-// ------------------ Helpers ------------------
+/* ------------------ Parent/Base helpers (clamped input like RewardDetailPanel) ------------------ */
+
+function baseToParent(
+  assetId: AssetType,
+  baseVal: string | number,
+  fixed?: number
+) {
+  const useFixed = typeof fixed === "number";
+  return unwrapString(
+    amount({
+      op: "toParent",
+      assetId,
+      value: String(baseVal),
+      output: "string",
+      trim: useFixed ? false : true,
+      fixed: useFixed ? Math.max(0, fixed) : undefined,
+      group: false,
+    }),
+    "0"
+  );
+}
+
+function parentToBaseNumber(assetId: AssetType, parentStr: string) {
+  const n = amount({
+    op: "toBase",
+    assetId,
+    value: parentStr,
+    output: "number",
+    allowUnsafeNumber: true,
+  });
+  return n.ok ? n.value : NaN;
+}
+
+/** Clamp input to ≤9 integer digits and ≤min(5, asset.decimal) fraction digits */
+function clampParentInput(
+  assetId: AssetType,
+  raw: string
+): { text: string; err: string } {
+  const decimalsAllowed = Math.min(assetSpecs[assetId].decimal, 5);
+  const MAX_INT = 9;
+
+  const s = (raw ?? "").replace(/[^\d.]/g, "");
+  if (s === "") return { text: "", err: "" };
+
+  const parts = s.split(".");
+  const iRaw = parts[0] ?? "";
+  const fRawCombined = parts.slice(1).join("");
+  const hasDotInRaw = s.includes(".");
+  const trailingDot = hasDotInRaw && raw[raw.length - 1] === ".";
+
+  let i = iRaw;
+  let uiErr = "";
+  if (i.length > MAX_INT) {
+    i = i.slice(0, MAX_INT);
+    uiErr = `Max ${MAX_INT} integer digits`;
+  }
+
+  let f = fRawCombined;
+  if (decimalsAllowed === 0) {
+    f = "";
+  } else if (f.length > decimalsAllowed) {
+    f = f.slice(0, decimalsAllowed);
+    uiErr = uiErr
+      ? `${uiErr}; max ${decimalsAllowed} decimal places`
+      : `Max ${decimalsAllowed} decimal places`;
+  }
+
+  if (i === "" && (hasDotInRaw || trailingDot)) i = "0";
+
+  let display = i;
+  if (decimalsAllowed > 0) {
+    if (trailingDot && f.length === 0) display = `${i}.`;
+    else if (f.length > 0) display = `${i}.${f}`;
+  }
+
+  return { text: display, err: uiErr };
+}
+
+function limitsHint(assetId: AssetType): {
+  maxInt: number;
+  maxFrac: number;
+  minStep: string;
+} {
+  const maxInt = 9;
+  const maxFrac = Math.min(assetSpecs[assetId].decimal, 5);
+  const minStep = maxFrac === 0 ? "1" : `0.${"0".repeat(maxFrac - 1)}1`;
+  return { maxInt, maxFrac, minStep };
+}
+
+function useClampedParentInput(params: {
+  assetId: AssetType;
+  baseValue: string | number | ""; // upstream BASE
+  onBaseChange: (nextBase: string) => void; // set upstream BASE
+}) {
+  const { assetId, baseValue, onBaseChange } = params;
+
+  const [text, setText] = useState<string>(() =>
+    Number(baseValue || 0) > 0 ? baseToParent(assetId, baseValue) : ""
+  );
+  const [uiErr, setUiErr] = useState<string>("");
+
+  useEffect(() => {
+    const baseNum = Number(baseValue || 0);
+    const pretty = baseNum > 0 ? baseToParent(assetId, baseNum) : "";
+    const clamped = clampParentInput(assetId, pretty);
+    setText(clamped.text);
+    setUiErr(clamped.err);
+  }, [assetId, baseValue]);
+
+  const onChange = (raw: string) => {
+    const clamped = clampParentInput(assetId, raw);
+    setText(clamped.text);
+    setUiErr(clamped.err);
+
+    const base = parentToBaseNumber(assetId, clamped.text);
+    if (Number.isFinite(base)) {
+      onBaseChange(String(base)); // store BASE upstream
+    }
+  };
+
+  const onBlur = () => {
+    const s = (text ?? "").trim();
+    if (s === "") {
+      setText("");
+      setUiErr("");
+      onBaseChange(""); // empty
+      return;
+    }
+    const clamped = clampParentInput(assetId, s);
+    const base = parentToBaseNumber(assetId, clamped.text);
+
+    if (Number.isFinite(base) && base > 0) {
+      const pretty = baseToParent(assetId, base); // trimmed zeros
+      const final = clampParentInput(assetId, pretty);
+      setText(final.text);
+      setUiErr("");
+      onBaseChange(String(base));
+    } else {
+      const currentBaseNum = Number(baseValue || 0);
+      const pretty =
+        currentBaseNum > 0 ? baseToParent(assetId, currentBaseNum) : "";
+      const final = clampParentInput(assetId, pretty);
+      setText(final.text);
+      setUiErr(final.err);
+    }
+  };
+
+  const placeholder =
+    assetSpecs[assetId]?.decimal > 0 ? "e.g. 100.0" : "e.g. 100";
+
+  const hint =
+    uiErr ||
+    (() => {
+      const { maxInt, maxFrac } = limitsHint(assetId);
+      return `Up to ${maxInt} int / ${maxFrac} decimals`;
+    })();
+
+  return {
+    value: text,
+    uiErr,
+    placeholder,
+    hint,
+    onChange,
+    onBlur,
+  };
+}
+
+/* ------------------ Existing Helpers ------------------ */
 function ApiResult({ data }: { data: any }) {
   if (!data) return null;
   const actionId = data?.data?.actionId ?? data?.actionId;
@@ -112,7 +286,8 @@ function AssetSelect({
         <SelectContent>
           {(Array.isArray(assets) ? assets : []).map((a) => (
             <SelectItem key={a._id} value={a._id}>
-              {a.parent} ({a.name})
+              {/* Prefer canonical parent name from assetSpecs; fallback to provided fields */}
+              <AssetLabel assetId={a._id} />
             </SelectItem>
           ))}
         </SelectContent>
@@ -121,26 +296,49 @@ function AssetSelect({
   );
 }
 
+// 🔁 REPLACED: AmountInput now uses clamped parent input & converts to BASE integer
 function AmountInput({
-  value,
-  onChange,
+  assetId,
+  baseValue,
+  onBaseChange,
   disabled,
 }: {
-  value?: number;
-  onChange: (v: number) => void;
+  assetId: AssetType;
+  /** integer in BASE units stored by the form */
+  baseValue?: number;
+  /** receives a stringified BASE number (empty string allowed) */
+  onBaseChange: (v: string) => void;
   disabled?: boolean;
 }) {
+  const field = useClampedParentInput({
+    assetId,
+    baseValue: typeof baseValue === "number" ? baseValue : "",
+    onBaseChange,
+  });
+
   return (
     <div className="space-y-1">
       <Label>Amount</Label>
       <Input
-        type="number"
-        min={1}
-        step={1}
-        value={value ?? ""}
-        onChange={(e) => onChange(Number(e.target.value))}
+        type="text"
+        inputMode="decimal"
+        className="placeholder:text-xs"
+        value={field.value}
+        placeholder={field.placeholder}
+        onChange={(e) => field.onChange(e.target.value)}
+        onBlur={field.onBlur}
         disabled={disabled}
       />
+      <div className="flex justify-between">
+        <span className="text-xs text-muted-foreground">&nbsp;</span>
+        <span
+          className={`text-xs ${
+            field.uiErr ? "text-red-400" : "text-muted-foreground"
+          }`}
+        >
+          {field.hint}
+        </span>
+      </div>
     </div>
   );
 }
@@ -260,30 +458,43 @@ export default function Actions() {
   }, [assetsResp]);
 
   const onSuccessCallBacked = useCallback((resp) => {
-    console.log("reaching?", trimUrl(endpoints.entities.assetLedger.all));
-    queryClient.invalidateQueries();
+    queryClient.invalidateQueries({
+      queryKey: ["GET", endpoints?.entities?.assetLedger?.systemReport],
+    });
   }, []);
 
   // mutations
   const mintMutation = useApiMutation({
     route: endpoints.entities.actions.mint,
     method: "POST",
-    onSuccess: onSuccessCallBacked,
+    onSuccess: (resp) => {
+      onSuccessCallBacked(resp);
+      appToast.success("Mint Successful");
+    },
   });
   const burnMutation = useApiMutation({
     route: endpoints.entities.actions.burn,
     method: "POST",
-    onSuccess: onSuccessCallBacked,
+    onSuccess: (resp) => {
+      onSuccessCallBacked(resp);
+      appToast.success("Burn Successful");
+    },
   });
   const fundMutation = useApiMutation({
     route: endpoints.entities.actions.fund,
     method: "POST",
-    onSuccess: onSuccessCallBacked,
+    onSuccess: (resp) => {
+      onSuccessCallBacked(resp);
+      appToast.success("Fund Successful");
+    },
   });
   const withdrawMutation = useApiMutation({
     route: endpoints.entities.actions.withdraw,
     method: "POST",
-    onSuccess: onSuccessCallBacked,
+    onSuccess: (resp) => {
+      onSuccessCallBacked(resp);
+      appToast.success("Withdraw Successful");
+    },
   });
 
   return (
@@ -303,31 +514,39 @@ export default function Actions() {
               onSubmit={(v: MintBurnValues) => {
                 return mintMutation.mutate(v);
               }}
-              renderFields={(control) => (
-                <div className="space-y-3">
-                  <Controller
-                    control={control}
-                    name="assetId"
-                    render={({ field }) => (
-                      <AssetSelect
-                        value={field.value}
-                        onChange={field.onChange}
-                        assets={coinAssets}
-                      />
-                    )}
-                  />
-                  <Controller
-                    control={control}
-                    name="amount"
-                    render={({ field }) => (
-                      <AmountInput
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
-                    )}
-                  />
-                </div>
-              )}
+              renderFields={(control, methods) => {
+                const currentAsset = (methods.watch("assetId") ||
+                  "xPoll") as AssetType;
+                return (
+                  <div className="space-y-3">
+                    <Controller
+                      control={control}
+                      name="assetId"
+                      render={({ field }) => (
+                        <AssetSelect
+                          value={field.value}
+                          onChange={field.onChange}
+                          assets={coinAssets}
+                        />
+                      )}
+                    />
+                    <Controller
+                      control={control}
+                      name="amount"
+                      render={({ field }) => (
+                        <AmountInput
+                          assetId={currentAsset}
+                          baseValue={field.value}
+                          onBaseChange={(baseStr) => {
+                            if (baseStr === "") field.onChange(undefined);
+                            else field.onChange(Number(baseStr));
+                          }}
+                        />
+                      )}
+                    />
+                  </div>
+                );
+              }}
               trigger={<Button className="w-full">Mint</Button>}
             />
 
@@ -338,31 +557,39 @@ export default function Actions() {
               schema={baseActionSchema}
               defaultValues={{ assetId: "xPoll", amount: 1 }}
               onSubmit={(v: MintBurnValues) => burnMutation.mutate(v)}
-              renderFields={(control) => (
-                <div className="space-y-3">
-                  <Controller
-                    control={control}
-                    name="assetId"
-                    render={({ field }) => (
-                      <AssetSelect
-                        value={field.value}
-                        onChange={field.onChange}
-                        assets={coinAssets}
-                      />
-                    )}
-                  />
-                  <Controller
-                    control={control}
-                    name="amount"
-                    render={({ field }) => (
-                      <AmountInput
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
-                    )}
-                  />
-                </div>
-              )}
+              renderFields={(control, methods) => {
+                const currentAsset = (methods.watch("assetId") ||
+                  "xPoll") as AssetType;
+                return (
+                  <div className="space-y-3">
+                    <Controller
+                      control={control}
+                      name="assetId"
+                      render={({ field }) => (
+                        <AssetSelect
+                          value={field.value}
+                          onChange={field.onChange}
+                          assets={coinAssets}
+                        />
+                      )}
+                    />
+                    <Controller
+                      control={control}
+                      name="amount"
+                      render={({ field }) => (
+                        <AmountInput
+                          assetId={currentAsset}
+                          baseValue={field.value}
+                          onBaseChange={(baseStr) => {
+                            if (baseStr === "") field.onChange(undefined);
+                            else field.onChange(Number(baseStr));
+                          }}
+                        />
+                      )}
+                    />
+                  </div>
+                );
+              }}
               trigger={
                 <Button variant="secondary" className="w-full">
                   Burn
@@ -381,41 +608,49 @@ export default function Actions() {
                 systemAccountId: SYSTEM_ACCOUNTS[0].value,
               }}
               onSubmit={(v: FundWithdrawValues) => fundMutation.mutate(v)}
-              renderFields={(control) => (
-                <div className="space-y-3">
-                  <Controller
-                    control={control}
-                    name="assetId"
-                    render={({ field }) => (
-                      <AssetSelect
-                        value={field.value}
-                        onChange={field.onChange}
-                        assets={coinAssets}
-                      />
-                    )}
-                  />
-                  <Controller
-                    control={control}
-                    name="amount"
-                    render={({ field }) => (
-                      <AmountInput
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
-                    )}
-                  />
-                  <Controller
-                    control={control}
-                    name="systemAccountId"
-                    render={({ field }) => (
-                      <SystemAccountSelect
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
-                    )}
-                  />
-                </div>
-              )}
+              renderFields={(control, methods) => {
+                const currentAsset = (methods.watch("assetId") ||
+                  "xPoll") as AssetType;
+                return (
+                  <div className="space-y-3">
+                    <Controller
+                      control={control}
+                      name="assetId"
+                      render={({ field }) => (
+                        <AssetSelect
+                          value={field.value}
+                          onChange={field.onChange}
+                          assets={coinAssets}
+                        />
+                      )}
+                    />
+                    <Controller
+                      control={control}
+                      name="amount"
+                      render={({ field }) => (
+                        <AmountInput
+                          assetId={currentAsset}
+                          baseValue={field.value}
+                          onBaseChange={(baseStr) => {
+                            if (baseStr === "") field.onChange(undefined);
+                            else field.onChange(Number(baseStr));
+                          }}
+                        />
+                      )}
+                    />
+                    <Controller
+                      control={control}
+                      name="systemAccountId"
+                      render={({ field }) => (
+                        <SystemAccountSelect
+                          value={field.value}
+                          onChange={field.onChange}
+                        />
+                      )}
+                    />
+                  </div>
+                );
+              }}
               trigger={
                 <Button variant="outline" className="w-full">
                   Fund
@@ -434,41 +669,49 @@ export default function Actions() {
                 systemAccountId: SYSTEM_ACCOUNTS[0].value,
               }}
               onSubmit={(v: FundWithdrawValues) => withdrawMutation.mutate(v)}
-              renderFields={(control) => (
-                <div className="space-y-3">
-                  <Controller
-                    control={control}
-                    name="assetId"
-                    render={({ field }) => (
-                      <AssetSelect
-                        value={field.value}
-                        onChange={field.onChange}
-                        assets={coinAssets}
-                      />
-                    )}
-                  />
-                  <Controller
-                    control={control}
-                    name="amount"
-                    render={({ field }) => (
-                      <AmountInput
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
-                    )}
-                  />
-                  <Controller
-                    control={control}
-                    name="systemAccountId"
-                    render={({ field }) => (
-                      <SystemAccountSelect
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
-                    )}
-                  />
-                </div>
-              )}
+              renderFields={(control, methods) => {
+                const currentAsset = (methods.watch("assetId") ||
+                  "xPoll") as AssetType;
+                return (
+                  <div className="space-y-3">
+                    <Controller
+                      control={control}
+                      name="assetId"
+                      render={({ field }) => (
+                        <AssetSelect
+                          value={field.value}
+                          onChange={field.onChange}
+                          assets={coinAssets}
+                        />
+                      )}
+                    />
+                    <Controller
+                      control={control}
+                      name="amount"
+                      render={({ field }) => (
+                        <AmountInput
+                          assetId={currentAsset}
+                          baseValue={field.value}
+                          onBaseChange={(baseStr) => {
+                            if (baseStr === "") field.onChange(undefined);
+                            else field.onChange(Number(baseStr));
+                          }}
+                        />
+                      )}
+                    />
+                    <Controller
+                      control={control}
+                      name="systemAccountId"
+                      render={({ field }) => (
+                        <SystemAccountSelect
+                          value={field.value}
+                          onChange={field.onChange}
+                        />
+                      )}
+                    />
+                  </div>
+                );
+              }}
               trigger={
                 <Button variant="destructive" className="w-full">
                   Withdraw
