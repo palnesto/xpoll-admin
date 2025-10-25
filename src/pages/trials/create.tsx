@@ -107,11 +107,6 @@ export default function TrialCreatePage() {
     mode: "onChange",
   });
 
-  console.log({
-    watch: form.watch(),
-    errors: form.formState.errors,
-  });
-
   const { control, handleSubmit, watch, setValue } = form;
   const pollsArray = useFieldArray({ control, name: "polls" });
   const { fields, append, remove, update } = useFieldArray({
@@ -190,7 +185,6 @@ export default function TrialCreatePage() {
       ),
     };
 
-    console.log("payload", payload);
     mutate(payload as any);
   };
 

@@ -37,13 +37,11 @@ export const EditOptionModal = () => {
   });
 
   const handleOnSubmit = form.handleSubmit((v) => {
-    console.log("reaching submit", v, isEditOption);
     const payload = {
       pollId: isEditOption?.pollId,
       optionId: isEditOption?.optionId,
       text: v.text.trim(),
     };
-    console.log("payload", payload);
     updateOption(payload);
   });
 

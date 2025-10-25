@@ -78,11 +78,6 @@ export default function PollCreatePage() {
     mode: "onChange",
   });
 
-  console.log({
-    watch: form.watch(),
-    errors: form.formState.errors,
-  });
-
   const { control, handleSubmit, watch, setValue } = form;
   const { errors, isSubmitting } = form.formState;
 
@@ -179,7 +174,6 @@ export default function PollCreatePage() {
       if (dup) clientSideIssues.push(`Duplicate reward asset: ${dup}`);
     }
     try {
-      // console.log("payload", payload);
       mutate(payload);
     } catch (err) {
       console.log("error", err);

@@ -37,12 +37,10 @@ export const AddOptionModal = () => {
   });
 
   const handleOnSubmit = form.handleSubmit((v) => {
-    console.log("reaching submit", v, isAddOption);
     const payload = {
       pollId: isAddOption?.pollId,
       text: v.text.trim(),
     };
-    console.log("payload", payload);
     addOption(payload);
   });
 

@@ -32,7 +32,6 @@ export const ArchiveToggleOptionModal = () => {
       optionId: isArchiveToggleOption?.optionId,
       archived: isArchiveToggleOption?.shouldArchive,
     };
-    console.log("payload", payload);
     toggleArchive(payload);
   };
 

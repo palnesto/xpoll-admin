@@ -170,8 +170,6 @@ export default function PollShowPage() {
   }, [data]);
 
   const trialId = poll?.trialId;
-
-  console.log("trialId", trialId);
   const unArchivedOptionsLength =
     poll?.options.filter((opt) => {
       return opt?.archivedAt === null;
@@ -207,11 +205,6 @@ export default function PollShowPage() {
       expireRewardAt: null,
     },
     mode: "onChange",
-  });
-
-  console.log({
-    watch: form.watch(),
-    errors: form.formState.errors,
   });
 
   const { control, handleSubmit, reset, getValues, setValue, watch } = form;

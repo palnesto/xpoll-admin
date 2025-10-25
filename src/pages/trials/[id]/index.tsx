@@ -304,8 +304,6 @@ export default function TrialShowPage() {
       payload.targetGeo = idsOnly;
     }
 
-    console.log("payload", payload);
-
     if (Object.keys(payload).length <= 1) {
       setIsEditing(false);
       return;
