@@ -6,6 +6,7 @@ import {
   Map,
   PieChart,
   ReceiptText,
+  User,
 } from "lucide-react";
 import xOctopus from "@/assets/sidebar.png";
 import { NavMain } from "@/components/nav-main";
@@ -216,6 +217,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             title: "System Report",
             url: "/asset-ledger/system-report",
             isActive: isSystemReport,
+          },
+        ],
+      },
+      {
+        title: "Users Management",
+        url: "#",
+        icon: User,
+        isActive: isAllLedgers || isSystemReport,
+        items: [
+          {
+            title: "All Users",
+            url: "/users",
+            isActive: isAllLedgers,
           },
         ],
       },

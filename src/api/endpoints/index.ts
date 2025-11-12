@@ -3,6 +3,9 @@ export const endpoints = {
   adminLogin: "/public/admin/login",
   adminLogout: "/public/admin/logout",
   adminMe: "/internal/auth/me",
+  users: {
+    details: (userId: string) => `/internal/users/details/${userId}`,
+  },
   grwb: {
     healthCheck: "/internal/grwb/health-check",
   },
