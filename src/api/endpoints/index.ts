@@ -4,8 +4,22 @@ export const endpoints = {
   adminLogout: "/public/admin/logout",
   adminMe: "/internal/auth/me",
   users: {
+    all: "/internal/external-users/all",
     details: (userId: string) => `/internal/users/details/${userId}`,
+    sharerAnalytics: (userId: string) =>
+      `/internal/referral/analytics/sharer/${userId}`,
   },
+  referral: {
+    listing: "/internal/referral/listing",
+    uniques: "/internal/referral/listing-uniques",
+    analytics: {
+      sharer: (userId: string) =>
+        `/internal/referral/analytics/sharer/${userId}`,
+      entity: (entityId: string) =>
+        `/internal/referral/analytics/entity/${entityId}`,
+    },
+  },
+
   grwb: {
     healthCheck: "/internal/grwb/health-check",
   },

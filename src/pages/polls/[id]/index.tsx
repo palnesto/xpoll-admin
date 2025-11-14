@@ -112,6 +112,22 @@ type Poll = {
   };
   trialId?: string;
   trial?: { _id: string; title?: string };
+  externalAuthor?: boolean;
+  externalAuthorInfo?: {
+    username?: string;
+    city?: { name?: string };
+    state?: { name?: string };
+    country?: { name?: string };
+  };
+};
+
+type EntityReferralAnalytics = {
+  entityId: string;
+  uniqueLinks: number;
+  totals: {
+    views: number;
+    uniques: number;
+  };
 };
 
 /* ---------- helpers ---------- */
@@ -156,7 +172,7 @@ type EditValues = z.infer<typeof normalEditSchema>;
 export default function PollShowPage() {
   const navigate = useNavigate();
   const location = useLocation() || {};
-  const isNavigationEditing = location?.state?.isNavigationEditing;
+  const isNavigationEditing = (location as any)?.state?.isNavigationEditing;
   const { id = "" } = useParams<{ id: string }>();
   const [activeRewardIndex, setActiveRewardIndex] = useState<number | null>(
     null
@@ -168,28 +184,56 @@ export default function PollShowPage() {
   const { data, isLoading, isError } = useApiQuery(showRoute);
 
   const poll: Poll | null = useMemo(() => {
-    return data?.data?.data ?? data?.data ?? null;
+    return (data?.data as any)?.data ?? data?.data ?? null;
   }, [data]);
 
   const trialId = poll?.trialId;
   const isArchived = poll?.archivedAt !== null;
   const unArchivedOptionsLength =
-    poll?.options.filter((opt) => {
-      return opt?.archivedAt === null;
-    }).length ?? 0;
+    poll?.options?.filter((opt) => opt?.archivedAt === null).length ?? 0;
 
   const userDetails = useMemo(() => {
     const isExternalAuthor = poll?.externalAuthor;
     if (!isExternalAuthor) return null;
     return {
-      username: poll?.externalAuthorInfo.username,
-      location: `${poll?.externalAuthorInfo?.city?.name}, ${poll?.externalAuthorInfo?.state?.name}, ${poll?.externalAuthorInfo?.country?.name}`,
+      username: poll?.externalAuthorInfo?.username,
+      location: `${poll?.externalAuthorInfo?.city?.name ?? ""}${
+        poll?.externalAuthorInfo?.state?.name
+          ? `, ${poll?.externalAuthorInfo?.state?.name}`
+          : ""
+      }${
+        poll?.externalAuthorInfo?.country?.name
+          ? `, ${poll?.externalAuthorInfo?.country?.name}`
+          : ""
+      }`,
     };
   }, [poll]);
+
   const isTrialPoll = !!(poll?.trialId || poll?.trial?._id);
 
-  const [isEditing, setIsEditing] = useState(isNavigationEditing ?? false);
+  const [isEditing, setIsEditing] = useState<boolean>(
+    isNavigationEditing ?? false
+  );
 
+  // ===== entity referral analytics (for this poll) =====
+  const entityAnalyticsUrl = useMemo(
+    () => (id ? endpoints.referral.analytics.entity(id) : ""),
+    [id]
+  );
+
+  const {
+    data: entityAnalyticsRaw,
+    isLoading: isLoadingEntityAnalytics,
+    error: entityAnalyticsError,
+  } = useApiQuery(entityAnalyticsUrl, {
+    key: ["entity-referral-analytics", "poll", id],
+  } as any);
+
+  const entityAnalytics: EntityReferralAnalytics | undefined = (
+    entityAnalyticsRaw?.data as any
+  )?.data;
+
+  // ===== form setup =====
   const form = useForm<EditValues>({
     resolver: zodResolver(isTrialPoll ? trialEditSchema : normalEditSchema),
     defaultValues: {
@@ -217,6 +261,7 @@ export default function PollShowPage() {
     control,
     name: "rewards",
   });
+
   useEffect(() => {
     if (!poll) return;
     // Prefer modern resourceAssets; fallback to legacy media string
@@ -245,6 +290,7 @@ export default function PollShowPage() {
               rewardType: REWARD_TYPE.MAX,
             },
           ];
+
     const initialTG = {
       countries: Array.isArray(poll.targetGeo?.countries)
         ? poll.targetGeo!.countries.map((c: any) => ({
@@ -418,8 +464,8 @@ export default function PollShowPage() {
       const arrEqUnordered = (a: string[], b: string[]) => {
         if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length)
           return false;
-        const A = [...a].sort(),
-          B = [...b].sort();
+        const A = [...a].sort();
+        const B = [...b].sort();
         return A.every((v, i) => v === B[i]);
       };
 
@@ -556,6 +602,7 @@ export default function PollShowPage() {
       ? [{ type: RESOURCE_TYPES_STRING.IMAGE, value: poll.media }]
       : [];
   const isBusy = isLoading || isUploading || isSaving;
+
   return (
     <>
       <div
@@ -614,7 +661,7 @@ export default function PollShowPage() {
                             )}
                           />
 
-                          {/* Description (same as create) */}
+                          {/* Description */}
                           <FormField
                             control={control}
                             name="description"
@@ -636,7 +683,7 @@ export default function PollShowPage() {
                           />
                         </FormCard>
 
-                        {/* Resource Assets (same as create) */}
+                        {/* Resource Assets */}
                         <FormCard
                           title="Resource Assets (Optional)"
                           subtitle="Max.: 3"
@@ -650,8 +697,8 @@ export default function PollShowPage() {
                           />
                         </FormCard>
                       </div>
+
                       <FormCard title="Add Options">
-                        {/* ===== Options card (kept at bottom exactly as before) ===== */}
                         <Card>
                           <CardHeader className="flex flex-row items-center justify-between">
                             <CardTitle>Options</CardTitle>
@@ -695,19 +742,19 @@ export default function PollShowPage() {
                             {poll?.options?.length ? (
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 {(poll.options ?? []).map((opt) => {
-                                  const isArchived = !!opt.archivedAt;
+                                  const isArchivedOpt = !!opt.archivedAt;
 
                                   return (
                                     <div
                                       key={opt._id}
                                       className={cn(
                                         "relative border rounded-lg p-3 hover:bg-muted/30",
-                                        isArchived &&
+                                        isArchivedOpt &&
                                           "opacity-50 cursor-not-allowed"
                                       )}
                                     >
                                       <div className="absolute right-2 top-2 flex items-center gap-2">
-                                        {!isArchived && (
+                                        {!isArchivedOpt && (
                                           <button
                                             type="button"
                                             className="rounded-md p-1 hover:bg-foreground/10"
@@ -726,10 +773,10 @@ export default function PollShowPage() {
                                         )}
 
                                         {!(
-                                          (isArchived &&
+                                          (isArchivedOpt &&
                                             activeCount + 1 >
                                               __MAX_OPTIONS_COUNT__) ||
-                                          (!isArchived &&
+                                          (!isArchivedOpt &&
                                             unArchivedOptionsLength <= 2)
                                         ) && (
                                           <button
@@ -740,13 +787,13 @@ export default function PollShowPage() {
                                                 pollId: (poll as any)._id,
                                                 optionId: opt._id,
                                                 optionText: opt.text,
-                                                shouldArchive: !isArchived,
+                                                shouldArchive: !isArchivedOpt,
                                               })
                                             }
                                             aria-label={`Delete option ${opt.text}`}
                                             title="Delete option"
                                           >
-                                            {!isArchived ? (
+                                            {!isArchivedOpt ? (
                                               <Trash2 className="w-4 h-4 text-red-600" />
                                             ) : (
                                               <Recycle className="w-4 h-4 text-white" />
@@ -765,7 +812,7 @@ export default function PollShowPage() {
                                         <div
                                           className={cn(
                                             "text-sm",
-                                            isArchived &&
+                                            isArchivedOpt &&
                                               "line-through opacity-60"
                                           )}
                                         >
@@ -885,8 +932,8 @@ export default function PollShowPage() {
                               poll.rewards.length > 0
                                 ? poll.rewards.map((r) => ({
                                     assetId: r.assetId as any,
-                                    amount: Number(r.amount), // convert
-                                    rewardAmountCap: Number(r.rewardAmountCap), // convert
+                                    amount: Number(r.amount),
+                                    rewardAmountCap: Number(r.rewardAmountCap),
                                     rewardType: r.rewardType as RewardType,
                                   }))
                                 : [
@@ -946,6 +993,13 @@ export default function PollShowPage() {
             <section className="flex justify-between items-center w-full">
               <h1 className="text-2xl tracking-wider">Poll</h1>
               <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  onClick={() => navigate(`/polls/${id}/referrals`)}
+                >
+                  Referral links
+                </Button>
+
                 {!isArchived && (
                   <Button
                     className="rounded-md px-2"
@@ -969,7 +1023,7 @@ export default function PollShowPage() {
                     onClick={() => {
                       setIsDeleting([
                         {
-                          pollId: poll._id,
+                          pollId: poll._id!,
                           title: poll.title,
                         },
                       ]);
@@ -1032,23 +1086,21 @@ export default function PollShowPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
                       {viewAssets.map((a, i) => {
                         return a.type === RESOURCE_TYPES_STRING.YOUTUBE ? (
-                          <>
-                            <div
-                              key={`yt-${i}`}
-                              className="flex items-center justify-between rounded-md border p-1 h-16 w-full"
+                          <div
+                            key={`yt-${i}`}
+                            className="flex items-center justify-between rounded-md border p-1 h-16 w-full"
+                          >
+                            <a
+                              target="_blank"
+                              href={`https://www.youtube.com/watch?v=${a.value}`}
+                              rel="noreferrer"
                             >
-                              <a
-                                target="_blank"
-                                href={`https://www.youtube.com/watch?v=${a.value}`}
-                                rel="noreferrer"
-                              >
-                                <ResourceAssetsPreview
-                                  src={getYTImageUrl(extractYouTubeId(a.value))}
-                                  label={"Youtube"}
-                                />
-                              </a>
-                            </div>
-                          </>
+                              <ResourceAssetsPreview
+                                src={getYTImageUrl(extractYouTubeId(a.value))}
+                                label={"Youtube"}
+                              />
+                            </a>
+                          </div>
                         ) : (
                           <div
                             key={`img-${i}`}
@@ -1069,19 +1121,20 @@ export default function PollShowPage() {
                   )}
                 </FormCard>
               </div>
+
               <FormCard title="Options">
                 <Card>
                   <CardContent className="space-y-4">
                     {poll?.options?.length ? (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {(poll.options ?? []).map((opt) => {
-                          const isArchived = !!opt.archivedAt;
+                          const isArchivedOpt = !!opt.archivedAt;
                           return (
                             <div
                               key={opt._id}
                               className={cn(
                                 "relative border rounded-lg p-3 hover:bg-muted/30",
-                                isArchived && "opacity-50 cursor-not-allowed"
+                                isArchivedOpt && "opacity-50 cursor-not-allowed"
                               )}
                             >
                               <div className="pr-10">
@@ -1094,7 +1147,7 @@ export default function PollShowPage() {
                                 <div
                                   className={cn(
                                     "text-sm",
-                                    isArchived && "line-through opacity-60"
+                                    isArchivedOpt && "line-through opacity-60"
                                   )}
                                 >
                                   {opt.text}
@@ -1118,6 +1171,7 @@ export default function PollShowPage() {
                   </CardContent>
                 </Card>
               </FormCard>
+
               {!trialId && (
                 <FormCard title="Rewards">
                   <RewardsList
@@ -1133,6 +1187,7 @@ export default function PollShowPage() {
                   />
                 </FormCard>
               )}
+
               {/* Hide Target Geo block entirely for trial polls */}
               {!isTrialPoll && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1178,6 +1233,52 @@ export default function PollShowPage() {
                   </FormCard>
                 </div>
               )}
+
+              {/* === Referral Analytics for this poll entity === */}
+              <FormCard title="Referral Analytics">
+                {isLoadingEntityAnalytics && (
+                  <p className="text-xs text-muted-foreground">
+                    Loading referral analytics…
+                  </p>
+                )}
+
+                {entityAnalyticsError && !isLoadingEntityAnalytics && (
+                  <p className="text-xs text-red-500">
+                    Failed to load referral analytics.
+                  </p>
+                )}
+
+                {!isLoadingEntityAnalytics &&
+                  !entityAnalyticsError &&
+                  !entityAnalytics && (
+                    <p className="text-xs text-muted-foreground">
+                      No referral analytics found for this poll.
+                    </p>
+                  )}
+
+                {entityAnalytics && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    <span className="px-3 py-1 rounded-full border bg-background text-[11px]">
+                      Unique links:{" "}
+                      <span className="font-semibold">
+                        {entityAnalytics.uniqueLinks}
+                      </span>
+                    </span>
+                    <span className="px-3 py-1 rounded-full border bg-background text-[11px]">
+                      Total views:{" "}
+                      <span className="font-semibold">
+                        {entityAnalytics.totals.views}
+                      </span>
+                    </span>
+                    <span className="px-3 py-1 rounded-full border bg-background text-[11px]">
+                      Total uniques:{" "}
+                      <span className="font-semibold">
+                        {entityAnalytics.totals.uniques}
+                      </span>
+                    </span>
+                  </div>
+                )}
+              </FormCard>
             </section>
           </>
         )}
