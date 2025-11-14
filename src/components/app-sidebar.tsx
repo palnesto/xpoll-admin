@@ -37,6 +37,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     isAnalyticsPoll,
     isAnalyticsTrials,
     isLLMQueries,
+    isUsers,
+    isReferralConfig,
   } = React.useMemo(() => {
     // isOverallPollStats
     const isOverallPollStats = pathname === "/";
@@ -77,11 +79,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       return false;
     })();
 
-    // llm
-    const isLLMQueries = (() => {
-      if (pathname.startsWith("/llm/queries")) return true;
-      return false;
-    })();
+    // LLM
+    const isLLMQueries = pathname.startsWith("/llm/queries");
+
+    // Users management
+    const isUsers = pathname === "/users";
+    const isReferralConfig = pathname === "/referral-config";
+
     return {
       isOverallPollStats,
       isAdminAndUserPolls,
@@ -97,8 +101,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       isAnalyticsPoll,
       isAnalyticsTrials,
       isLLMQueries,
+      isUsers,
+      isReferralConfig,
     };
   }, [pathname]);
+
   const data = {
     user: {
       name: "Admin",
@@ -106,24 +113,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       avatar: "/avatars/shadcn.jpg",
     },
     navMain: [
-      // {
-      //   title: "All Polls",
-      //   url: "#",
-      //   icon: ReceiptText,
-      //   isActive: isAdminAndUserPolls || isTrialPolls,
-      //   items: [
-      //     {
-      //       title: "Admin and Users Polls",
-      //       url: "/polls",
-      //       isActive: isAdminAndUserPolls,
-      //     },
-      //     {
-      //       title: "Trial Polls",
-      //       url: "/trials",
-      //       isActive: isTrialPolls,
-      //     },
-      //   ],
-      // },
       {
         title: "XP Intelligence",
         url: "#",
@@ -189,19 +178,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           },
         ],
       },
-      // {
-      //   title: "Actions",
-      //   url: "#",
-      //   icon: Settings,
-      //   isActive: isAllActions,
-      //   items: [
-      //     {
-      //       title: "All Actions",
-      //       url: "/actions",
-      //       isActive: isAllActions,
-      //     },
-      //   ],
-      // },
       {
         title: "Asset Ledger",
         url: "#",
@@ -224,46 +200,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Users Management",
         url: "#",
         icon: User,
-        isActive: isAllLedgers || isSystemReport,
+        isActive: isUsers || isReferralConfig,
         items: [
           {
             title: "All Users",
             url: "/users",
-            isActive: isAllLedgers,
+            isActive: isUsers,
+          },
+          {
+            title: "Referral Config",
+            url: "/referral-config",
+            isActive: isReferralConfig,
           },
         ],
       },
-      // {
-      //   title: "Analytics",
-      //   url: "#",
-      //   icon: Settings,
-      //   isActive: isAnalyticsPoll,
-      //   items: [
-      //     {
-      //       title: "Polls",
-      //       url: "/analytics/polls",
-      //       isActive: isAnalyticsPoll,
-      //     },
-      //     {
-      //       title: "Trials",
-      //       url: "/analytics/trials",
-      //       isActive: isAnalyticsTrials,
-      //     },
-      //   ],
-      // },
-      // {
-      //   title: "LLM",
-      //   url: "#",
-      //   icon: Settings,
-      //   isActive: isLLMQueries,
-      //   items: [
-      //     {
-      //       title: "Queries",
-      //       url: "/llm/queries",
-      //       isActive: isLLMQueries,
-      //     },
-      //   ],
-      // },
     ],
     projects: [
       {
@@ -295,17 +245,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <div className="h-12 aspect-3/4">
             <img src={xpollSVG} className="h-full w-full object-contain" />
           </div>
-          {/* <span className="text-3xl font-semibold">Xpoll</span> */}
         </div>
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
-        {/* <NavProjects projects={data.projects} /> */}
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={data.user} />
       </SidebarFooter>
-      {/* <SidebarRail /> */}
     </Sidebar>
   );
 }

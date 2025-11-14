@@ -18,6 +18,8 @@ export const endpoints = {
       entity: (entityId: string) =>
         `/internal/referral/analytics/entity/${entityId}`,
     },
+    getConfig: "/internal/referral/referral-config",
+    updateReferral: "/internal/referral/referral-levels",
   },
 
   grwb: {
