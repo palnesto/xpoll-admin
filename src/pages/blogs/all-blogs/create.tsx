@@ -49,21 +49,20 @@ const formSchema = z
 type FormValues = z.infer<typeof formSchema>;
 export default function CreateBlogPage() {
   const navigate = useNavigate();
-  const { uploadImage, loading: imageUploading } = useImageUpload();
+  const { uploadImage } = useImageUpload();
 
-  const { mutate: blogCreateMutate, isPending: isBlogCreationPending } =
-    useApiMutation({
-      route: endpoints.entities.blogs.create,
-      method: "POST",
-      onSuccess: (data) => {
-        if (data?.statusCode === 201) {
-          appToast.success("Blog created successfully");
-          if (data?.data?._id) {
-            navigate(`/blogs/all-blogs/details/${data?.data?._id}`);
-          }
+  const { mutate: blogCreateMutate } = useApiMutation({
+    route: endpoints.entities.blogs.create,
+    method: "POST",
+    onSuccess: (data) => {
+      if (data?.statusCode === 201) {
+        appToast.success("Blog created successfully");
+        if (data?.data?._id) {
+          navigate(`/blogs/all-blogs/details/${data?.data?._id}`);
         }
-      },
-    });
+      }
+    },
+  });
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -84,11 +83,9 @@ export default function CreateBlogPage() {
             const file = valueArr[0];
 
             if (file instanceof File) {
-              // upload image and get url
               const url = await uploadImage(file);
               return url;
             } else if (typeof file === "string" && file.trim().length > 0) {
-              // return url
               return file;
             }
             return null;
@@ -99,7 +96,6 @@ export default function CreateBlogPage() {
         })
       )
     ).filter(Boolean) as string[];
-    console.log("finalImageUrls", finalImageUrls);
 
     const payload = {
       title: values.title,
@@ -107,21 +103,14 @@ export default function CreateBlogPage() {
       pollStatement: values.pollStatement,
       imageUrls: finalImageUrls,
     };
-    console.log("payload", payload);
     blogCreateMutate(payload);
-    // console.log("values", values);
-    // Handle form submission here
   }
-  console.log("watch", form.watch());
-  console.log("error", form.formState.errors);
-
   return (
     <>
       <div className="p-6 space-y-8">
         <h1 className="text-2xl font-bold">Create Blog</h1>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            {/* <ImageUploader onUploadComplete={handleUploadComplete} /> */}
             <FormField
               control={form.control}
               name="imageUrls"
@@ -134,7 +123,7 @@ export default function CreateBlogPage() {
                       name="imageUrls"
                       maxAssets={3}
                       isEditing={true}
-                      mediaAllowed={["image"]} // ✅ ONLY images
+                      mediaAllowed={["image"]}
                     />
                   </FormControl>
                   <FormMessage />
@@ -195,7 +184,7 @@ export default function CreateBlogPage() {
               <Button
                 variant={"secondary"}
                 type="button"
-                disabled={isBlogCreationPending}
+                disabled={form.formState.isSubmitting}
                 onClick={() => {
                   navigate(-1);
                 }}
@@ -203,8 +192,10 @@ export default function CreateBlogPage() {
                 Cancel
               </Button>
 
-              <Button type="submit" disabled={isBlogCreationPending}>
-                {isBlogCreationPending ? "Creating Blog..." : "Create Blog"}
+              <Button type="submit" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting
+                  ? "Creating Blog..."
+                  : "Create Blog"}
               </Button>
             </div>
           </form>

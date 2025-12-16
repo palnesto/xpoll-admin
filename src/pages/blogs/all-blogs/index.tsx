@@ -33,14 +33,13 @@ const BlogsPage = () => {
     [entries, isDeleting]
   );
 
-  // ✅ DELETE API
   const { mutate: deleteMutate, isPending: isDeletePending } = useApiMutation({
-    route: endpoints.entities.blogs.delete, // ✅ set this in endpoints
-    method: "DELETE", // if your backend uses POST for delete, change to "POST"
+    route: endpoints.entities.blogs.delete,
+    method: "DELETE",
     onSuccess: () => {
       appToast.success("Blog deleted successfully.");
       closeDeleteModal();
-      queryClient.invalidateQueries(); // or invalidate only this list key if you have it
+      queryClient.invalidateQueries();
     },
     onError: () => {
       appToast.error("Failed to delete blog.");
@@ -52,7 +51,6 @@ const BlogsPage = () => {
     deleteMutate({ blogIds: [isDeleting] });
   }, [isDeleting, deleteMutate]);
 
-  // ✅ actions depend on archivedAt
   const actions = useCallback(
     (blog: BlogRow) => {
       const isArchived = !!blog.archivedAt;
@@ -87,7 +85,6 @@ const BlogsPage = () => {
     [navigate, setIsDeleting]
   );
 
-  // ✅ table rows (include isArchived for row styling)
   const tableData = useMemo(() => {
     return entries.map((b) => ({
       id: b._id,
@@ -116,7 +113,6 @@ const BlogsPage = () => {
         onCreate={() => navigate("/blogs/all-blogs/create")}
         columns={columns}
         data={tableData}
-        // ✅ you need TablePage to support this. If it doesn't, see section #3 below.
         rowClassName={(row: any) =>
           row.isArchived ? "bg-red-700/40 hover:bg-red-700/50" : ""
         }
