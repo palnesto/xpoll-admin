@@ -72,6 +72,13 @@ export const endpoints = {
       sellApproveOrder: "/internal/asset-ledger/sell-approve",
       sellRejectOrder: "/internal/asset-ledger/sell-reject",
     },
+    blogs: {
+      all: "/internal/blogs",
+      getById: (id: string) => `/internal/blogs/${id}`,
+      create: "/internal/blogs",
+      update: (id: string) => `/internal/blogs/${id}`,
+      delete: "/internal/blogs",
+    },
     slug: {
       create: "/internal/preference/slugs",
       all: "/internal/preference/slugs",

@@ -28,6 +28,7 @@ export type TablePageProps<T> = {
   columns: TableColumn<T>[];
   data: T[];
   usingRef?: boolean;
+  rowClassName?: (row: T, rowIndex: number) => string;
 };
 
 export function TablePage<T>({
@@ -37,6 +38,7 @@ export function TablePage<T>({
   columns,
   data,
   usingRef = true,
+  rowClassName,
 }: TablePageProps<T>) {
   const headerRef = useRef<HTMLDivElement | null>(null);
   const tableRef = useRef<HTMLDivElement | null>(null);
@@ -194,7 +196,12 @@ export function TablePage<T>({
             </TableHeader>
             <TableBody className="bg-[#18181B]">
               {filteredData.map((row, rowIndex) => (
-                <TableRow key={rowIndex}>
+                <TableRow
+                  key={rowIndex}
+                  className={cn(
+                    rowClassName ? rowClassName(row, rowIndex) : ""
+                  )}
+                >
                   {columns.map((column) => (
                     <TableCell
                       style={{
