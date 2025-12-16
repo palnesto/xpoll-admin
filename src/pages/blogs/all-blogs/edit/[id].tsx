@@ -48,25 +48,24 @@ type FormValues = z.infer<typeof formSchema>;
 export default function EditBlogPage() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { uploadImage, loading: imageUploading } = useImageUpload();
+  const { uploadImage } = useImageUpload();
 
-  const { data: blogRes, isPending: isBlogDataPending } = useApiQuery(
+  const { data: blogRes } = useApiQuery(
     id ? endpoints.entities.blogs.getById(id) : "",
     { enabled: !!id }
   );
   const blog = blogRes?.data?.data?.blog;
 
-  const { mutate: blogEditMutate, isPending: isBlogEditPending } =
-    useApiMutation({
-      route: endpoints.entities.blogs.update(id as string),
-      method: "PATCH",
-      onSuccess: (data) => {
-        if (data?.statusCode === 200) {
-          appToast.success("Blog updated successfully");
-          navigate(`/blogs/all-blogs/details/${id}`);
-        }
-      },
-    });
+  const { mutate: blogEditMutate } = useApiMutation({
+    route: endpoints.entities.blogs.update(id as string),
+    method: "PATCH",
+    onSuccess: (data) => {
+      if (data?.statusCode === 200) {
+        appToast.success("Blog updated successfully");
+        navigate(`/blogs/all-blogs/details/${id}`);
+      }
+    },
+  });
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -133,9 +132,6 @@ export default function EditBlogPage() {
 
     blogEditMutate(payload as any);
   }
-
-  const disableSubmit =
-    isBlogDataPending || isBlogEditPending || imageUploading;
 
   return (
     <div className="p-6 space-y-8">
@@ -216,14 +212,14 @@ export default function EditBlogPage() {
             <Button
               variant="secondary"
               type="button"
-              disabled={disableSubmit}
+              disabled={form.formState.isSubmitting}
               onClick={() => navigate(-1)}
             >
               Cancel
             </Button>
 
-            <Button type="submit" disabled={disableSubmit}>
-              {disableSubmit ? "Saving..." : "Save changes"}
+            <Button type="submit" disabled={form.formState.isSubmitting}>
+              {form.formState.isSubmitting ? "Saving..." : "Save changes"}
             </Button>
           </div>
         </form>
