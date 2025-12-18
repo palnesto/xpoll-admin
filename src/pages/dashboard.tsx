@@ -8,6 +8,7 @@ import aptos from "@/assets/aptos.png";
 import xrp from "@/assets/xrp.png";
 import sui from "@/assets/sui.png";
 import xpoll from "@/assets/xpoll.png";
+import strain from "@/assets/strain.png";
 import { memo } from "react";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { endpoints } from "@/api/endpoints";
@@ -87,6 +88,7 @@ export const Dashboard = memo(function Dashboard() {
     [ASSETS.X_MYST]: sui,
     [ASSETS.X_OCTA]: aptos,
     [ASSETS.X_POLL]: xpoll,
+    [ASSETS.X_HIGH]: strain,
   };
 
   // Optional color per asset (tweak freely)

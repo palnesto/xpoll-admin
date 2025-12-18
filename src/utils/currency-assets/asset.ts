@@ -3,11 +3,14 @@ import xpoll from "@/assets/xpoll.png";
 import aptos from "@/assets/aptos.png";
 import sui from "@/assets/sui.png";
 import xrp from "@/assets/xrp.png";
+import strain from "@/assets/strain.png";
+
 export const ASSETS = {
   X_POLL: "xPoll", // xPoll
   X_OCTA: "xOcta", // Aptos
   X_MYST: "xMYST", // SUI
   X_DROP: "xDrop", // XRP
+  X_HIGH: "xHigh", // xStrain
 } as const;
 export type AssetType = (typeof ASSETS)[keyof typeof ASSETS];
 
@@ -16,12 +19,14 @@ const _assets = [
   ASSETS.X_OCTA,
   ASSETS.X_MYST,
   ASSETS.X_DROP,
+  ASSETS.X_HIGH,
 ] as const;
 export const coinAssets = [
   ASSETS.X_POLL,
   ASSETS.X_OCTA,
   ASSETS.X_MYST,
   ASSETS.X_DROP,
+  ASSETS.X_HIGH,
 ] as const;
 export const assetEnum = z.enum(_assets);
 export const sellableAssetEnum = z.enum([
@@ -93,5 +98,18 @@ export const assetSpecs: Record<
     img: xrp,
     canSell: { standardOrderAmount: 100, conversionFeesInXpoll: 100 },
     chain: "XRP",
+  },
+  [ASSETS.X_HIGH]: {
+    decimal: 6,
+    name: "XHIGH",
+    symbol: "XHG",
+    parent: "xStrain",
+    parentSymbol: "XSTR",
+    img: strain,
+    canSell: {
+      standardOrderAmount: 100000000,
+      conversionFeesInXpoll: 100000000,
+    },
+    chain: "BASE",
   },
 };

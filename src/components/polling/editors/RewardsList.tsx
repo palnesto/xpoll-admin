@@ -110,6 +110,12 @@ export default function RewardsList({
                           src={assetSpecs[assetId]?.img}
                           className="w-full h-full"
                         />
+                        {console.log(
+                          assetId,
+                          assetSpecs,
+                          "assetSpecs[assetId]",
+                          assetSpecs[assetId]
+                        )}
                       </div>
                       <p>{assetSpecs[assetId]?.parent}</p>
                     </div>

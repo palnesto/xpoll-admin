@@ -31,7 +31,11 @@ import { queryClient } from "@/api/queryClient";
 import { appToast } from "@/utils/toast";
 
 // 🔽 NEW imports to support asset-aware clamped inputs
-import { assetSpecs, AssetType } from "@/utils/currency-assets/asset";
+import {
+  assetEnum,
+  assetSpecs,
+  AssetType,
+} from "@/utils/currency-assets/asset";
 import { amount, unwrapString } from "@/utils/currency-assets/base";
 import { AssetLabel } from "@/pages/asset-ledger/system-report";
 
@@ -47,12 +51,11 @@ const FALLBACK_ASSETS: Asset[] = [
   { _id: "xOcta", symbol: "XOT", name: "xOCTA" },
   { _id: "xMYST", symbol: "XMT", name: "XMYST" },
   { _id: "xDrop", symbol: "XDP", name: "XDROP" },
+  { _id: "xHigh", symbol: "XHG", name: "XHIGH" },
 ] as const;
 
 const baseActionSchema = z.object({
-  assetId: z.enum(["xPoll", "xOcta", "xMYST", "xDrop"], {
-    required_error: "Select an asset",
-  }),
+  assetId: assetEnum,
   // kept as BASE integer for API; UI component converts parent -> base
   amount: z.coerce.number().int().min(1, "Min 1"),
 });
@@ -412,6 +415,11 @@ function ActionDialog<
     setResp(null);
     reset(defaultValues as Values);
   };
+
+  console.log({
+    error: methods.formState.errors,
+    values: methods.watch(),
+  });
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
