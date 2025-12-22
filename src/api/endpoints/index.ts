@@ -95,4 +95,8 @@ export const endpoints = {
     recordAptosBatchResult: "/internal/asset-ledger/sell-intent/aptos/result",
     checkAddressActivation: "/internal/asset-ledger/sell-intent/address-status",
   },
+  strain: {
+    getWeb2SellStatus: "/internal/app-config/sell-strain-status",
+    setWeb2SellStatus: "/internal/app-config/sell-strain-status",
+  },
 };

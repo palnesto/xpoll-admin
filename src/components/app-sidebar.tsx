@@ -200,6 +200,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             url: "/asset-ledger/system-report",
             isActive: isSystemReport,
           },
+          {
+            title: "Strain Coin Management",
+            url: "/strain/manage",
+            isActive: isSystemReport,
+          },
         ],
       },
       {

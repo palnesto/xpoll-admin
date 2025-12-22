@@ -95,7 +95,9 @@
     "shadcn": "^2.1.6",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
+    "viem": "^2.43.1",
     "vite-plugin-pages": "^0.32.5",
+    "wagmi": "^3.1.0",
     "xlsx": "^0.18.5",
     "zod": "^3.25.28",
     "zustand": "^5.0.2"
