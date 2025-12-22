@@ -20,6 +20,8 @@ import SpotlightCard from "@/components/SpotlightCard";
 import { Slide } from "react-awesome-reveal";
 
 export const Dashboard = memo(function Dashboard() {
+  const { data: totalSupplyData } = useApiQuery(endpoints.assets.totalSupply);
+  console.log("totalSupplyData", totalSupplyData);
   const { data: stats, isLoading } = useApiQuery(
     endpoints.entities.polls.overallPollStats
   );

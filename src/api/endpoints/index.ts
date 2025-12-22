@@ -2,6 +2,9 @@ export const endpoints = {
   healthCheck: "/health-check",
   adminLogin: "/public/admin/login",
   adminLogout: "/public/admin/logout",
+  assets: {
+    totalSupply: "/common/assets/total-supply",
+  },
   adminMe: "/internal/auth/me",
   users: {
     all: "/internal/external-users/all",
