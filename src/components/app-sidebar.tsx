@@ -7,6 +7,7 @@ import {
   PieChart,
   ReceiptText,
   User,
+  LayoutTemplate,
 } from "lucide-react";
 import xOctopus from "@/assets/sidebar.png";
 import { NavMain } from "@/components/nav-main";
@@ -37,6 +38,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     isAnalyticsPoll,
     isAnalyticsTrials,
     isLLMQueries,
+    isAllBlogs,
     isUsers,
     isReferralConfig,
   } = React.useMemo(() => {
@@ -82,6 +84,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     // LLM
     const isLLMQueries = pathname.startsWith("/llm/queries");
 
+    // All Blogs
+    const isAllBlogs = pathname === "/blogs/all-blogs";
+
     // Users management
     const isUsers = pathname === "/users";
     const isReferralConfig = pathname === "/referral-config";
@@ -103,6 +108,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       isLLMQueries,
       isUsers,
       isReferralConfig,
+      isAllBlogs,
     };
   }, [pathname]);
 
@@ -193,6 +199,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             title: "System Report",
             url: "/asset-ledger/system-report",
             isActive: isSystemReport,
+          },
+        ],
+      },
+      {
+        title: "Blogs",
+        url: "#",
+        icon: LayoutTemplate,
+        isActive: isAllBlogs,
+        items: [
+          {
+            title: "All Blogs",
+            url: "/blogs/all-blogs",
+            isActive: isAllBlogs,
           },
         ],
       },
