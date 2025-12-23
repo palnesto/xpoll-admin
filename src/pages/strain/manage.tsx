@@ -4,12 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 import { parseAbi } from "viem";
 import {
   useAccount,
-  useConnect,
   useDisconnect,
   useReadContract,
   useWaitForTransactionReceipt,
   useWriteContract,
 } from "wagmi";
+
+// NEW: Reown Hook
+import { useAppKit } from "@reown/appkit/react";
+
 import { appToast } from "@/utils/toast";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { endpoints } from "@/api/endpoints";
@@ -23,7 +26,6 @@ const RELAYER = import.meta.env.VITE_RELAYER_CONTRACT_ADDRESS as
   | `0x${string}`
   | undefined;
 
-// Prefer env owner (simple). If missing, fallback to on-chain owner().
 const OWNER_ADDRESS = import.meta.env.VITE_RELAYER_OWNER_ADDRESS as
   | `0x${string}`
   | undefined;
@@ -57,12 +59,10 @@ async function addTokenToWallet() {
     appToast.info("TOKEN_ADDRESS is not defined");
     return;
   }
-
   if (!window.ethereum) {
     alert("Wallet not found!");
     return;
   }
-
   try {
     await window.ethereum.request({
       method: "wallet_watchAsset",
@@ -91,18 +91,14 @@ function shortTx(t?: string) {
   return `${t.slice(0, 10)}…${t.slice(-6)}`;
 }
 
-// Parse "12.34" into base units (BigInt) with given decimals (no float math)
 function parseUnitsStrict(input: string, decimals: number): bigint {
   const s = input.trim();
   if (!s) throw new Error("EMPTY_AMOUNT");
-
   const [wholeRaw, fracRaw = ""] = s.split(".");
   const whole = wholeRaw === "" ? "0" : wholeRaw;
-
   if (!/^\d+$/.test(whole) || !/^\d*$/.test(fracRaw)) {
     throw new Error("BAD_AMOUNT");
   }
-
   const frac = fracRaw.slice(0, decimals).padEnd(decimals, "0");
   const combined = `${whole}${frac}`.replace(/^0+(?=\d)/, "");
   return BigInt(combined || "0");
@@ -142,8 +138,11 @@ function StatusBadge({
 /* ------------------------------------------------------------------ */
 
 export default function StrainManagementPage() {
+  // 1. REOWN Hook
+  const { open } = useAppKit();
+
+  // 2. WAGMI Hooks
   const { address, isConnected } = useAccount();
-  const { connectAsync, connectors } = useConnect();
   const { disconnect } = useDisconnect();
   const { writeContractAsync } = useWriteContract();
 
@@ -151,7 +150,6 @@ export default function StrainManagementPage() {
   const [activeTxHash, setActiveTxHash] = useState<`0x${string}` | undefined>();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
-  const [isWalletProviderPresent, setIsWalletProviderPresent] = useState(true);
 
   const addLog = (msg: string, type: LogType = "info") => {
     const time = new Date().toLocaleTimeString();
@@ -229,9 +227,8 @@ export default function StrainManagementPage() {
   });
 
   const web2SellActive = useMemo(() => {
-    if (!web2StatusQ.data) return true; // fallback safe default
+    if (!web2StatusQ.data) return true;
     const isSellStrainActive = web2StatusQ.data?.data?.data?.isSellStrainActive;
-    console.log("isSellStrainActive", isSellStrainActive);
     return Boolean(isSellStrainActive);
   }, [web2StatusQ.data]);
 
@@ -260,9 +257,7 @@ export default function StrainManagementPage() {
 
     try {
       addLog(`Processing: ${label}`, "pending");
-
       await setWeb2SellM.mutateAsync({ isSellStrainActive: next });
-
       addLog(`✅ Success: ${label}`, "success");
       appToast.success(label);
     } catch (e: any) {
@@ -293,20 +288,6 @@ export default function StrainManagementPage() {
 
   /* ------------------------------ actions ------------------------------ */
 
-  async function onConnectWallet(connector: any) {
-    try {
-      await connectAsync({ connector });
-      addLog("Wallet connected", "success");
-      setIsWalletProviderPresent(true);
-    } catch (e: any) {
-      addLog(
-        `Connect failed: ${e?.shortMessage || e?.message || "Unknown error"}`,
-        "error"
-      );
-      setIsWalletProviderPresent(false);
-    }
-  }
-
   async function execTx(
     label: string,
     fn: "pause" | "unpause" | "emergencyWithdraw",
@@ -316,12 +297,10 @@ export default function StrainManagementPage() {
       addLog("Missing VITE_RELAYER_CONTRACT_ADDRESS", "error");
       return;
     }
-
     if (!isConnected || !address) {
       addLog("Please connect wallet", "warning");
       return;
     }
-
     if (!isOwner) {
       addLog("Access denied: connect the relayer owner wallet", "error");
       return;
@@ -370,7 +349,6 @@ export default function StrainManagementPage() {
         addLog("Amount must be > 0", "warning");
         return;
       }
-
       await execTx(`Emergency Withdraw ${amount}`, "emergencyWithdraw", [base]);
     } catch {
       addLog("Invalid amount format", "error");
@@ -419,33 +397,31 @@ export default function StrainManagementPage() {
               )}
             </div>
 
-            {!isWalletProviderPresent && (
-              <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-200">
-                Please install a wallet provider (MetaMask/Coinbase/etc).
-              </div>
-            )}
-
             <div className="flex flex-col gap-2">
               {isConnected ? (
-                <button
-                  onClick={() => {
-                    disconnect();
-                    addLog("Disconnected to switch wallet", "info");
-                  }}
-                  className="w-full rounded-lg bg-neutral-200 px-4 py-2 text-xs font-bold text-black hover:bg-white"
-                >
-                  Switch Wallet (Disconnect)
-                </button>
-              ) : (
-                connectors.map((connector) => (
+                // Use Reown 'open' to switch wallets or standard disconnect
+                <div className="flex flex-col gap-2">
                   <button
-                    key={connector.uid}
-                    onClick={() => onConnectWallet(connector)}
+                    onClick={() => disconnect()}
+                    className="w-full rounded-lg bg-neutral-200 px-4 py-2 text-xs font-bold text-black hover:bg-white"
+                  >
+                    Disconnect
+                  </button>
+                  <button
+                    onClick={() => open()} // Opens modal to see account info / switch
                     className="w-full rounded-lg bg-neutral-800 border border-neutral-700 px-4 py-2 text-xs font-bold text-white hover:bg-neutral-700 transition-colors"
                   >
-                    Connect {connector.name}
+                    Manage Wallet
                   </button>
-                ))
+                </div>
+              ) : (
+                // REOWN CONNECT BUTTON
+                <button
+                  onClick={() => open()}
+                  className="w-full rounded-lg bg-neutral-800 border border-neutral-700 px-4 py-2 text-xs font-bold text-white hover:bg-neutral-700 transition-colors"
+                >
+                  Connect Wallet (Admin)
+                </button>
               )}
             </div>
           </div>
@@ -467,7 +443,6 @@ export default function StrainManagementPage() {
             <h1 className="text-xl font-bold tracking-tight">
               Strain Management
             </h1>
-
             <StatusBadge
               paused={isRelayerPaused}
               loading={relayerPausedQ.isLoading}
@@ -481,10 +456,7 @@ export default function StrainManagementPage() {
             </div>
 
             <button
-              onClick={() => {
-                disconnect();
-                addLog("Disconnected wallet", "info");
-              }}
+              onClick={() => disconnect()}
               disabled={busy}
               className="rounded-lg border border-neutral-800 bg-neutral-950 px-4 py-2 text-xs font-semibold hover:bg-neutral-900 disabled:opacity-60"
             >
