@@ -96,7 +96,7 @@ export const endpoints = {
     checkAddressActivation: "/internal/asset-ledger/sell-intent/address-status",
   },
   strain: {
-    getWeb2SellStatus: "/internal/app-config/sell-strain-status",
+    getWeb2SellStatus: "/common/app-config/sell-strain-status",
     setWeb2SellStatus: "/internal/app-config/sell-strain-status",
   },
 };
