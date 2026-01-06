@@ -11,6 +11,7 @@ export const ASSETS = {
   X_MYST: "xMYST", // SUI
   X_DROP: "xDrop", // XRP
   X_HIGH: "xHigh", // xStrain
+  X_GIVE: "xGive", // xGive
 } as const;
 export type AssetType = (typeof ASSETS)[keyof typeof ASSETS];
 
@@ -20,6 +21,7 @@ const _assets = [
   ASSETS.X_MYST,
   ASSETS.X_DROP,
   ASSETS.X_HIGH,
+  ASSETS.X_GIVE,
 ] as const;
 export const coinAssets = [
   ASSETS.X_POLL,
@@ -27,6 +29,7 @@ export const coinAssets = [
   ASSETS.X_MYST,
   ASSETS.X_DROP,
   ASSETS.X_HIGH,
+  ASSETS.X_GIVE,
 ] as const;
 export const assetEnum = z.enum(_assets);
 export const sellableAssetEnum = z.enum([
@@ -110,6 +113,16 @@ export const assetSpecs: Record<
       standardOrderAmount: 100000000,
       conversionFeesInXpoll: 100000000,
     },
+    chain: "BASE",
+  },
+  [ASSETS.X_GIVE]: {
+    decimal: 6,
+    name: "XGIVE",
+    symbol: "XGV",
+    parent: "xCampaign",
+    parentSymbol: "XCMPN",
+    img: "/img/XGIVE.png",
+    canSell: null,
     chain: "BASE",
   },
 };
