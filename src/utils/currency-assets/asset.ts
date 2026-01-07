@@ -116,7 +116,7 @@ export const assetSpecs: Record<
     chain: "BASE",
   },
   [ASSETS.X_GIVE]: {
-    decimal: 6,
+    decimal: 2,
     name: "XGIVE",
     symbol: "XGV",
     parent: "xCampaign",
