@@ -4,6 +4,10 @@ import aptos from "@/assets/aptos.png";
 import sui from "@/assets/sui.png";
 import xrp from "@/assets/xrp.png";
 import strain from "@/assets/strain.png";
+import cmpn from "@/assets/cmpn.png";
+import amy from "@/assets/amy.png";
+import shelly from "@/assets/shelly.png";
+import snitch from "@/assets/snitch.png";
 
 export const ASSETS = {
   X_POLL: "xPoll", // xPoll
@@ -11,7 +15,11 @@ export const ASSETS = {
   X_MYST: "xMYST", // SUI
   X_DROP: "xDrop", // XRP
   X_HIGH: "xHigh", // xStrain
-  X_GIVE: "xGive", // xGive
+  X_GIVE: "xGive", // xCampaign
+  // new coins
+  X_AMBIT: "xAmbit", // xAmy
+  X_SHELL: "xShell", // xShelly
+  X_TIP: "xTip", // xSnitch
 } as const;
 export type AssetType = (typeof ASSETS)[keyof typeof ASSETS];
 
@@ -22,6 +30,9 @@ const _assets = [
   ASSETS.X_DROP,
   ASSETS.X_HIGH,
   ASSETS.X_GIVE,
+  ASSETS.X_AMBIT,
+  ASSETS.X_SHELL,
+  ASSETS.X_TIP,
 ] as const;
 export const coinAssets = [
   ASSETS.X_POLL,
@@ -30,6 +41,9 @@ export const coinAssets = [
   ASSETS.X_DROP,
   ASSETS.X_HIGH,
   ASSETS.X_GIVE,
+  ASSETS.X_AMBIT,
+  ASSETS.X_SHELL,
+  ASSETS.X_TIP,
 ] as const;
 export const assetEnum = z.enum(_assets);
 export const sellableAssetEnum = z.enum([
@@ -39,6 +53,16 @@ export const sellableAssetEnum = z.enum([
 ]);
 export const coinAssetEnum = z.enum(coinAssets);
 export const assets = assetEnum.options;
+
+const CHAINS = {
+  APTOS: "APTOS",
+  SUI: "SUI",
+  XRP: "XRP",
+  STRAIN: "BASE",
+} as const;
+const chains = [CHAINS.APTOS, CHAINS.SUI, CHAINS.XRP, CHAINS.STRAIN] as const;
+export const chainEnumZ = z.enum(chains);
+export type Chain = z.infer<typeof chainEnumZ>;
 
 export const canSellZ = z
   .object({
@@ -80,7 +104,7 @@ export const assetSpecs: Record<
     parentSymbol: "XAPT",
     img: aptos,
     canSell: { standardOrderAmount: 100, conversionFeesInXpoll: 100 },
-    chain: "APTOS",
+    chain: CHAINS.APTOS,
   },
   [ASSETS.X_MYST]: {
     decimal: 9,
@@ -90,7 +114,7 @@ export const assetSpecs: Record<
     parentSymbol: "XSUI",
     img: sui,
     canSell: { standardOrderAmount: 100, conversionFeesInXpoll: 100 },
-    chain: "SUI",
+    chain: CHAINS.SUI,
   },
   [ASSETS.X_DROP]: {
     decimal: 6,
@@ -100,7 +124,7 @@ export const assetSpecs: Record<
     parentSymbol: "XXRP",
     img: xrp,
     canSell: { standardOrderAmount: 100, conversionFeesInXpoll: 100 },
-    chain: "XRP",
+    chain: CHAINS.XRP,
   },
   [ASSETS.X_HIGH]: {
     decimal: 6,
@@ -113,7 +137,7 @@ export const assetSpecs: Record<
       standardOrderAmount: 100000000,
       conversionFeesInXpoll: 100000000,
     },
-    chain: "BASE",
+    chain: CHAINS.STRAIN,
   },
   [ASSETS.X_GIVE]: {
     decimal: 2,
@@ -121,8 +145,38 @@ export const assetSpecs: Record<
     symbol: "XGV",
     parent: "xCampaign",
     parentSymbol: "XCMPN",
-    img: "/img/XGIVE.png",
+    img: cmpn,
     canSell: null,
-    chain: "BASE",
+    chain: CHAINS.STRAIN,
+  },
+  [ASSETS.X_AMBIT]: {
+    decimal: 8,
+    name: "XAMBIT",
+    symbol: "XAMB",
+    parent: "xAmy",
+    parentSymbol: "XAMY",
+    img: amy,
+    canSell: null,
+    chain: CHAINS.STRAIN,
+  },
+  [ASSETS.X_SHELL]: {
+    decimal: 6,
+    name: "XSHELL",
+    symbol: "XSHL",
+    parent: "xShelly",
+    parentSymbol: "XSHLY",
+    img: shelly,
+    canSell: null,
+    chain: CHAINS.STRAIN,
+  },
+  [ASSETS.X_TIP]: {
+    decimal: 7,
+    name: "XTIP",
+    symbol: "XTP",
+    parent: "xSnitch",
+    parentSymbol: "XSNI",
+    img: snitch,
+    canSell: null,
+    chain: CHAINS.STRAIN,
   },
 };
