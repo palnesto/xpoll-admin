@@ -241,19 +241,18 @@ import xrp from "@/assets/xrp.png";
 import sui from "@/assets/sui.png";
 import xpoll from "@/assets/xpoll.png";
 import strain from "@/assets/strain.png";
+import give from "@/assets/give.png";
 import { memo } from "react";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { endpoints } from "@/api/endpoints";
 import { cn } from "@/lib/utils";
 import { ASSETS, assetSpecs, AssetType } from "@/utils/currency-assets/asset";
 import { amount, unwrapString } from "@/utils/currency-assets/base";
-import SystemReportSkeleton from "@/utils/SystemReportSkeleton";
 import SpotlightCard from "@/components/SpotlightCard";
 import { Slide } from "react-awesome-reveal";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const Dashboard = memo(function Dashboard() {
-  /* ================= STATIC DATA ================= */
-
   const userStats = [
     { label: "Total Users", value: 9050 },
     { label: "IN", value: 2630 },
@@ -268,8 +267,6 @@ export const Dashboard = memo(function Dashboard() {
     { label: "Trails", value: 58 },
   ];
 
-  /* ================= DYNAMIC CRYPTO STATS ================= */
-
   const { data: stats, isLoading } = useApiQuery(
     endpoints.entities.polls.overallPollStats
   );
@@ -282,6 +279,7 @@ export const Dashboard = memo(function Dashboard() {
     [ASSETS.X_OCTA]: aptos,
     [ASSETS.X_POLL]: xpoll,
     [ASSETS.X_HIGH]: strain,
+    [ASSETS.X_GIVE]: give,
   };
 
   const cryptoStats =
@@ -315,7 +313,7 @@ export const Dashboard = memo(function Dashboard() {
       };
     }) ?? [];
 
-  if (isLoading) return <SystemReportSkeleton />;
+  // if (isLoading) return <SystemReportSkeleton />;
 
   return (
     <section className="p-4 space-y-4 @container/main flex flex-1 flex-col">
@@ -335,25 +333,32 @@ export const Dashboard = memo(function Dashboard() {
         ))}
       </div>
 
-      {/* CRYPTO STATS — KEEP AS IS */}
       <div className="flex justify-around items-center gap-6 py-6 overflow-x-auto">
-        {cryptoStats.map((stat, index) => (
-          <Slide
-            key={`asset-${index}`}
-            direction="up"
-            cascade
-            triggerOnce
-            delay={index * 50}
-          >
-            <CryptoStatCircle {...stat} />
-          </Slide>
-        ))}
+        {isLoading
+          ? Array.from({ length: 5 }).map((_, i) => (
+              <div className="flex flex-col items-center space-y-3">
+                <Skeleton className="h-[125px] w-[125px] rounded-full" />
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-[200px]" />
+                  <Skeleton className="h-4 w-[250px]" />
+                </div>
+              </div>
+            ))
+          : cryptoStats.map((stat, index) => (
+              <Slide
+                key={`asset-${index}`}
+                direction="up"
+                cascade
+                triggerOnce
+                delay={index * 50}
+              >
+                <CryptoStatCircle {...stat} />
+              </Slide>
+            ))}
       </div>
     </section>
   );
 });
-
-/* ================= COMPONENTS ================= */
 
 export function SectionCards({ data }) {
   const { label, value, filter } = data;
