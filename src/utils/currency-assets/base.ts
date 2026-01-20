@@ -1,7 +1,5 @@
 import { assetSpecs, type AssetType } from "./asset";
 
-/* ──────────────────────────────── Result helpers ─────────────────────────────── */
-
 export type ErrCode =
   | "INVALID_DECIMAL"
   | "INVALID_INTEGER"
@@ -111,7 +109,7 @@ const decRe = /^[+-]?\d+(?:\.\d+)?$/;
 function decimalToScaledIntR(
   decimalStrRaw: string,
   decimals: number,
-  rounding: RoundingMode
+  rounding: RoundingMode,
 ): Result<bigint> {
   if (!isValidDecimals(decimals))
     return err("Invalid decimals", "INVALID_DECIMALS");
@@ -134,13 +132,13 @@ function decimalToScaledIntR(
 
   if (frac.length === decimals)
     return ok(
-      neg ? -baseFromParts(intPart, frac) : baseFromParts(intPart, frac)
+      neg ? -baseFromParts(intPart, frac) : baseFromParts(intPart, frac),
     );
 
   if (frac.length < decimals) {
     const padded = frac.padEnd(decimals, "0");
     return ok(
-      neg ? -baseFromParts(intPart, padded) : baseFromParts(intPart, padded)
+      neg ? -baseFromParts(intPart, padded) : baseFromParts(intPart, padded),
     );
   }
 
@@ -165,7 +163,7 @@ function toBigIntStrictR(v: string | number | bigint): Result<bigint> {
     if (!Number.isInteger(v) || !Number.isSafeInteger(v)) {
       return err(
         "Unsafe number; use bigint or integer string",
-        "UNSAFE_NUMBER"
+        "UNSAFE_NUMBER",
       );
     }
     return ok(BigInt(v));
@@ -178,7 +176,7 @@ function toBigIntStrictR(v: string | number | bigint): Result<bigint> {
 
 function scaledIntToDecimalStringR(
   n: bigint,
-  decimals: number
+  decimals: number,
 ): Result<string> {
   if (!isValidDecimals(decimals))
     return err("Invalid decimals", "INVALID_DECIMALS");
@@ -205,14 +203,14 @@ function groupInteger(i: string): string {
   return i.replace(
     /^(-?)(\d+)/,
     (_, sign: string, digits: string) =>
-      sign + digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+      sign + digits.replace(/\B(?=(\d{3})+(?!\d))/g, ","),
   );
 }
 
 /* ─────────────────────────────── public API ─────────────────────────────── */
 
 export function toBase<O extends OutputType = "bigint">(
-  opts: ParentToBaseOpts & { output?: O }
+  opts: ParentToBaseOpts & { output?: O },
 ): Result<O extends "bigint" ? bigint : O extends "string" ? string : number> {
   const decimals =
     "assetId" in opts ? assetSpecs[opts.assetId]?.decimal : opts.decimals;
@@ -223,7 +221,7 @@ export function toBase<O extends OutputType = "bigint">(
   const biR = decimalToScaledIntR(
     decimalStr,
     decimals,
-    opts.rounding ?? "round"
+    opts.rounding ?? "round",
   );
   if (!biR.ok) return biR as any;
 
@@ -235,7 +233,7 @@ export function toBase<O extends OutputType = "bigint">(
 }
 
 export function toParent<O extends Exclude<OutputType, "bigint"> = "string">(
-  opts: BaseToParentOpts & { output?: O }
+  opts: BaseToParentOpts & { output?: O },
 ): Result<O extends "string" ? string : number> {
   const decimals =
     "assetId" in opts ? assetSpecs[opts.assetId]?.decimal : opts.decimals;
@@ -274,7 +272,7 @@ export function formatParent(
     minFraction?: number;
     maxFraction?: number;
     group?: boolean;
-  } = { decimals: 0 }
+  } = { decimals: 0 },
 ): Result<string> {
   const decimals =
     "assetId" in opts ? assetSpecs[opts.assetId]?.decimal : opts.decimals;
@@ -311,10 +309,10 @@ export type FormatOp = AmountOpts & {
 export type AmountOp = ToBaseOp<any> | ToParentOp<any> | FormatOp;
 
 export function amount<O extends OutputType = "bigint">(
-  opts: ToBaseOp<O>
+  opts: ToBaseOp<O>,
 ): Result<O extends "bigint" ? bigint : O extends "string" ? string : number>;
 export function amount<O extends Exclude<OutputType, "bigint"> = "string">(
-  opts: ToParentOp<O>
+  opts: ToParentOp<O>,
 ): Result<O extends "string" ? string : number>;
 export function amount(opts: FormatOp): Result<string>;
 export function amount(opts: AmountOp): any {

@@ -1,4 +1,3 @@
-// src/components/allActions.tsx
 import { useCallback, useMemo, useState, useEffect } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -30,7 +29,6 @@ import { endpoints } from "@/api/endpoints";
 import { queryClient } from "@/api/queryClient";
 import { appToast } from "@/utils/toast";
 
-// 🔽 NEW imports to support asset-aware clamped inputs
 import {
   assetEnum,
   assetSpecs,
@@ -56,7 +54,6 @@ const FALLBACK_ASSETS: Asset[] = [
 
 const baseActionSchema = z.object({
   assetId: assetEnum,
-  // kept as BASE integer for API; UI component converts parent -> base
   amount: z.coerce.number().int().min(1, "Min 1"),
 });
 
@@ -65,19 +62,17 @@ const fundWithdrawSchema = baseActionSchema.extend({
     SYSTEM_ACCOUNTS.map((s) => s.value) as [string, ...string[]],
     {
       required_error: "Select a system account",
-    }
+    },
   ),
 });
 
 type MintBurnValues = z.infer<typeof baseActionSchema>;
 type FundWithdrawValues = z.infer<typeof fundWithdrawSchema>;
 
-/* ------------------ Parent/Base helpers (clamped input like RewardDetailPanel) ------------------ */
-
 function baseToParent(
   assetId: AssetType,
   baseVal: string | number,
-  fixed?: number
+  fixed?: number,
 ) {
   const useFixed = typeof fixed === "number";
   return unwrapString(
@@ -90,7 +85,7 @@ function baseToParent(
       fixed: useFixed ? Math.max(0, fixed) : undefined,
       group: false,
     }),
-    "0"
+    "0",
   );
 }
 
@@ -105,10 +100,9 @@ function parentToBaseNumber(assetId: AssetType, parentStr: string) {
   return n.ok ? n.value : NaN;
 }
 
-/** Clamp input to ≤9 integer digits and ≤min(5, asset.decimal) fraction digits */
 function clampParentInput(
   assetId: AssetType,
-  raw: string
+  raw: string,
 ): { text: string; err: string } {
   const decimalsAllowed = Math.min(assetSpecs[assetId].decimal, 5);
   const MAX_INT = 9;
@@ -163,13 +157,13 @@ function limitsHint(assetId: AssetType): {
 
 function useClampedParentInput(params: {
   assetId: AssetType;
-  baseValue: string | number | ""; // upstream BASE
-  onBaseChange: (nextBase: string) => void; // set upstream BASE
+  baseValue: string | number | "";
+  onBaseChange: (nextBase: string) => void;
 }) {
   const { assetId, baseValue, onBaseChange } = params;
 
   const [text, setText] = useState<string>(() =>
-    Number(baseValue || 0) > 0 ? baseToParent(assetId, baseValue) : ""
+    Number(baseValue || 0) > 0 ? baseToParent(assetId, baseValue) : "",
   );
   const [uiErr, setUiErr] = useState<string>("");
 
@@ -188,7 +182,7 @@ function useClampedParentInput(params: {
 
     const base = parentToBaseNumber(assetId, clamped.text);
     if (Number.isFinite(base)) {
-      onBaseChange(String(base)); // store BASE upstream
+      onBaseChange(String(base));
     }
   };
 
@@ -197,7 +191,7 @@ function useClampedParentInput(params: {
     if (s === "") {
       setText("");
       setUiErr("");
-      onBaseChange(""); // empty
+      onBaseChange("");
       return;
     }
     const clamped = clampParentInput(assetId, s);
@@ -239,7 +233,6 @@ function useClampedParentInput(params: {
   };
 }
 
-/* ------------------ Existing Helpers ------------------ */
 function ApiResult({ data }: { data: any }) {
   if (!data) return null;
   const actionId = data?.data?.actionId ?? data?.actionId;
@@ -289,7 +282,6 @@ function AssetSelect({
         <SelectContent>
           {(Array.isArray(assets) ? assets : []).map((a) => (
             <SelectItem key={a._id} value={a._id}>
-              {/* Prefer canonical parent name from assetSpecs; fallback to provided fields */}
               <AssetLabel assetId={a._id} />
             </SelectItem>
           ))}
@@ -299,7 +291,6 @@ function AssetSelect({
   );
 }
 
-// 🔁 REPLACED: AmountInput now uses clamped parent input & converts to BASE integer
 function AmountInput({
   assetId,
   baseValue,
@@ -307,9 +298,7 @@ function AmountInput({
   disabled,
 }: {
   assetId: AssetType;
-  /** integer in BASE units stored by the form */
   baseValue?: number;
-  /** receives a stringified BASE number (empty string allowed) */
   onBaseChange: (v: string) => void;
   disabled?: boolean;
 }) {
@@ -374,7 +363,7 @@ function SystemAccountSelect({
 
 function ActionDialog<
   Schema extends z.ZodTypeAny,
-  Values extends z.infer<Schema>
+  Values extends z.infer<Schema>,
 >({
   title,
   description,
@@ -390,7 +379,7 @@ function ActionDialog<
   onSubmit: (values: Values) => Promise<any> | any;
   renderFields: (
     methods: ReturnType<typeof useForm<Values>>["control"],
-    methods2: ReturnType<typeof useForm<Values>>
+    methods2: ReturnType<typeof useForm<Values>>,
   ) => React.ReactNode;
   trigger: React.ReactNode;
   defaultValues: Partial<Values>;
@@ -457,8 +446,9 @@ function ActionDialog<
 }
 
 export default function Actions() {
-  const { data: assetsResp } = useApiQuery("/common/assets/coins");
-  console.log("coins resp", assetsResp);
+  const { data: assetsResp } = useApiQuery(
+    endpoints.entities.assetLedger.coins,
+  );
 
   const coinAssets = useMemo<Asset[]>(() => {
     const arr = assetsResp?.data?.data ?? assetsResp?.data ?? assetsResp;
@@ -471,7 +461,6 @@ export default function Actions() {
     });
   }, []);
 
-  // mutations
   const mintMutation = useApiMutation({
     route: endpoints.entities.actions.mint,
     method: "POST",
@@ -557,7 +546,6 @@ export default function Actions() {
               }}
               trigger={<Button className="w-full">Mint</Button>}
             />
-
             {/* BURN */}
             <ActionDialog
               title="Burn"
@@ -604,7 +592,6 @@ export default function Actions() {
                 </Button>
               }
             />
-
             {/* FUND */}
             <ActionDialog
               title="Fund"

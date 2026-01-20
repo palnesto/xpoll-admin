@@ -69,6 +69,7 @@ export const endpoints = {
     },
     assetLedger: {
       all: "/internal/asset-ledger/all",
+      coins: "/common/assets/coins",
       systemReport: "/internal/asset-ledger/system/report",
       sellIntent: "/internal/asset-ledger/sell-intent",
       sellIntentAdmin: "/internal/asset-ledger/sell-intent-admin",

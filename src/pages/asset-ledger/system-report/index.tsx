@@ -90,7 +90,6 @@ function AssetRow({
   amountBase: number;
   meta?: AssetMeta;
 }) {
-  // format from base → parent
   const valueStr = unwrapString(
     amount({
       op: "toParent",
@@ -100,7 +99,7 @@ function AssetRow({
       trim: true,
       group: true,
     }),
-    "0"
+    "0",
   );
 
   return (
@@ -168,7 +167,7 @@ function SummaryCard({
               trim: true,
               group: true,
             }),
-            "0"
+            "0",
           );
           const meta = assetSpecs[assetId as AssetType];
           return (
@@ -214,7 +213,7 @@ function FundingNeedsCard({
                   trim: true,
                   group: true,
                 }),
-                "0"
+                "0",
               );
               const outstandingStr = unwrapString(
                 amount({
@@ -225,7 +224,7 @@ function FundingNeedsCard({
                   trim: true,
                   group: true,
                 }),
-                "0"
+                "0",
               );
               const shortfallStr = unwrapString(
                 amount({
@@ -236,7 +235,7 @@ function FundingNeedsCard({
                   trim: true,
                   group: true,
                 }),
-                "0"
+                "0",
               );
               const surplusStr = unwrapString(
                 amount({
@@ -247,7 +246,7 @@ function FundingNeedsCard({
                   trim: true,
                   group: true,
                 }),
-                "0"
+                "0",
               );
 
               return (
@@ -307,7 +306,7 @@ function FundingNeedsCard({
                     trim: true,
                     group: true,
                   }),
-                  "0"
+                  "0",
                 );
                 return (
                   <li
@@ -411,7 +410,7 @@ export default function SystemReportPage() {
   const blocks: RoleBalanceBlock[] = useMemo(() => {
     const b = report?.balances ?? {};
     return ROLE_ORDER.map((k) => (b as any)?.[k]).filter(
-      Boolean
+      Boolean,
     ) as RoleBalanceBlock[];
   }, [report]);
 

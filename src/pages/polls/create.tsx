@@ -22,7 +22,6 @@ import { FormCard } from "@/components/form/form-card";
 import RewardsList from "@/components/polling/editors/RewardsList";
 import RewardDetailPanel from "@/components/polling/editors/RewardDetailPanel";
 import TwoPane from "@/layouts/TwoPane";
-import { assetSpecs } from "@/utils/asset";
 import dayjs from "dayjs";
 import {
   __SYSYEM_STANDARAD_DATE_FORMAT__,
@@ -41,6 +40,7 @@ import {
   _MAX_RESOURCE_ASSETS_COUNT_,
   OutputResourceAsset,
 } from "@/validators/poll-trial-form";
+import { assetSpecs } from "@/utils/currency-assets/asset";
 
 const formSchema = z.object({
   title: titleZod,
@@ -56,7 +56,7 @@ type FormValues = z.infer<typeof formSchema>;
 export default function PollCreatePage() {
   const navigate = useNavigate();
   const [activeRewardIndex, setActiveRewardIndex] = useState<number | null>(
-    null
+    null,
   );
 
   const defaultValues: FormValues = useMemo(
@@ -69,7 +69,7 @@ export default function PollCreatePage() {
       resourceAssets: [],
       expireRewardAt: "",
     }),
-    []
+    [],
   );
 
   const form = useForm<FormValues>({
@@ -130,15 +130,15 @@ export default function PollCreatePage() {
             console.log(e);
             return null;
           }
-        })
+        }),
       )
     ).filter(Boolean) as OutputResourceAsset[];
 
     const expireRewardAtUTC = v.expireRewardAt?.trim()
       ? localAdminISOtoUTC(
           dayjs(v.expireRewardAt?.trim()).format(
-            __SYSYEM_STANDARAD_DATE_FORMAT__
-          )
+            __SYSYEM_STANDARAD_DATE_FORMAT__,
+          ),
         )
       : undefined;
 

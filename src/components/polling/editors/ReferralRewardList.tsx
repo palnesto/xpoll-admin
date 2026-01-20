@@ -3,8 +3,7 @@ import { RewardsAccordion } from "@/components/reward-table/rewards-accordion";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useApiQuery } from "@/hooks/useApiQuery";
-import { assetSpecs } from "@/utils/asset";
-import { AssetType } from "@/utils/currency-assets/asset";
+import { assetSpecs, AssetType } from "@/utils/currency-assets/asset";
 import { amount, unwrapString } from "@/utils/currency-assets/base";
 import { Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
@@ -32,7 +31,7 @@ type Props = {
 function toParentAmount(
   assetId: AssetType,
   baseVal: string | number,
-  fixed = 11
+  fixed = 11,
 ): string {
   return unwrapString(
     amount({
@@ -44,7 +43,7 @@ function toParentAmount(
       fixed,
       group: false,
     }),
-    "0"
+    "0",
   );
 }
 
