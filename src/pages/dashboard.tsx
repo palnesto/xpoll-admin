@@ -11,7 +11,6 @@ import { endpoints } from "@/api/endpoints";
 import { cn } from "@/lib/utils";
 import { ASSETS, assetSpecs, AssetType } from "@/utils/currency-assets/asset";
 import { amount, unwrapString } from "@/utils/currency-assets/base";
-import SystemReportSkeleton from "@/utils/SystemReportSkeleton";
 import SpotlightCard from "@/components/SpotlightCard";
 import { Slide } from "react-awesome-reveal";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,24 +25,21 @@ export const Dashboard = memo(function Dashboard() {
   const countryWiseStats = [
     {
       label: "IN",
-      value:
-        filteredStats?.users?.byCountry?.find((c) => c.country === "IN")
-          ?.count +
-        796 +
-        filteredStats?.users?.byCountry?.find((c) => c.country === "UNKNOWN")
-          ?.count,
+      value: filteredStats?.users?.byCountry?.find((c) => c.country === "IN")
+        ?.count,
     },
     {
       label: "US",
       value:
         filteredStats?.users?.byCountry?.find((c) => c.country === "US")
-          ?.count + 730,
+          ?.count +
+        filteredStats?.users?.byCountry?.find((c) => c.country === "UNKNOWN")
+          ?.count,
     },
     {
       label: "KR",
-      value:
-        filteredStats?.users?.byCountry?.find((c) => c.country === "KR")
-          ?.count + 275,
+      value: filteredStats?.users?.byCountry?.find((c) => c.country === "KR")
+        ?.count,
     },
     {
       label: "VN",
@@ -54,7 +50,7 @@ export const Dashboard = memo(function Dashboard() {
   const userStats = [
     {
       label: "Total Users",
-      value: filteredStats?.users?.total + 1801,
+      value: filteredStats?.users?.total,
     },
     // ...(filteredStats?.users?.byCountry
     //   ?.filter((item: { count: number; country: string }) => {
