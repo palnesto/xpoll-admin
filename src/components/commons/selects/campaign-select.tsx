@@ -35,7 +35,10 @@ export function CampaignSelect({
     <InfiniteSelect<CampaignListItem>
       route={endpoints.entities.campaigns.advancedListing}
       pageSize={pageSize}
-      getFilters={(search) => ({ name: search, goal: search })}
+      getFilters={(search) => ({
+        name: search || undefined,
+        goal: search || undefined,
+      })}
       mapItemToOption={(item) => ({
         value: item._id,
         label: item.label ?? item.title ?? item.name ?? item._id,

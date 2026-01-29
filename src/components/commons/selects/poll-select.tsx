@@ -33,7 +33,10 @@ export function PollSelect({
     <InfiniteSelect<PollListItem>
       route={endpoints.entities.polls.advancedListing}
       pageSize={pageSize}
-      getFilters={(search) => ({ title: search, description: search })}
+      getFilters={(search) => ({
+        title: search || undefined,
+        description: search || undefined,
+      })}
       mapItemToOption={(item) => ({
         value: item._id,
         label: item.label ?? item.title ?? item.statement ?? item._id,

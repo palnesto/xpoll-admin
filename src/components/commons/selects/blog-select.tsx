@@ -32,7 +32,7 @@ export function BlogSelect({
     <InfiniteSelect<BlogListItem>
       route={endpoints.entities.blogs.advancedListing}
       pageSize={pageSize}
-      getFilters={(search) => ({ title: search })}
+      getFilters={(search) => ({ title: search || undefined })}
       mapItemToOption={(item) => ({
         value: item._id,
         label: item.label ?? item.title ?? item._id,

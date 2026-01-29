@@ -1,12 +1,10 @@
 import { Trash2, Loader2 } from "lucide-react";
 import { useMemo, useState } from "react";
-
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { queryClient } from "@/api/queryClient";
 import { endpoints } from "@/api/endpoints";
 import { appToast } from "@/utils/toast";
-
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -22,12 +20,12 @@ type ForwardApiItem = {
   _id: string;
   to: {
     type: EntityType;
-    id: string; // IMPORTANT: GET returns "id"
+    id: string;
     entity?: {
       isPopulationAvailable?: boolean;
       data?: {
-        title?: string; // poll
-        name?: string; // campaign/trial/blog
+        title?: string;
+        name?: string;
         description?: string;
       };
     };
@@ -58,10 +56,6 @@ export function LinkedEntityForwardList({
     [fromType, fromId],
   );
 
-  /**
-   * ✅ CANONICAL KEY: your useApiQuery very likely uses ["GET", url]
-   * So invalidate/refetch MUST target the same.
-   */
   const forwardQueryKey = useMemo(() => ["GET", forwardUrl], [forwardUrl]);
 
   const { data, isLoading, isError } = useApiQuery(forwardUrl, {
@@ -69,11 +63,6 @@ export function LinkedEntityForwardList({
     enabled: !!fromType && !!fromId,
   } as any);
 
-  /**
-   * Your console log shows the API can return an array directly.
-   * Some wrappers may wrap into { entries }.
-   * So handle both safely.
-   */
   const entries: ForwardApiItem[] = useMemo(() => {
     const raw = (data?.data?.data ?? data?.data) as any;
     if (Array.isArray(raw)) return raw as ForwardApiItem[];
@@ -92,7 +81,6 @@ export function LinkedEntityForwardList({
   };
 
   const invalidateForward = async () => {
-    // invalidate + refetch active so UI updates immediately
     await queryClient.invalidateQueries({ queryKey: forwardQueryKey });
     await queryClient.refetchQueries({
       queryKey: forwardQueryKey,
@@ -119,7 +107,7 @@ export function LinkedEntityForwardList({
   const onRemove = (toType: EntityType, toId: string) => {
     removeLink({
       from: { type: fromType, _id: fromId },
-      to: { type: toType, _id: toId }, // backend expects "_id" in body
+      to: { type: toType, _id: toId },
     });
   };
 
@@ -148,10 +136,8 @@ export function LinkedEntityForwardList({
         {entries.map((row) => {
           const toType = row?.to?.type;
           const toId = row?.to?.id;
-
           const entity = row?.to?.entity?.data;
           const title = entity?.title ?? entity?.name ?? toId ?? "-";
-          const description = entity?.description ?? "";
 
           return (
             <div
@@ -195,7 +181,6 @@ export function LinkedEntityForwardList({
         })}
       </div>
 
-      {/* Confirm modal */}
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
