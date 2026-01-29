@@ -159,13 +159,13 @@ export default function InfiniteSelect<
       styles={{
         control: (base, state) => ({
           ...base,
-          backgroundColor: "transparent", // ✅ transparent input
+          backgroundColor: "transparent",
           boxShadow: "none",
           borderColor: state.isFocused ? "" : "",
         }),
         input: (base) => ({
           ...base,
-          color: "#fff", // ✅ typed text stays black
+          color: "#fff",
         }),
         option: (provided, state) => ({
           ...provided,

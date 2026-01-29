@@ -18,7 +18,6 @@ import {
 
 import type { AddRemoveLinkBody, EntityType } from "./types/entity-link";
 
-// matches the actual API shape you shared
 type ForwardApiItem = {
   _id: string;
   to: {
@@ -168,11 +167,6 @@ export function LinkedEntityForwardList({
                     {title}
                   </div>
                 </div>
-
-                <div className="text-xs text-muted-foreground break-words">
-                  {description || "-"}
-                </div>
-
                 <div className="text-[11px] font-mono text-muted-foreground break-all">
                   {toId}
                 </div>
