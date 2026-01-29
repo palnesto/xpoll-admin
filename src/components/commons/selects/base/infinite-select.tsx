@@ -11,7 +11,7 @@ type BaseOption<T = unknown> = {
 
 export type InfiniteSelectProps<
   T,
-  F extends Record<string, unknown> = Record<string, unknown>
+  F extends Record<string, unknown> = Record<string, unknown>,
 > = {
   route: string;
   pageSize?: number;
@@ -30,7 +30,7 @@ export type InfiniteSelectProps<
 
 export default function InfiniteSelect<
   T,
-  F extends Record<string, unknown> = Record<string, unknown>
+  F extends Record<string, unknown> = Record<string, unknown>,
 >({
   route,
   pageSize = 50,
@@ -61,7 +61,7 @@ export default function InfiniteSelect<
   const emptyFiltersRef = React.useRef({} as F);
   const filters = React.useMemo(
     () => (getFilters ? getFilters(effectiveSearch) : emptyFiltersRef.current),
-    [getFilters, effectiveSearch]
+    [getFilters, effectiveSearch],
   );
 
   // Only enable the query when the user is "using" the select
@@ -88,7 +88,7 @@ export default function InfiniteSelect<
 
   const handleChange = React.useCallback(
     (v: SingleValue<BaseOption<T>>) => onChange?.(v ?? null),
-    [onChange]
+    [onChange],
   );
 
   const handleInputChange = React.useCallback(
@@ -96,7 +96,7 @@ export default function InfiniteSelect<
       if (meta.action === "input-change") setInput(val);
       return val;
     },
-    []
+    [],
   );
 
   // Throttled infinite scroll fetcher
@@ -157,18 +157,29 @@ export default function InfiniteSelect<
       menuShouldScrollIntoView={false}
       components={{ MenuList, ...(selectProps?.components || {}) }}
       styles={{
+        control: (base, state) => ({
+          ...base,
+          backgroundColor: "transparent", // ✅ transparent input
+          boxShadow: "none",
+          borderColor: state.isFocused ? "" : "",
+        }),
+        input: (base) => ({
+          ...base,
+          color: "#fff", // ✅ typed text stays black
+        }),
         option: (provided, state) => ({
           ...provided,
           color: "black",
           backgroundColor: state.isFocused
-            ? "#000000" // hover effect
+            ? "#e6e6e6" // focused option
             : state.isSelected
-            ? "#e6e6e6" // selected option
-            : "white",
+              ? "#e6e6e6" // selected option
+              : "white",
         }),
+
         singleValue: (provided) => ({
           ...provided,
-          color: "black",
+          color: "#fff", // ✅ typed text stays black
         }),
         multiValueLabel: (provided) => ({
           ...provided,

@@ -52,7 +52,7 @@ import TwoPane from "@/layouts/TwoPane";
 import RewardDetailPanel from "@/components/polling/editors/RewardDetailPanel";
 import RewardsList from "@/components/polling/editors/RewardsList";
 import ResourceAssetsPreview from "@/components/polling/editors/ResourceAssetsPreview";
-import { assetSpecs, AssetType } from "@/utils/currency-assets/asset";
+import { assetSpecs } from "@/utils/currency-assets/asset";
 import {
   __SYSYEM_STANDARAD_DATE_FORMAT__,
   localAdminISOtoUTC,
@@ -72,63 +72,14 @@ import {
   targetGeoZod,
   titleZod,
   OutputResourceAsset,
-  ResourceAsset,
   toComparableAssets,
   renderGeoList,
 } from "@/validators/poll-trial-form";
 import dayjs from "dayjs";
 import { useTablePollsStore } from "@/stores/table_polls.store";
 import { ConfirmDeletePollsModal } from "@/components/modals/table_polls/delete";
-
-type PollOption = {
-  _id: string;
-  text: string;
-  archivedAt?: string | null;
-};
-
-type RewardRow = {
-  assetId: AssetType;
-  amount: number;
-  rewardAmountCap: number;
-  rewardType: RewardType;
-};
-
-type Poll = {
-  _id?: string;
-  pollId: string;
-  title: string;
-  description?: string;
-  createdAt?: string;
-  archivedAt?: string | null;
-  resourceAssets?: ResourceAsset[];
-  media?: string;
-  rewards?: RewardRow[];
-  expireRewardAt?: string | null;
-  options?: PollOption[];
-  targetGeo?: {
-    countries?: string[];
-    states?: string[];
-    cities?: string[];
-  };
-  trialId?: string;
-  trial?: { _id: string; title?: string };
-  externalAuthor?: boolean;
-  externalAuthorInfo?: {
-    username?: string;
-    city?: { name?: string };
-    state?: { name?: string };
-    country?: { name?: string };
-  };
-};
-
-type EntityReferralAnalytics = {
-  entityId: string;
-  uniqueLinks: number;
-  totals: {
-    views: number;
-    uniques: number;
-  };
-};
+import { EntityLinkModal } from "@/components/modals/entity-link-modal";
+import { LinkedEntityForwardList } from "@/components/LinkedEntityForwardList";
 
 /* ---------- helpers ---------- */
 function patchShowCache(showKey: string, updater: (curr: any) => any) {
@@ -148,7 +99,7 @@ function cmpRewards(a: RewardRow[] = [], b: RewardRow[] = []) {
     [...arr]
       .sort((x, y) => x.assetId.localeCompare(y.assetId))
       .map(
-        (r) => `${r.assetId}:${r.amount}:${r.rewardAmountCap}:${r.rewardType}`
+        (r) => `${r.assetId}:${r.amount}:${r.rewardAmountCap}:${r.rewardType}`,
       )
       .join("|");
   return norm(a) === norm(b);
@@ -175,8 +126,9 @@ export default function PollShowPage() {
   const isNavigationEditing = (location as any)?.state?.isNavigationEditing;
   const { id = "" } = useParams<{ id: string }>();
   const [activeRewardIndex, setActiveRewardIndex] = useState<number | null>(
-    null
+    null,
   );
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
 
   const showRoute = (endpoints.entities as any)?.polls?.getById
     ? (endpoints.entities as any).polls.getById(id)
@@ -212,13 +164,13 @@ export default function PollShowPage() {
   const isTrialPoll = !!(poll?.trialId || poll?.trial?._id);
 
   const [isEditing, setIsEditing] = useState<boolean>(
-    isNavigationEditing ?? false
+    isNavigationEditing ?? false,
   );
 
   // ===== entity referral analytics (for this poll) =====
   const entityAnalyticsUrl = useMemo(
     () => (id ? endpoints.referral.analytics.entity(id) : ""),
-    [id]
+    [id],
   );
 
   const {
@@ -273,11 +225,11 @@ export default function PollShowPage() {
               : {
                   type: RESOURCE_TYPES_STRING.YOUTUBE,
                   value: extractYouTubeId(a.value),
-                }
+                },
           )
         : poll.media
-        ? [{ type: RESOURCE_TYPES_STRING.IMAGE, value: [poll.media] }]
-        : [];
+          ? [{ type: RESOURCE_TYPES_STRING.IMAGE, value: [poll.media] }]
+          : [];
 
     const initialRewards: EditValues["rewards"] =
       Array.isArray(poll.rewards) && poll.rewards.length > 0
@@ -338,13 +290,13 @@ export default function PollShowPage() {
       const v = getValues();
       const idsOnlyTG = {
         countries: (v.targetGeo?.countries ?? []).map((x) =>
-          typeof x === "string" ? x : x._id
+          typeof x === "string" ? x : x._id,
         ),
         states: (v.targetGeo?.states ?? []).map((x) =>
-          typeof x === "string" ? x : x._id
+          typeof x === "string" ? x : x._id,
         ),
         cities: (v.targetGeo?.cities ?? []).map((x) =>
-          typeof x === "string" ? x : x._id
+          typeof x === "string" ? x : x._id,
         ),
       };
       // Prepare normalized assets for cache patch
@@ -361,7 +313,7 @@ export default function PollShowPage() {
                   typeof a.value?.[0] === "string"
                     ? a.value[0]
                     : String(a.value),
-              }
+              },
       );
 
       patchShowCache(showRoute, (curr) => ({
@@ -385,7 +337,7 @@ export default function PollShowPage() {
 
   // normalize editor assets -> server format (uploads new Files)
   const normalizeAssetsForSave = async (
-    arr?: EditValues["resourceAssets"]
+    arr?: EditValues["resourceAssets"],
   ): Promise<OutputResourceAsset[]> => {
     const items = arr ?? [];
     return Promise.all(
@@ -406,7 +358,7 @@ export default function PollShowPage() {
           type: RESOURCE_TYPES_STRING.IMAGE,
           value: typeof first === "string" ? first : "",
         };
-      })
+      }),
     );
   };
 
@@ -426,11 +378,11 @@ export default function PollShowPage() {
                   type: RESOURCE_TYPES_STRING.YOUTUBE,
                   value: extractYouTubeId(a.value),
                 }
-              : { type: RESOURCE_TYPES_STRING.IMAGE, value: a.value }
+              : { type: RESOURCE_TYPES_STRING.IMAGE, value: a.value },
           )
         : poll.media
-        ? [{ type: RESOURCE_TYPES_STRING.IMAGE, value: poll.media }]
-        : [];
+          ? [{ type: RESOURCE_TYPES_STRING.IMAGE, value: poll.media }]
+          : [];
 
     const payload: any = { pollId: id };
 
@@ -451,13 +403,13 @@ export default function PollShowPage() {
       // extract ids regardless of objects/strings in-form
       const idsOnly = {
         countries: (nextTG.countries ?? []).map((x: any) =>
-          typeof x === "string" ? x : x._id
+          typeof x === "string" ? x : x._id,
         ),
         states: (nextTG.states ?? []).map((x: any) =>
-          typeof x === "string" ? x : x._id
+          typeof x === "string" ? x : x._id,
         ),
         cities: (nextTG.cities ?? []).map((x: any) =>
-          typeof x === "string" ? x : x._id
+          typeof x === "string" ? x : x._id,
         ),
       };
 
@@ -471,13 +423,13 @@ export default function PollShowPage() {
 
       const prevIds = {
         countries: (prevTG.countries ?? []).map((x: any) =>
-          typeof x === "string" ? x : x?._id
+          typeof x === "string" ? x : x?._id,
         ),
         states: (prevTG.states ?? []).map((x: any) =>
-          typeof x === "string" ? x : x?._id
+          typeof x === "string" ? x : x?._id,
         ),
         cities: (prevTG.cities ?? []).map((x: any) =>
-          typeof x === "string" ? x : x?._id
+          typeof x === "string" ? x : x?._id,
         ),
       };
 
@@ -499,7 +451,7 @@ export default function PollShowPage() {
       payload.resourceAssets = normalizedNow;
       // Optional: keep legacy "media" in sync if your backend still reads it
       const firstImg = normalizedNow.find(
-        (x) => x.type === RESOURCE_TYPES_STRING.IMAGE
+        (x) => x.type === RESOURCE_TYPES_STRING.IMAGE,
       )?.value;
       if (firstImg) payload.media = firstImg;
     }
@@ -525,8 +477,8 @@ export default function PollShowPage() {
           : (
               localAdminISOtoUTC(
                 dayjs(v.expireRewardAt?.trim()).format(
-                  __SYSYEM_STANDARAD_DATE_FORMAT__
-                )
+                  __SYSYEM_STANDARAD_DATE_FORMAT__,
+                ),
               ) ?? ""
             ).trim();
       if (nowExpire === null) {
@@ -557,11 +509,11 @@ export default function PollShowPage() {
   const isEditOption = usePollViewStore((s) => s.isEditOption);
   const setIsEditOption = usePollViewStore((s) => s.setIsEditOption);
   const isArchiveToggleOption = usePollViewStore(
-    (s) => s.isArchiveToggleOption
+    (s) => s.isArchiveToggleOption,
   );
 
   const setIsArchiveToggleOption = usePollViewStore(
-    (s) => s.setIsArchiveToggleOption
+    (s) => s.setIsArchiveToggleOption,
   );
 
   // ===== page loading / error =====
@@ -599,8 +551,8 @@ export default function PollShowPage() {
     Array.isArray(poll.resourceAssets) && poll.resourceAssets.length > 0
       ? poll.resourceAssets
       : poll.media
-      ? [{ type: RESOURCE_TYPES_STRING.IMAGE, value: poll.media }]
-      : [];
+        ? [{ type: RESOURCE_TYPES_STRING.IMAGE, value: poll.media }]
+        : [];
   const isBusy = isLoading || isUploading || isSaving;
 
   return (
@@ -750,7 +702,7 @@ export default function PollShowPage() {
                                       className={cn(
                                         "relative border rounded-lg p-3 hover:bg-muted/30",
                                         isArchivedOpt &&
-                                          "opacity-50 cursor-not-allowed"
+                                          "opacity-50 cursor-not-allowed",
                                       )}
                                     >
                                       <div className="absolute right-2 top-2 flex items-center gap-2">
@@ -813,7 +765,7 @@ export default function PollShowPage() {
                                           className={cn(
                                             "text-sm",
                                             isArchivedOpt &&
-                                              "line-through opacity-60"
+                                              "line-through opacity-60",
                                           )}
                                         >
                                           {opt.text}
@@ -822,7 +774,7 @@ export default function PollShowPage() {
                                           Archived:{" "}
                                           {opt.archivedAt
                                             ? utcToAdminFormatted(
-                                                opt.archivedAt
+                                                opt.archivedAt,
                                               )
                                             : "-"}
                                         </div>
@@ -916,16 +868,16 @@ export default function PollShowPage() {
                                       : {
                                           type: RESOURCE_TYPES_STRING.YOUTUBE,
                                           value: extractYouTubeId(a.value),
-                                        }
+                                        },
                                   )
                                 : poll.media
-                                ? [
-                                    {
-                                      type: RESOURCE_TYPES_STRING.IMAGE,
-                                      value: [poll.media],
-                                    },
-                                  ]
-                                : [];
+                                  ? [
+                                      {
+                                        type: RESOURCE_TYPES_STRING.IMAGE,
+                                        value: [poll.media],
+                                      },
+                                    ]
+                                  : [];
 
                             const initialRewards: EditValues["rewards"] =
                               Array.isArray(poll.rewards) &&
@@ -952,7 +904,7 @@ export default function PollShowPage() {
                               rewards: isTrialPoll ? [] : initialRewards,
                               targetGeo: {
                                 countries: Array.isArray(
-                                  poll.targetGeo?.countries
+                                  poll.targetGeo?.countries,
                                 )
                                   ? poll.targetGeo!.countries
                                   : [],
@@ -965,7 +917,7 @@ export default function PollShowPage() {
                               },
                               expireRewardAt: isTrialPoll
                                 ? ""
-                                : poll.expireRewardAt ?? "",
+                                : (poll.expireRewardAt ?? ""),
                             });
                             setIsEditing(false);
                           }}
@@ -993,6 +945,12 @@ export default function PollShowPage() {
             <section className="flex justify-between items-center w-full">
               <h1 className="text-2xl tracking-wider">Poll</h1>
               <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsLinkModalOpen(true)}
+                >
+                  Link
+                </Button>
                 <Button
                   variant="secondary"
                   onClick={() => navigate(`/polls/${id}/referrals`)}
@@ -1121,7 +1079,9 @@ export default function PollShowPage() {
                   )}
                 </FormCard>
               </div>
-
+              <FormCard title="Linked Entities">
+                <LinkedEntityForwardList fromType="poll" fromId={id} />
+              </FormCard>
               <FormCard title="Options">
                 <Card>
                   <CardContent className="space-y-4">
@@ -1134,7 +1094,8 @@ export default function PollShowPage() {
                               key={opt._id}
                               className={cn(
                                 "relative border rounded-lg p-3 hover:bg-muted/30",
-                                isArchivedOpt && "opacity-50 cursor-not-allowed"
+                                isArchivedOpt &&
+                                  "opacity-50 cursor-not-allowed",
                               )}
                             >
                               <div className="pr-10">
@@ -1147,7 +1108,7 @@ export default function PollShowPage() {
                                 <div
                                   className={cn(
                                     "text-sm",
-                                    isArchivedOpt && "line-through opacity-60"
+                                    isArchivedOpt && "line-through opacity-60",
                                   )}
                                 >
                                   {opt.text}
@@ -1280,6 +1241,12 @@ export default function PollShowPage() {
                 )}
               </FormCard>
             </section>
+            <EntityLinkModal
+              open={isLinkModalOpen}
+              onOpenChange={setIsLinkModalOpen}
+              fromType="poll"
+              fromId={id}
+            />
           </>
         )}
 

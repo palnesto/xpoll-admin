@@ -34,6 +34,12 @@ export const endpoints = {
         `/internal/llm/poll-query-result/${llmQueryId}`,
       generate: "/internal/llm/generate",
     },
+    entityLink: {
+      add: "/internal/entity-link/add",
+      remove: "/internal/entity-link/remove",
+      listForward: (type: string, id: string) =>
+        `/internal/entity-link/list-forward/${type}/${id}`,
+    },
     polls: {
       all: "/internal/poll/list",
       create: "/internal/poll",
@@ -59,6 +65,9 @@ export const endpoints = {
       addPollToTrial: (id: string) => `/internal/trial/${id}/polls`,
       advancedListing: "/internal/trial/advanced-listing",
     },
+    campaigns: {
+      advancedListing: "/internal/campaigns/advanced-listing",
+    },
     actions: {
       mint: "/internal/actions/mint",
       burn: "/internal/actions/burn",
@@ -82,6 +91,7 @@ export const endpoints = {
       create: "/internal/blogs",
       update: (id: string) => `/internal/blogs/${id}`,
       delete: "/internal/blogs",
+      advancedListing: "/internal/blogs/advanced-listing",
     },
     slug: {
       create: "/internal/preference/slugs",

@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/card";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { Progress } from "@/components/ui/progress";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { convertToProperCase } from "@/utils/formatter";
 import dayjs from "dayjs";
@@ -15,8 +15,12 @@ import { Loader2 } from "lucide-react";
 import { endpoints } from "@/api/endpoints";
 import { ImageCarousel } from "@/components/image";
 import { RichTextPreview } from "@/components/editor/preview";
+import { Button } from "@/components/ui/button";
+import { LinkedEntityForwardList } from "@/components/LinkedEntityForwardList";
+import { EntityLinkModal } from "@/components/modals/entity-link-modal";
 
 const BlogDetailsPage = () => {
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const { id } = useParams();
   const { data } = useApiQuery(endpoints.entities.blogs.getById(id as string));
   console.log("detaails data", data);
@@ -33,53 +37,57 @@ const BlogDetailsPage = () => {
   }
   return (
     <div className="p-6 space-y-8">
-      {/* Header */}
-      <section className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold">{blogData?.title}</h1>
-        <p className="text-muted-foreground text-sm">
-          {dayjs(blogData?.createdAt)?.format("MMM DD YYYY, HH:mm")}
-        </p>
+      <section className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-3xl font-bold">{blogData?.title}</h1>
+          <p className="text-muted-foreground text-sm">
+            {dayjs(blogData?.createdAt)?.format("MMM DD YYYY, HH:mm")}
+          </p>
+        </div>
+
+        <Button variant="outline" onClick={() => setIsLinkModalOpen(true)}>
+          Link
+        </Button>
       </section>
 
       {/* User details if exists */}
 
       <ImageCarousel images={blogData?.imageUrls} />
+      <LinkedEntityForwardList fromType="blog" fromId={id as string} />
 
       {/* Option Distribution */}
-      <section className="space-y-4">
-        <Card className="shadow-md">
-          <CardHeader>
-            <CardTitle>Option Distribution</CardTitle>
-            <CardDescription>{blogData?.pollStatement}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {blogData?.responses?.map(
-                ({
-                  type,
-                  count,
-                  percentage,
-                }: {
-                  type: string;
-                  count: number;
-                  percentage: string;
-                }) => (
-                  <div
-                    key={`${type}-${count}-${percentage}`}
-                    className="space-y-1"
-                  >
-                    <div className="flex justify-between items-center">
-                      <span>{convertToProperCase(type)}</span>
-                      <span className="text-muted-foreground">{`${percentage}%`}</span>
-                    </div>
-                    <Progress value={parseFloat(percentage)} />
+      <Card className="shadow-md -ml-4">
+        <CardHeader>
+          <CardTitle>Option Distribution</CardTitle>
+          <CardDescription>{blogData?.pollStatement}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {blogData?.responses?.map(
+              ({
+                type,
+                count,
+                percentage,
+              }: {
+                type: string;
+                count: number;
+                percentage: string;
+              }) => (
+                <div
+                  key={`${type}-${count}-${percentage}`}
+                  className="space-y-1"
+                >
+                  <div className="flex justify-between items-center">
+                    <span>{convertToProperCase(type)}</span>
+                    <span className="text-muted-foreground">{`${percentage}%`}</span>
                   </div>
-                )
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </section>
+                  <Progress value={parseFloat(percentage)} />
+                </div>
+              ),
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Content */}
       <section className="space-y-4">
@@ -112,6 +120,12 @@ const BlogDetailsPage = () => {
           value={analysis?.interactions?.tillNow ?? "N/A"}
         />
       </section> */}
+      <EntityLinkModal
+        open={isLinkModalOpen}
+        onOpenChange={setIsLinkModalOpen}
+        fromType="blog"
+        fromId={id as string}
+      />
     </div>
   );
 };
