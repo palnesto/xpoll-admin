@@ -8,6 +8,7 @@ import cmpn from "@/assets/cmpn.png";
 import amy from "@/assets/amy.png";
 import shelly from "@/assets/shelly.png";
 import snitch from "@/assets/snitch.png";
+import bc from "@/assets/bc.png";
 
 export const ASSETS = {
   X_POLL: "xPoll", // xPoll
@@ -188,7 +189,7 @@ export const assetSpecs: Record<
     symbol: "XBC",
     parent: "xBCBubble",
     parentSymbol: "XBCBC",
-    img: "/img/xBCB.png",
+    img: bc,
     canSell: null,
     chain: CHAINS.STRAIN,
   },
