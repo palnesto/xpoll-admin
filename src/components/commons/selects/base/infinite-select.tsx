@@ -1,4 +1,3 @@
-// src/components/InfiniteSelect.tsx
 import { useApiInfiniteQuery } from "@/hooks/useApiInfiniteQuery";
 import React from "react";
 import Select, { components, MenuListProps, SingleValue } from "react-select";
