@@ -605,7 +605,7 @@ export default function PaymentLedgerCardsPage() {
   return (
     <main className="min-h-screen text-foreground">
       {/* top bar */}
-      <div className="sticky top-0 z-10 border-b border-border bg-sidebar/80 backdrop-blur  rounded-xl mx-auto max-w-6xl px-4 py-4 flex items-center justify-between">
+      <div className="sticky top-0 z-10 border-b border-border bg-sidebar/80 backdrop-blur rounded-xl mx-auto max-w-6xl px-4 py-4 flex items-center justify-between">
         <h1 className="text-lg font-bold">Payment Ledger</h1>
 
         {/* filters (top right) */}
