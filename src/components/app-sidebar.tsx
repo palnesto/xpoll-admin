@@ -41,6 +41,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     isAllBlogs,
     isUsers,
     isReferralConfig,
+    isAllPayments,
   } = React.useMemo(() => {
     // isOverallPollStats
     const isOverallPollStats = pathname === "/";
@@ -90,6 +91,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     // Users management
     const isUsers = pathname === "/users";
     const isReferralConfig = pathname === "/referral-config";
+    const isAllPayments = pathname === "/all-payments";
 
     return {
       isOverallPollStats,
@@ -109,6 +111,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       isUsers,
       isReferralConfig,
       isAllBlogs,
+      isAllPayments,
     };
   }, [pathname]);
 
@@ -204,6 +207,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             title: "Strain Coin Management",
             url: "/strain/manage",
             isActive: isSystemReport,
+          },
+          {
+            title: "All Payments",
+            url: "/asset-ledger/all-payments",
+            isActive: isAllPayments,
           },
         ],
       },

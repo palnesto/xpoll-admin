@@ -84,6 +84,7 @@ export const endpoints = {
       sellIntentAdmin: "/internal/asset-ledger/sell-intent-admin",
       sellApproveOrder: "/internal/asset-ledger/sell-approve",
       sellRejectOrder: "/internal/asset-ledger/sell-reject",
+      allPayments: "/internal/payment/all-payments",
     },
     blogs: {
       all: "/internal/blogs",
