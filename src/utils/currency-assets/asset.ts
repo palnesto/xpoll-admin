@@ -187,7 +187,7 @@ export const assetSpecs: Record<
     decimal: 6,
     name: "XBCBUBBLE",
     symbol: "XBC",
-    parent: "xBCBubble",
+    parent: "xBubbleCoin",
     parentSymbol: "XBCBC",
     img: bc,
     canSell: null,
