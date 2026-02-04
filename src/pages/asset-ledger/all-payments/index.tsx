@@ -321,7 +321,6 @@ function PaymentCard({
         "hover:-translate-y-0.5 hover:shadow-xl",
       )}
     >
-      {/* subtle top glow */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-foreground/[0.05] to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
 
       <div className="p-5">
@@ -416,7 +415,6 @@ function PaymentCard({
           <FieldRow label="Campaign ID" value={campaignId ?? "—"} mono />
         </div>
 
-        {/* actions */}
         <div className="mt-4 flex items-center justify-between">
           <div className="text-[11px] font-mono text-muted-foreground">
             Internal ID: {entry._id}
@@ -437,12 +435,6 @@ function PaymentCard({
               Invoice
             </a>
           ) : null}
-        </div>
-
-        {/* tiny note */}
-        <div className="mt-2 text-[11px] text-muted-foreground">
-          Total Payment done is calculated from currently loaded entries
-          (pagination).
         </div>
       </div>
     </div>
@@ -527,14 +519,10 @@ function Pagination({
   );
 }
 
-/** -----------------------------
- *  Page
- *  ---------------------------- */
 export default function PaymentLedgerCardsPage() {
   const [page, setPage] = useState(1);
   const pageSize = 5;
 
-  // ✅ default "all" => created,processing,succeeded and both purposes
   const [statusFilter, setStatusFilter] = useState<"all" | PaymentStatus>(
     "all",
   );
@@ -542,7 +530,6 @@ export default function PaymentLedgerCardsPage() {
     "all",
   );
 
-  // ✅ Restore persisted filters once
   useEffect(() => {
     const parsed = safeParseJSON<PersistedFilters>(
       localStorage.getItem(STORAGE_KEY),
@@ -553,7 +540,6 @@ export default function PaymentLedgerCardsPage() {
     if (parsed.purposeFilter) setPurposeFilter(parsed.purposeFilter);
   }, []);
 
-  // ✅ Persist when filters change
   useEffect(() => {
     const payload: PersistedFilters = { statusFilter, purposeFilter };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -569,7 +555,6 @@ export default function PaymentLedgerCardsPage() {
     return [purposeFilter];
   }, [purposeFilter]);
 
-  // reset page when filters change
   useEffect(() => setPage(1), [statusFilter, purposeFilter]);
 
   const q = usePaymentsQuery({ page, pageSize, statuses, purposes });
@@ -577,7 +562,6 @@ export default function PaymentLedgerCardsPage() {
   const total = q.data?.data?.total ?? 0;
   const entries = safeArr<PaymentEntry>(q.data?.data?.entries);
 
-  // ✅ totals computed from CURRENT LOADED ENTRIES
   const { campaignTotalsById, campaignTotalsByName } = useMemo(() => {
     const byId: Record<string, number> = {};
     const byName: Record<string, number> = {};
@@ -604,18 +588,15 @@ export default function PaymentLedgerCardsPage() {
 
   return (
     <main className="min-h-screen text-foreground">
-      {/* top bar */}
       <div className="sticky top-0 z-10 border-b border-border bg-sidebar/80 backdrop-blur rounded-xl mx-auto max-w-6xl px-4 py-4 flex items-center justify-between">
         <h1 className="text-lg font-bold">Payment Ledger</h1>
 
-        {/* filters (top right) */}
         <div className="flex items-center gap-2">
           <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground mr-1">
             <Filter className="h-4 w-4" />
             Filters
           </div>
 
-          {/* STATUS */}
           <Select
             value={statusFilter}
             onValueChange={(v) => setStatusFilter(v as any)}
@@ -652,7 +633,6 @@ export default function PaymentLedgerCardsPage() {
         </div>
       </div>
 
-      {/* content */}
       <div className="mx-auto max-w-6xl px-4 py-6">
         {q.isLoading ? (
           <div className="flex items-center justify-center py-16 text-muted-foreground">

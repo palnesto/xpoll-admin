@@ -8,7 +8,7 @@ import cmpn from "@/assets/cmpn.png";
 import amy from "@/assets/amy.png";
 import shelly from "@/assets/shelly.png";
 import snitch from "@/assets/snitch.png";
-import bc from "@/assets/bc.png";
+import bc from "@/assets/bubble.png";
 
 export const ASSETS = {
   X_POLL: "xPoll", // xPoll
