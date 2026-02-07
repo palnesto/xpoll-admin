@@ -22,6 +22,7 @@ export const ASSETS = {
   X_SHELL: "xShell", // xShelly
   X_TIP: "xTip", // xSnitch
   X_BCBUBBLE: "xBcbc", // XBCBUBBLE
+  X_ST3: "xSt3", // xST3
 } as const;
 export type AssetType = (typeof ASSETS)[keyof typeof ASSETS];
 
@@ -36,6 +37,7 @@ const _assets = [
   ASSETS.X_SHELL,
   ASSETS.X_TIP,
   ASSETS.X_BCBUBBLE,
+  ASSETS.X_ST3,
 ] as const;
 export const coinAssets = [
   ASSETS.X_POLL,
@@ -48,6 +50,7 @@ export const coinAssets = [
   ASSETS.X_SHELL,
   ASSETS.X_TIP,
   ASSETS.X_BCBUBBLE,
+  ASSETS.X_ST3,
 ] as const;
 export const assetEnum = z.enum(_assets);
 export const sellableAssetEnum = z.enum([
@@ -190,6 +193,16 @@ export const assetSpecs: Record<
     parent: "xBubbleCoin",
     parentSymbol: "XBCBC",
     img: bc,
+    canSell: null,
+    chain: CHAINS.STRAIN,
+  },
+  [ASSETS.X_ST3]: {
+    decimal: 7,
+    name: "XST3",
+    symbol: "XST3",
+    parent: "xTerranova",
+    parentSymbol: "xST3",
+    img: "/img/xST3.png",
     canSell: null,
     chain: CHAINS.STRAIN,
   },
