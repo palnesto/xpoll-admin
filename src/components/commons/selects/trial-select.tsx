@@ -21,6 +21,7 @@ type TrialSelectProps = {
   pageSize?: number;
   placeholder?: string;
   selectProps?: SelectPropsFor<TrialListItem>;
+  additionalFilters?: Record<string, string>;
 };
 
 export function TrialSelect({
@@ -28,6 +29,7 @@ export function TrialSelect({
   pageSize = 50,
   placeholder = "Search trial title or description...",
   selectProps,
+  additionalFilters,
 }: TrialSelectProps) {
   return (
     <InfiniteSelect<TrialListItem>
@@ -36,6 +38,7 @@ export function TrialSelect({
       getFilters={(search) => ({
         title: search || undefined,
         description: search || undefined,
+        ...additionalFilters,
       })}
       mapItemToOption={(item) => ({
         value: item._id,
@@ -47,4 +50,12 @@ export function TrialSelect({
       selectProps={selectProps}
     />
   );
+}
+
+{
+  /* <TrialSelect additionalFilters={
+  {
+    belongsToCampaignId: ""
+  }
+ } />; */
 }
