@@ -17,12 +17,15 @@ export const ASSETS = {
   X_DROP: "xDrop", // XRP
   X_HIGH: "xHigh", // xStrain
   X_GIVE: "xGive", // xCampaign
-  // new coins
   X_AMBIT: "xAmbit", // xAmy
   X_SHELL: "xShell", // xShelly
   X_TIP: "xTip", // xSnitch
   X_BCBUBBLE: "xBcbc", // XBCBUBBLE
   X_ST3: "xSt3", // xST3
+  X_Coffee: "xCoffee", // xCoffee
+  X_Mason: "xMason", // xMason
+  X_Cure: "xCure", // xCure
+  X_Meta: "xMeta", // xMeta
 } as const;
 export type AssetType = (typeof ASSETS)[keyof typeof ASSETS];
 
@@ -38,6 +41,10 @@ const _assets = [
   ASSETS.X_TIP,
   ASSETS.X_BCBUBBLE,
   ASSETS.X_ST3,
+  ASSETS.X_Coffee,
+  ASSETS.X_Mason,
+  ASSETS.X_Cure,
+  ASSETS.X_Meta,
 ] as const;
 export const coinAssets = [
   ASSETS.X_POLL,
@@ -51,6 +58,10 @@ export const coinAssets = [
   ASSETS.X_TIP,
   ASSETS.X_BCBUBBLE,
   ASSETS.X_ST3,
+  ASSETS.X_Coffee,
+  ASSETS.X_Mason,
+  ASSETS.X_Cure,
+  ASSETS.X_Meta,
 ] as const;
 export const assetEnum = z.enum(_assets);
 export const sellableAssetEnum = z.enum([
@@ -203,6 +214,46 @@ export const assetSpecs: Record<
     parent: "xTerranova",
     parentSymbol: "xST3",
     img: "/img/xST3.png",
+    canSell: null,
+    chain: CHAINS.STRAIN,
+  },
+  [ASSETS.X_Coffee]: {
+    decimal: 8,
+    name: "XCOFFEE",
+    symbol: "XCF",
+    parent: "xCoffeeMilk",
+    parentSymbol: "XCFM",
+    img: "/img/xCoffee.png",
+    canSell: null,
+    chain: CHAINS.STRAIN,
+  },
+  [ASSETS.X_Mason]: {
+    decimal: 7,
+    name: "XMASON",
+    symbol: "XMS",
+    parent: "xMark",
+    parentSymbol: "XMK",
+    img: "/img/xMason.png",
+    canSell: null,
+    chain: CHAINS.STRAIN,
+  },
+  [ASSETS.X_Cure]: {
+    decimal: 8,
+    name: "XCURE",
+    symbol: "XCR",
+    parent: "xCurette",
+    parentSymbol: "XCRT",
+    img: "/img/xCure.png",
+    canSell: null,
+    chain: CHAINS.STRAIN,
+  },
+  [ASSETS.X_Meta]: {
+    decimal: 8,
+    name: "XMETA",
+    symbol: "XMTA",
+    parent: "xMeta4",
+    parentSymbol: "XMT4",
+    img: "/img/xMeta.png",
     canSell: null,
     chain: CHAINS.STRAIN,
   },
