@@ -9,7 +9,10 @@ import amy from "@/assets/amy.png";
 import shelly from "@/assets/shelly.png";
 import snitch from "@/assets/snitch.png";
 import bc from "@/assets/bubble.png";
-
+import meta from "@/assets/meta.png";
+import coffee from "@/assets/coffee.png";
+import curette from "@/assets/curette.png";
+import mark from "@/assets/mark.png";
 export const ASSETS = {
   X_POLL: "xPoll", // xPoll
   X_OCTA: "xOcta", // Aptos
@@ -223,7 +226,7 @@ export const assetSpecs: Record<
     symbol: "XCF",
     parent: "xCoffeeMilk",
     parentSymbol: "XCFM",
-    img: "/img/xCoffee.png",
+    img: coffee,
     canSell: null,
     chain: CHAINS.STRAIN,
   },
@@ -233,7 +236,7 @@ export const assetSpecs: Record<
     symbol: "XMS",
     parent: "xMark",
     parentSymbol: "XMK",
-    img: "/img/xMason.png",
+    img: mark,
     canSell: null,
     chain: CHAINS.STRAIN,
   },
@@ -243,7 +246,7 @@ export const assetSpecs: Record<
     symbol: "XCR",
     parent: "xCurette",
     parentSymbol: "XCRT",
-    img: "/img/xCure.png",
+    img: curette,
     canSell: null,
     chain: CHAINS.STRAIN,
   },
@@ -253,7 +256,7 @@ export const assetSpecs: Record<
     symbol: "XMTA",
     parent: "xMeta4",
     parentSymbol: "XMT4",
-    img: "/img/xMeta.png",
+    img: meta,
     canSell: null,
     chain: CHAINS.STRAIN,
   },
