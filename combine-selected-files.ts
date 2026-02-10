@@ -3,10 +3,9 @@ import { join, relative } from "path";
 
 // Specify file or folder paths to combine:
 const filePaths: string[] = [
-  "src/layouts/TwoPane.tsx",
-  "src/pages/polls/create.tsx",
-  "src/components/polling/editors/RewardDetailPanel.tsx",
-  "src/components/polling/editors/RewardsList.tsx",
+  "src/components/commons/selects/base",
+  "src/components/commons/selects/slug-creatable-select.tsx",
+  "src/components/commons/selects/city-select.tsx",
 ];
 const outputFile = "combined.txt";
 
@@ -55,7 +54,7 @@ async function combineSelectedFiles() {
         } catch {
           return "";
         }
-      })
+      }),
     );
 
     const finalContent = fileContents.filter(Boolean).join("\n");
