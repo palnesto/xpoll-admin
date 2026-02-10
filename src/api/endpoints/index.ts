@@ -98,6 +98,12 @@ export const endpoints = {
       create: "/internal/preference/slugs",
       all: "/internal/preference/slugs",
     },
+    ad: {
+      adOwners: {
+        advancedListing:
+          "/internal/advertisement/advertisement-owner/advanced-listing",
+      },
+    },
   },
   web3: {
     createXamanPayload: "/internal/web3/createxamanpayload",

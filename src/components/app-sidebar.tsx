@@ -8,6 +8,7 @@ import {
   ReceiptText,
   User,
   LayoutTemplate,
+  Megaphone,
 } from "lucide-react";
 import xOctopus from "@/assets/sidebar.png";
 import { NavMain } from "@/components/nav-main";
@@ -42,6 +43,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     isUsers,
     isReferralConfig,
     isAllPayments,
+    isAd,
+    isAdOwners,
   } = React.useMemo(() => {
     // isOverallPollStats
     const isOverallPollStats = pathname === "/";
@@ -93,6 +96,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const isReferralConfig = pathname === "/referral-config";
     const isAllPayments = pathname === "/all-payments";
 
+    // Ads management
+    const isAd = pathname.startsWith("/ad");
+    const isAdOwners = pathname.startsWith("/ad/ad-owners");
+
     return {
       isOverallPollStats,
       isAdminAndUserPolls,
@@ -112,6 +119,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       isReferralConfig,
       isAllBlogs,
       isAllPayments,
+      isAd,
+      isAdOwners,
     };
   }, [pathname]);
 
@@ -243,6 +252,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             title: "Referral Config",
             url: "/referral-config",
             isActive: isReferralConfig,
+          },
+        ],
+      },
+      {
+        title: "Ads Management",
+        url: "#",
+        icon: Megaphone,
+        isActive: isAd,
+        items: [
+          {
+            title: "Ad Owners",
+            url: "/ad/ad-owners",
+            isActive: isAdOwners,
           },
         ],
       },
