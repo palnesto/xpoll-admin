@@ -9,10 +9,12 @@ import amy from "@/assets/amy.png";
 import shelly from "@/assets/shelly.png";
 import snitch from "@/assets/snitch.png";
 import bc from "@/assets/bubble.png";
+import terra from "@/assets/terra.png";
 import meta from "@/assets/meta.png";
 import coffee from "@/assets/coffee.png";
 import curette from "@/assets/curette.png";
 import mark from "@/assets/mark.png";
+
 export const ASSETS = {
   X_POLL: "xPoll", // xPoll
   X_OCTA: "xOcta", // Aptos
@@ -216,7 +218,7 @@ export const assetSpecs: Record<
     symbol: "XST3",
     parent: "xTerranova",
     parentSymbol: "xST3",
-    img: "/img/xST3.png",
+    img: terra,
     canSell: null,
     chain: CHAINS.STRAIN,
   },
