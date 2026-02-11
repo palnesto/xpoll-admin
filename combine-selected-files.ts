@@ -2,11 +2,7 @@ import { readFile, writeFile, stat, readdir } from "fs/promises";
 import { join, relative } from "path";
 
 // Specify file or folder paths to combine:
-const filePaths: string[] = [
-  "src/components/commons/selects/base",
-  "src/components/commons/selects/slug-creatable-select.tsx",
-  "src/components/commons/selects/city-select.tsx",
-];
+const filePaths: string[] = ["src/components/commons/form"];
 const outputFile = "combined.txt";
 
 /**

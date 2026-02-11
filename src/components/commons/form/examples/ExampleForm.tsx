@@ -16,20 +16,32 @@ export const exampleFormZ = z.object({
 });
 
 export type ExampleFormValues = z.infer<typeof exampleFormZ>;
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
 export default function ExampleForm() {
   const form = useForm<ExampleFormValues>({
     mode: "onChange",
     resolver: zodResolver(exampleFormZ),
   });
+
   const {
     formState: { isValid, isSubmitting },
   } = form;
-  const onSubmit = (data: ExampleFormValues) => {
+
+  const onSubmit = async (data: ExampleFormValues) => {
     console.log("FORM DATA →", data);
+
+    // ✅ keep isSubmitting=true for 3s (example)
+    await sleep(3000);
+
+    console.log("AFTER 3s →", data);
   };
+
   return (
     <div className="max-w-xl mx-auto mt-16 rounded-2xl border bg-white p-6 shadow-sm">
       <h2 className="text-xl font-semibold text-gray-900">Create something</h2>
+
       <form
         onSubmit={handleSubmitNormalized(exampleFormZ, form, onSubmit)}
         className="mt-6 space-y-5"
@@ -45,6 +57,7 @@ export default function ExampleForm() {
           showCounter
           showError
         />
+
         <NumberField<ExampleFormValues>
           form={form}
           schema={exampleFormZ}
@@ -55,6 +68,7 @@ export default function ExampleForm() {
           helperText="Total tokens allowed for this campaign."
           showError
         />
+
         <NumberField<ExampleFormValues>
           form={form}
           schema={exampleFormZ}
@@ -65,6 +79,7 @@ export default function ExampleForm() {
           helperText="2 decimal places allowed."
           showError
         />
+
         <NumberField<ExampleFormValues>
           form={form}
           schema={exampleFormZ}
@@ -75,6 +90,7 @@ export default function ExampleForm() {
           helperText="Leave empty if no discount."
           showError
         />
+
         <TextAreaField<ExampleFormValues>
           form={form}
           schema={exampleFormZ}
@@ -86,17 +102,18 @@ export default function ExampleForm() {
           showCounter
           showError
         />
+
         <button
           type="submit"
           disabled={!isValid || isSubmitting}
           className={cn(
             "w-full rounded-full py-3 text-sm font-semibold text-white transition",
-            isValid
+            isValid && !isSubmitting
               ? "bg-blue hover:bg-[#29d8d8]"
               : "bg-gray-300 cursor-not-allowed",
           )}
         >
-          Submit
+          {isSubmitting ? "Submitting..." : "Submit"}
         </button>
       </form>
     </div>

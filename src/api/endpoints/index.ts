@@ -102,6 +102,7 @@ export const endpoints = {
       adOwners: {
         advancedListing:
           "/internal/advertisement/advertisement-owner/advanced-listing",
+        create: "/internal/advertisement/advertisement-owner",
       },
     },
   },

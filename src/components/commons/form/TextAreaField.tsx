@@ -1,4 +1,4 @@
-// src/components/form/TextAreaField.tsx
+// src/components/commons/form/TextAreaField.tsx
 import { useEffect } from "react";
 import type { FieldValues, Path, UseFormReturn } from "react-hook-form";
 import { Controller } from "react-hook-form";
@@ -12,7 +12,7 @@ type Props<T extends FieldValues> = {
   name: Path<T>;
   label?: string;
   placeholder?: string;
-  helperText?: string; // ✅ NEW
+  helperText?: string;
   rows?: number;
   showError?: boolean;
   showCounter?: boolean;
@@ -48,9 +48,9 @@ export function TextAreaField<T extends FieldValues>({
   const err = (formState.errors as any)?.[name]?.message as string | undefined;
 
   return (
-    <div className={cn("space-y-1", className)}>
+    <div className={cn("space-y-2", className)}>
       {label ? (
-        <label className="text-sm font-medium">
+        <label className="text-sm font-normal tracking-wide">
           {label}
           {isRequired ? <span className="ml-1 text-red-600">*</span> : null}
         </label>
@@ -85,23 +85,25 @@ export function TextAreaField<T extends FieldValues>({
                   field.onChange(raw);
                 }}
                 className={cn(
-                  "w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2",
+                  "w-full min-h-[120px] rounded-2xl border px-3 py-2 text-base font-light tracking-wide bg-transparent outline-none focus:ring-2",
                   err
                     ? "border-red-500 focus:ring-red-200"
-                    : "border-gray-200 focus:ring-gray-200",
+                    : "border-border focus:ring-muted",
                 )}
               />
 
               {showCounter || helperText ? (
                 <div className="mt-1 flex items-start justify-between gap-3">
                   {helperText ? (
-                    <div className="text-xs text-gray-500">{helperText}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {helperText}
+                    </div>
                   ) : (
                     <div />
                   )}
 
                   {showCounter ? (
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-muted-foreground">
                       {maxLen ? `${len}/${maxLen}` : len}
                     </div>
                   ) : null}
@@ -109,7 +111,7 @@ export function TextAreaField<T extends FieldValues>({
               ) : null}
 
               {showError && err ? (
-                <div className="text-xs text-red-600">{err}</div>
+                <div className="text-xs text-destructive">{err}</div>
               ) : null}
             </>
           );

@@ -1,4 +1,4 @@
-// src/components/form/NumberField.tsx
+// src/components/commons/form/NumberField.tsx
 import { useEffect, useState } from "react";
 import type { FieldValues, Path, UseFormReturn } from "react-hook-form";
 import { Controller, useWatch } from "react-hook-form";
@@ -13,7 +13,7 @@ type Props<T extends FieldValues> = {
   label?: string;
   placeholder?: string;
   helperText?: string;
-  decimalScale?: number; // 0 for ints, 2 for decimals etc
+  decimalScale?: number;
   showError?: boolean;
   className?: string;
 };
@@ -46,13 +46,9 @@ export function NumberField<T extends FieldValues>({
   const err = (formState.errors as any)?.[name]?.message as string | undefined;
   const isRequired = !!label && !meta.optional;
 
-  // ✅ local text buffer so "." / "2." can exist while typing
   const [text, setText] = useState<string>("");
-
-  // ✅ watch actual RHF value safely (hook is top-level)
   const watchedValue = useWatch({ control, name });
 
-  // ✅ smart init: required numbers default to 0
   useEffect(() => {
     if (meta.base !== "number") return;
     const v = getValues(name);
@@ -61,15 +57,12 @@ export function NumberField<T extends FieldValues>({
     }
   }, [meta.base, meta.optional, getValues, name, setValue]);
 
-  // ✅ sync text when RHF value changes externally (reset, setValue, defaults, etc.)
   useEffect(() => {
     const v = watchedValue as any;
 
     if (v === undefined || v === null) {
-      // only clear if local text isn't actively a partial value
-      if (text === "" || text === "-" || text === "." || text === "-.") {
+      if (text === "" || text === "-" || text === "." || text === "-.")
         setText("");
-      }
       return;
     }
 
@@ -79,9 +72,9 @@ export function NumberField<T extends FieldValues>({
   }, [watchedValue]);
 
   return (
-    <div className={cn("space-y-1", className)}>
+    <div className={cn("space-y-2", className)}>
       {label ? (
-        <label className="text-sm font-medium">
+        <label className="text-sm font-normal tracking-wide">
           {label}
           {isRequired ? <span className="ml-1 text-red-600">*</span> : null}
         </label>
@@ -100,7 +93,6 @@ export function NumberField<T extends FieldValues>({
                 field.onBlur();
                 const raw = e.target.value.trim();
 
-                // finalize on blur
                 if (raw === "" || raw === "-" || raw === "." || raw === "-.") {
                   if (meta.optional) {
                     field.onChange(undefined);
@@ -130,7 +122,6 @@ export function NumberField<T extends FieldValues>({
               onChange={(e) => {
                 const raw = e.target.value;
 
-                // allow clearing
                 if (raw === "") {
                   setText("");
                   if (meta.optional) field.onChange(undefined);
@@ -138,39 +129,37 @@ export function NumberField<T extends FieldValues>({
                   return;
                 }
 
-                // block invalid chars / too many decimals
                 if (!isValidNumericInput(raw, decimalScale)) return;
 
-                // keep user typing
                 setText(raw);
 
-                // don't force numeric while partial
                 if (
                   raw === "-" ||
                   raw === "." ||
                   raw === "-." ||
                   raw.endsWith(".")
-                ) {
+                )
                   return;
-                }
 
                 const n = Number(raw);
                 if (Number.isFinite(n)) field.onChange(n);
               }}
               className={cn(
-                "w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2",
+                "w-full h-11 rounded-2xl border px-3 text-base font-light tracking-wide bg-transparent outline-none focus:ring-2",
                 err
                   ? "border-red-500 focus:ring-red-200"
-                  : "border-[#C2C2C2] focus:ring-gray-200",
+                  : "border-border focus:ring-muted",
               )}
             />
 
             {helperText ? (
-              <div className="mt-1 text-xs text-gray-500">{helperText}</div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                {helperText}
+              </div>
             ) : null}
 
             {showError && err ? (
-              <div className="text-xs text-red-600">{err}</div>
+              <div className="text-xs text-destructive">{err}</div>
             ) : null}
           </>
         )}

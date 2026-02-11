@@ -1,639 +1,654 @@
 
-src/components/commons/selects/base/infinite-select.tsx
--------------------------------------------------------
-import { useApiInfiniteQuery } from "@/hooks/useApiInfiniteQuery";
-import React from "react";
-import Select, { components, MenuListProps, SingleValue } from "react-select";
+src/components/commons/form/utils/rhfSubmit.ts
+----------------------------------------------
+// src/components/form/utils/rhfSubmit.ts
+import type {
+  FieldValues,
+  SubmitHandler,
+  UseFormReturn,
+} from "react-hook-form";
+import { z } from "zod";
+import { normalizeFormDataBySchema } from "./normalizeFormData";
 
-type BaseOption<T = unknown> = {
-  value: string;
-  label: string;
-  data?: T;
-};
+export function handleSubmitNormalized<T extends FieldValues>(
+  schema: z.ZodObject<any>,
+  form: UseFormReturn<T>,
+  onValid: SubmitHandler<T>,
+) {
+  return form.handleSubmit((data) => {
+    const normalized = normalizeFormDataBySchema(schema, data);
+    return onValid(normalized);
+  });
+}
 
-export type InfiniteSelectProps<
-  T,
-  F extends Record<string, unknown> = Record<string, unknown>,
-> = {
-  route: string;
-  pageSize?: number;
-  getFilters?: (search: string) => F;
-  mapItemToOption: (item: T) => BaseOption<T>;
-  onChange?: (option: BaseOption<T> | null) => void;
-  placeholder?: string;
-  isClearable?: boolean;
-  selectProps?: Partial<React.ComponentProps<typeof Select<BaseOption<T>>>>;
-  debounceMs?: number;
-  minChars?: number;
-  fetchThresholdPx?: number;
-  /** When to start fetching data: "open" (on menu open) or "type" (after typing minChars). */
-  fetchTrigger?: "open" | "type";
-};
 
-export default function InfiniteSelect<
-  T,
-  F extends Record<string, unknown> = Record<string, unknown>,
->({
-  route,
-  pageSize = 50,
-  getFilters,
-  mapItemToOption,
-  onChange,
-  placeholder = "Search...",
-  isClearable = true,
-  selectProps,
-  debounceMs = 300,
-  minChars = 0,
-  fetchThresholdPx = 120,
-  fetchTrigger = "open",
-}: InfiniteSelectProps<T, F>) {
-  const [input, setInput] = React.useState("");
-  const [search, setSearch] = React.useState("");
-  const [isOpen, setIsOpen] = React.useState(false);
+src/components/commons/form/utils/normalizeFormData.ts
+------------------------------------------------------
+// src/components/form/utils/normalizeFormData.ts
+import { z } from "zod";
+import { getZodFieldMeta } from "./zodFieldMeta";
 
-  // Debounce the user's input into "search"
-  React.useEffect(() => {
-    const id = window.setTimeout(() => setSearch(input), debounceMs);
-    return () => window.clearTimeout(id);
-  }, [input, debounceMs]);
+export function normalizeFormDataBySchema<T extends Record<string, any>>(
+  schema: z.ZodObject<any>,
+  data: T,
+): T {
+  const out: any = { ...data };
+  const shape = schema.shape as Record<string, z.ZodTypeAny>;
 
-  const effectiveSearch = search.length >= minChars ? search : "";
+  for (const key of Object.keys(shape)) {
+    const meta = getZodFieldMeta(schema, key);
 
-  // Keep an empty filters object stable to avoid changing the queryKey unnecessarily
-  const emptyFiltersRef = React.useRef({} as F);
-  const filters = React.useMemo(
-    () => (getFilters ? getFilters(effectiveSearch) : emptyFiltersRef.current),
-    [getFilters, effectiveSearch],
-  );
-
-  // Only enable the query when the user is "using" the select
-  const enabled =
-    fetchTrigger === "open" ? isOpen : isOpen && effectiveSearch.length > 0;
-
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
-    useApiInfiniteQuery<T, unknown, F>(route, filters, pageSize, {
-      enabled,
-      // Optional: keep previous data while typing/opening for smoother UI
-      keepPreviousData: true,
-    });
-
-  const options = React.useMemo(() => {
-    const pages = data?.pages ?? [];
-    const flat: BaseOption<T>[] = [];
-    for (const p of pages) {
-      for (const item of (p as any).entries as T[]) {
-        flat.push(mapItemToOption(item));
+    // If optional field is undefined, turn into null
+    if (meta.optional && out[key] === undefined) {
+      if (meta.base === "string" || meta.base === "number") {
+        out[key] = null;
       }
     }
-    return flat;
-  }, [data, mapItemToOption]);
+  }
 
-  const handleChange = React.useCallback(
-    (v: SingleValue<BaseOption<T>>) => onChange?.(v ?? null),
-    [onChange],
-  );
+  return out as T;
+}
 
-  const handleInputChange = React.useCallback(
-    (val: string, meta: { action: string }) => {
-      if (meta.action === "input-change") setInput(val);
-      return val;
-    },
-    [],
-  );
 
-  // Throttled infinite scroll fetcher
-  const lastFetchTsRef = React.useRef(0);
-  const tryFetchNext = React.useCallback(() => {
-    const now = Date.now();
-    if (now - lastFetchTsRef.current < 300) return;
-    if (hasNextPage && !isFetchingNextPage) {
-      lastFetchTsRef.current = now;
-      fetchNextPage();
+src/components/commons/form/utils/zodFieldMeta.ts
+-------------------------------------------------
+// src/components/form/utils/zodFieldMeta.ts
+import { z } from "zod";
+
+type AnyZod = z.ZodTypeAny;
+
+function unwrapAll(t: AnyZod): AnyZod {
+  let cur: AnyZod = t;
+  while (cur instanceof z.ZodEffects) cur = cur._def.schema;
+  if (cur instanceof z.ZodDefault) cur = cur._def.innerType;
+  return cur;
+}
+
+function peelOptionalNullable(t: AnyZod) {
+  let cur: AnyZod = unwrapAll(t);
+  let optional = false;
+  let nullable = false;
+
+  while (cur instanceof z.ZodOptional || cur instanceof z.ZodNullable) {
+    if (cur instanceof z.ZodOptional) optional = true;
+    if (cur instanceof z.ZodNullable) nullable = true;
+    cur = unwrapAll(cur._def.innerType);
+  }
+
+  return { inner: cur, optional, nullable };
+}
+
+function getFieldSchema(schema: z.ZodObject<any>, path: string): AnyZod {
+  const parts = path.split(".");
+  let cur: AnyZod = schema;
+
+  for (const p of parts) {
+    const u = unwrapAll(cur);
+    if (!(u instanceof z.ZodObject)) {
+      throw new Error(`Path "${path}" is not a ZodObject at "${p}"`);
     }
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+    const shape = u.shape as Record<string, AnyZod>;
+    cur = shape[p];
+    if (!cur) throw new Error(`Field "${p}" not found in schema for "${path}"`);
+  }
 
-  const MenuList = React.useMemo(() => {
-    const Comp = (props: MenuListProps<BaseOption<T>, false>) => {
-      const onScroll: React.UIEventHandler<HTMLDivElement> = (e) => {
-        const el = e.currentTarget;
-        const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
-        if (distance < fetchThresholdPx) tryFetchNext();
-      };
-      return (
-        <components.MenuList {...props} onScroll={onScroll}>
-          {props.children}
-        </components.MenuList>
-      );
-    };
-    return Comp;
-  }, [fetchThresholdPx, tryFetchNext]);
+  return cur;
+}
+
+export function getZodFieldMeta(schema: z.ZodObject<any>, path: string) {
+  const field = getFieldSchema(schema, path);
+  const { inner, optional, nullable } = peelOptionalNullable(field);
+
+  const base =
+    inner instanceof z.ZodString
+      ? "string"
+      : inner instanceof z.ZodNumber
+        ? "number"
+        : "other";
+
+  return { optional, nullable, base };
+}
+
+export function getZodStringMax(
+  schema: z.ZodObject<any>,
+  path: string,
+): number | null {
+  const field = getFieldSchema(schema, path);
+  const { inner } = peelOptionalNullable(field);
+  if (!(inner instanceof z.ZodString)) return null;
+
+  const checks = (inner._def as any)?.checks as Array<any> | undefined;
+  const maxCheck = checks?.find((c) => c.kind === "max");
+  return typeof maxCheck?.value === "number" ? maxCheck.value : null;
+}
+
+
+src/components/commons/form/NumberField.tsx
+-------------------------------------------
+// src/components/commons/form/NumberField.tsx
+import { useEffect, useState } from "react";
+import type { FieldValues, Path, UseFormReturn } from "react-hook-form";
+import { Controller, useWatch } from "react-hook-form";
+import { z } from "zod";
+import { cn } from "@/lib/utils";
+import { getZodFieldMeta } from "./utils/zodFieldMeta";
+
+type Props<T extends FieldValues> = {
+  form: UseFormReturn<T>;
+  schema: z.ZodObject<any>;
+  name: Path<T>;
+  label?: string;
+  placeholder?: string;
+  helperText?: string;
+  decimalScale?: number;
+  showError?: boolean;
+  className?: string;
+};
+
+function isValidNumericInput(raw: string, decimalScale: number) {
+  if (!/^-?\d*\.?\d*$/.test(raw)) return false;
+
+  if (decimalScale <= 0) return /^-?\d*$/.test(raw);
+
+  const parts = raw.split(".");
+  if (parts.length > 2) return false;
+  if (parts[1] && parts[1].length > decimalScale) return false;
+
+  return true;
+}
+
+export function NumberField<T extends FieldValues>({
+  form,
+  schema,
+  name,
+  label,
+  placeholder,
+  helperText,
+  decimalScale = 0,
+  showError,
+  className,
+}: Props<T>) {
+  const { control, setValue, getValues, formState } = form;
+  const meta = getZodFieldMeta(schema, String(name));
+  const err = (formState.errors as any)?.[name]?.message as string | undefined;
+  const isRequired = !!label && !meta.optional;
+
+  const [text, setText] = useState<string>("");
+  const watchedValue = useWatch({ control, name });
+
+  useEffect(() => {
+    if (meta.base !== "number") return;
+    const v = getValues(name);
+    if (!meta.optional && v === undefined) {
+      setValue(name, 0 as any, { shouldDirty: false, shouldTouch: false });
+    }
+  }, [meta.base, meta.optional, getValues, name, setValue]);
+
+  useEffect(() => {
+    const v = watchedValue as any;
+
+    if (v === undefined || v === null) {
+      if (text === "" || text === "-" || text === "." || text === "-.")
+        setText("");
+      return;
+    }
+
+    const next = String(v);
+    if (next !== text) setText(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedValue]);
 
   return (
-    <Select<BaseOption<T>>
-      placeholder={placeholder}
-      isClearable={isClearable}
-      options={options}
-      inputValue={input}
-      onInputChange={handleInputChange}
-      onChange={handleChange}
-      maxMenuHeight={260}
-      filterOption={() => true}
-      // Only show spinner once fetching is actually enabled
-      isLoading={enabled && (isLoading || isFetchingNextPage)}
-      noOptionsMessage={() => {
-        if (!enabled) {
-          if (fetchTrigger === "type" && input.length < minChars) {
-            return `Type at least ${minChars} characters`;
-          }
-          return "Open the menu to load options";
-        }
-        if (isLoading) return "Loading...";
-        if (fetchTrigger === "type" && input.length < minChars) {
-          return `Type at least ${minChars} characters`;
-        }
-        return "No options";
-      }}
-      onMenuOpen={() => setIsOpen(true)}
-      onMenuClose={() => setIsOpen(false)}
-      menuPortalTarget={selectProps?.menuPortalTarget}
-      menuShouldScrollIntoView={false}
-      components={{ MenuList, ...(selectProps?.components || {}) }}
-      styles={{
-        control: (base, state) => ({
-          ...base,
-          backgroundColor: "transparent",
-          boxShadow: "none",
-          borderColor: state.isFocused ? "" : "",
-        }),
-        input: (base) => ({
-          ...base,
-          color: "#fff",
-        }),
-        option: (provided, state) => ({
-          ...provided,
-          color: "black",
-          backgroundColor: state.isFocused
-            ? "#e6e6e6" // focused option
-            : state.isSelected
-              ? "#e6e6e6" // selected option
-              : "white",
-        }),
+    <div className={cn("space-y-2", className)}>
+      {label ? (
+        <label className="text-sm font-normal tracking-wide">
+          {label}
+          {isRequired ? <span className="ml-1 text-red-600">*</span> : null}
+        </label>
+      ) : null}
 
-        singleValue: (provided) => ({
-          ...provided,
-          color: "#fff", // ✅ typed text stays black
-        }),
-        multiValueLabel: (provided) => ({
-          ...provided,
-          color: "black",
-        }),
-      }}
-      {...selectProps}
-    />
+      <Controller
+        control={control}
+        name={name}
+        render={({ field }) => (
+          <>
+            <input
+              inputMode={decimalScale > 0 ? "decimal" : "numeric"}
+              value={text}
+              placeholder={placeholder}
+              onBlur={(e) => {
+                field.onBlur();
+                const raw = e.target.value.trim();
+
+                if (raw === "" || raw === "-" || raw === "." || raw === "-.") {
+                  if (meta.optional) {
+                    field.onChange(undefined);
+                    setText("");
+                  } else {
+                    field.onChange(0);
+                    setText("0");
+                  }
+                  return;
+                }
+
+                const n = Number(raw);
+                if (!Number.isFinite(n)) {
+                  if (meta.optional) {
+                    field.onChange(undefined);
+                    setText("");
+                  } else {
+                    field.onChange(0);
+                    setText("0");
+                  }
+                  return;
+                }
+
+                field.onChange(n);
+                setText(String(n));
+              }}
+              onChange={(e) => {
+                const raw = e.target.value;
+
+                if (raw === "") {
+                  setText("");
+                  if (meta.optional) field.onChange(undefined);
+                  else field.onChange(0);
+                  return;
+                }
+
+                if (!isValidNumericInput(raw, decimalScale)) return;
+
+                setText(raw);
+
+                if (
+                  raw === "-" ||
+                  raw === "." ||
+                  raw === "-." ||
+                  raw.endsWith(".")
+                )
+                  return;
+
+                const n = Number(raw);
+                if (Number.isFinite(n)) field.onChange(n);
+              }}
+              className={cn(
+                "w-full h-11 rounded-2xl border px-3 text-base font-light tracking-wide bg-transparent outline-none focus:ring-2",
+                err
+                  ? "border-red-500 focus:ring-red-200"
+                  : "border-border focus:ring-muted",
+              )}
+            />
+
+            {helperText ? (
+              <div className="mt-1 text-xs text-muted-foreground">
+                {helperText}
+              </div>
+            ) : null}
+
+            {showError && err ? (
+              <div className="text-xs text-destructive">{err}</div>
+            ) : null}
+          </>
+        )}
+      />
+    </div>
   );
 }
 
 
-src/components/commons/selects/base/multi-infinite-select.tsx
--------------------------------------------------------------
-import React from "react";
-import { useApiInfiniteQuery } from "@/hooks/useApiInfiniteQuery";
-import Select, {
-  components,
-  MenuListProps,
-  MultiValue,
-  GroupBase,
-} from "react-select";
+src/components/commons/form/TextField.tsx
+-----------------------------------------
+// src/components/commons/form/TextField.tsx
+import { useEffect } from "react";
+import type { FieldValues, Path, UseFormReturn } from "react-hook-form";
+import { Controller } from "react-hook-form";
+import { z } from "zod";
+import { cn } from "@/lib/utils";
+import { getZodFieldMeta, getZodStringMax } from "./utils/zodFieldMeta";
 
-type BaseOption<T = unknown> = {
-  value: string;
-  label: string;
-  data?: T;
-};
-
-export type MultiInfiniteSelectProps<
-  T,
-  F extends Record<string, unknown> = Record<string, unknown>
-> = {
-  route: string;
-  pageSize?: number;
-  getFilters?: (search: string) => F;
-  mapItemToOption: (item: T) => BaseOption<T>;
-  value?: BaseOption<T>[];
-  onChange?: (options: BaseOption<T>[]) => void;
+type Props<T extends FieldValues> = {
+  form: UseFormReturn<T>;
+  schema: z.ZodObject<any>;
+  name: Path<T>;
+  label?: string;
   placeholder?: string;
-  isClearable?: boolean;
-  selectProps?: Partial<
-    React.ComponentProps<
-      typeof Select<BaseOption<T>, true, GroupBase<BaseOption<T>>>
-    >
-  >;
-  debounceMs?: number;
-  minChars?: number;
-  fetchThresholdPx?: number;
-  /** When to start fetching data: "open" (on menu open) or "type" (after typing minChars). */
-  fetchTrigger?: "open" | "type";
+  helperText?: string;
+  showError?: boolean;
+  showCounter?: boolean;
+  className?: string;
 };
 
-export default function MultiInfiniteSelect<
-  T,
-  F extends Record<string, unknown> = Record<string, unknown>
->({
-  route,
-  pageSize = 50,
-  getFilters,
-  mapItemToOption,
-  value,
-  onChange,
-  placeholder = "Search...",
-  isClearable = true,
-  selectProps,
-  debounceMs = 300,
-  minChars = 0,
-  fetchThresholdPx = 120,
-  fetchTrigger = "open",
-}: MultiInfiniteSelectProps<T, F>) {
-  const [input, setInput] = React.useState("");
-  const [search, setSearch] = React.useState("");
-  const [isOpen, setIsOpen] = React.useState(false);
+export function TextField<T extends FieldValues>({
+  form,
+  schema,
+  name,
+  label,
+  placeholder,
+  helperText,
+  showError,
+  showCounter,
+  className,
+}: Props<T>) {
+  const { control, setValue, getValues, formState } = form;
 
-  // Debounce input -> search
-  React.useEffect(() => {
-    const id = window.setTimeout(() => setSearch(input), debounceMs);
-    return () => window.clearTimeout(id);
-  }, [input, debounceMs]);
+  const meta = getZodFieldMeta(schema, String(name));
+  const maxLen = getZodStringMax(schema, String(name));
+  const isRequired = !!label && !meta.optional;
 
-  const effectiveSearch = search.length >= minChars ? search : "";
-
-  // Stable empty filters
-  const emptyFiltersRef = React.useRef({} as F);
-  const filters = React.useMemo(
-    () => (getFilters ? getFilters(effectiveSearch) : emptyFiltersRef.current),
-    [getFilters, effectiveSearch]
-  );
-
-  // Only enable when "using" the select
-  const enabled =
-    fetchTrigger === "open" ? isOpen : isOpen && effectiveSearch.length > 0;
-
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
-    useApiInfiniteQuery<T, unknown, F>(route, filters, pageSize, {
-      enabled,
-      keepPreviousData: true,
-    });
-
-  const options = React.useMemo(() => {
-    const pages = data?.pages ?? [];
-    const flat: BaseOption<T>[] = [];
-    for (const p of pages) {
-      for (const item of (p as any).entries as T[]) {
-        flat.push(mapItemToOption(item));
-      }
+  useEffect(() => {
+    if (meta.base !== "string") return;
+    const v = getValues(name);
+    if (!meta.optional && v === undefined) {
+      setValue(name, "" as any, { shouldDirty: false, shouldTouch: false });
     }
-    return flat;
-  }, [data, mapItemToOption]);
+  }, [meta.base, meta.optional, getValues, name, setValue]);
 
-  const handleChange = React.useCallback(
-    (v: MultiValue<BaseOption<T>>) => {
-      onChange?.(v as BaseOption<T>[]);
-      setInput("");
-      setSearch("");
-    },
-    [onChange]
-  );
-
-  const handleInputChange = React.useCallback(
-    (val: string, meta: { action: string }) => {
-      if (meta.action === "input-change") setInput(val);
-      return val;
-    },
-    []
-  );
-
-  // Throttled infinite scroll
-  const lastFetchTsRef = React.useRef(0);
-  const tryFetchNext = React.useCallback(() => {
-    const now = Date.now();
-    if (now - lastFetchTsRef.current < 300) return;
-    if (hasNextPage && !isFetchingNextPage) {
-      lastFetchTsRef.current = now;
-      fetchNextPage();
-    }
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
-
-  const MenuList = React.useMemo(() => {
-    const Comp = (props: MenuListProps<BaseOption<T>, true>) => {
-      const onScroll: React.UIEventHandler<HTMLDivElement> = (e) => {
-        const el = e.currentTarget;
-        const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
-        if (distance < fetchThresholdPx) tryFetchNext();
-      };
-      return (
-        <components.MenuList {...props} onScroll={onScroll}>
-          {props.children}
-        </components.MenuList>
-      );
-    };
-    return Comp;
-  }, [fetchThresholdPx, tryFetchNext]);
-
-  // ---- Dark-friendly styles (works with shadcn tokens + falls back) ----
-  const mergeStyles = (
-    base: NonNullable<typeof selectProps>["styles"]
-  ): NonNullable<typeof selectProps>["styles"] => {
-    const fg = "hsl(var(--foreground, 0 0% 100%))"; // white fallback
-    const border = "hsl(var(--border, 240 5% 26%))";
-    const muted = "hsl(var(--muted, 240 4.8% 15%))";
-    const mutedFg = "hsl(var(--muted-foreground, 240 5% 64%))";
-    const bg = "hsl(var(--background, 240 10% 4%))";
-
-    const darkStyles = {
-      menuPortal: (provided: any) => ({ ...provided, zIndex: 9999 }),
-      control: (provided: any) => ({
-        ...provided,
-        minHeight: 38,
-        boxShadow: "none",
-        background: "transparent",
-        borderColor: border,
-        ":hover": { borderColor: border },
-        color: fg,
-      }),
-      valueContainer: (provided: any) => ({
-        ...provided,
-        background: "transparent",
-      }),
-      input: (provided: any) => ({
-        ...provided,
-        color: fg, // search input text
-      }),
-      placeholder: (provided: any) => ({
-        ...provided,
-        color: mutedFg,
-        fontSize: "0.9rem",
-      }),
-      singleValue: (provided: any) => ({
-        ...provided,
-        color: fg,
-        fontSize: "0.9rem",
-      }),
-      multiValue: (provided: any) => ({
-        ...provided,
-        borderRadius: 9999,
-        background: muted,
-        fontSize: "0.9rem",
-      }),
-      multiValueLabel: (provided: any) => ({
-        ...provided,
-        color: fg,
-      }),
-      multiValueRemove: (provided: any) => ({
-        ...provided,
-        color: fg,
-        ":hover": {
-          background: "hsl(var(--destructive, 0 84% 60%))",
-          color: "hsl(var(--destructive-foreground, 0 0% 100%))",
-        },
-      }),
-      dropdownIndicator: (provided: any) => ({
-        ...provided,
-        color: fg,
-        ":hover": { color: fg },
-      }),
-      clearIndicator: (provided: any) => ({
-        ...provided,
-        color: fg,
-        ":hover": { color: fg },
-      }),
-      menu: (provided: any) => ({
-        ...provided,
-        background: "rgba(0,0,0,0.85)", // dark/transparent
-        backdropFilter: "blur(4px)",
-        border: `1px solid ${border}`,
-      }),
-      menuList: (provided: any) => ({
-        ...provided,
-        background: "transparent",
-        padding: 4,
-      }),
-      option: (provided: any, state: any) => ({
-        ...provided,
-        background: state.isFocused ? muted : "transparent",
-        color: fg,
-        fontSize: "0.9rem",
-        ":active": { background: muted },
-      }),
-    };
-
-    if (!base) return darkStyles;
-
-    const keys = new Set([...Object.keys(darkStyles), ...Object.keys(base)]);
-    const merged: any = {};
-    for (const k of keys) {
-      const our = (darkStyles as any)[k];
-      const theirs = (base as any)[k];
-      if (!theirs) {
-        merged[k] = our;
-        continue;
-      }
-      if (!our) {
-        merged[k] = theirs;
-        continue;
-      }
-      merged[k] = (provided: any, state: any) => {
-        const theirsOut =
-          typeof theirs === "function" ? theirs(provided, state) : theirs;
-        const ourOut = typeof our === "function" ? our(provided, state) : our;
-        return { ...theirsOut, ...ourOut };
-      };
-    }
-    return merged;
-  };
+  const err = (formState.errors as any)?.[name]?.message as string | undefined;
 
   return (
-    <Select<BaseOption<T>, true, GroupBase<BaseOption<T>>>
-      isMulti
-      placeholder={placeholder}
-      isClearable={isClearable}
-      options={options}
-      value={value}
-      inputValue={input}
-      onInputChange={handleInputChange}
-      onChange={handleChange}
-      maxMenuHeight={260}
-      filterOption={() => true}
-      isLoading={enabled && (isLoading || isFetchingNextPage)}
-      noOptionsMessage={() => {
-        if (!enabled) {
-          if (fetchTrigger === "type" && input.length < minChars) {
-            return `Type at least ${minChars} characters`;
-          }
-          return "Open the menu to load options";
-        }
-        if (isLoading) return "Loading...";
-        if (fetchTrigger === "type" && input.length < minChars) {
-          return `Type at least ${minChars} characters`;
-        }
-        return "No options";
-      }}
-      onMenuOpen={() => setIsOpen(true)}
-      onMenuClose={() => setIsOpen(false)}
-      components={{ MenuList, ...(selectProps?.components || {}) }}
-      styles={mergeStyles(selectProps?.styles)}
-      menuPortalTarget={selectProps?.menuPortalTarget ?? document.body}
-      menuShouldScrollIntoView={false}
-      {...selectProps}
-    />
-  );
-}
+    <div className={cn("space-y-2", className)}>
+      {label ? (
+        <label className="text-sm font-normal tracking-wide">
+          {label}
+          {isRequired ? <span className="ml-1 text-red-600">*</span> : null}
+        </label>
+      ) : null}
 
+      <Controller
+        control={control}
+        name={name}
+        render={({ field }) => {
+          const value = field.value ?? "";
+          const len = String(value).length;
 
-src/components/commons/selects/slug-creatable-select.tsx
---------------------------------------------------------
-import React from "react";
-import Select, { components } from "react-select";
-import { useSlugViewStore } from "@/stores/slug.store";
-import InfiniteSelect from "./base/infinite-select";
-import { SlugCreateModal } from "@/components/modals/slug/create";
-import { endpoints } from "@/api/endpoints";
+          return (
+            <>
+              <input
+                value={value}
+                placeholder={placeholder}
+                onBlur={field.onBlur}
+                onChange={(e) => {
+                  const raw = e.target.value;
 
-type SlugItem = { _id: string; name: string; archivedAt?: string | null };
-type BaseOption<T = unknown> = { value: string; label: string; data?: T };
+                  // optional string: empty => undefined (later normalized to null on submit)
+                  if (
+                    meta.base === "string" &&
+                    meta.optional &&
+                    raw.trim() === ""
+                  ) {
+                    field.onChange(undefined);
+                    return;
+                  }
 
-type Props = {
-  value?: BaseOption<SlugItem> | null;
-  onChange?: (option: BaseOption<SlugItem> | null) => void;
-  placeholder?: string;
-  pageSize?: number;
-  selectProps?: Partial<
-    React.ComponentProps<typeof Select<BaseOption<SlugItem>>>
-  >;
-  minChars?: number;
-};
+                  field.onChange(raw);
+                }}
+                className={cn(
+                  "w-full h-11 rounded-2xl border px-3 text-base font-light tracking-wide bg-transparent outline-none focus:ring-2",
+                  err
+                    ? "border-red-500 focus:ring-red-200"
+                    : "border-border focus:ring-muted",
+                )}
+              />
 
-export function SlugCreatableSelect({
-  value,
-  onChange,
-  placeholder = "Search slug...",
-  pageSize = 50,
-  selectProps,
-  minChars = 0,
-}: Props) {
-  const setIsAddSlug = useSlugViewStore((s) => s.setIsAddSlug);
+              {showCounter || helperText ? (
+                <div className="mt-1 flex items-start justify-between gap-3">
+                  {helperText ? (
+                    <div className="text-xs text-muted-foreground">
+                      {helperText}
+                    </div>
+                  ) : (
+                    <div />
+                  )}
 
-  const NoOptionsMessage = (
-    props: NoOptionsMessageProps<BaseOption<SlugItem>, false>
-  ) => {
-    const typed = (props.selectProps.inputValue || "").trim().toLowerCase();
-    if (!typed || typed.length < (minChars || 0)) {
-      return (
-        <components.NoOptionsMessage {...props}>
-          No options
-        </components.NoOptionsMessage>
-      );
-    }
-    return (
-      <components.NoOptionsMessage {...props}>
-        <div className="flex flex-col gap-2">
-          <span>No matches</span>
-          <button
-            type="button"
-            className="rounded-md border border-white/10 px-2 py-1 text-sm hover:bg-white/10"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              setIsAddSlug(typed);
-            }}
-          >
-            Create slug &ldquo;{typed}&rdquo;
-          </button>
-        </div>
-      </components.NoOptionsMessage>
-    );
-  };
+                  {showCounter ? (
+                    <div className="text-xs text-muted-foreground">
+                      {maxLen ? `${len}/${maxLen}` : len}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
 
-  const handleCreated = React.useCallback(
-    (opt: BaseOption<SlugItem>) => {
-      onChange?.(opt);
-    },
-    [onChange]
-  );
-
-  return (
-    <>
-      <InfiniteSelect<SlugItem>
-        route={endpoints.entities.slug.create}
-        pageSize={pageSize}
-        getFilters={(search) => ({ q: search })}
-        mapItemToOption={(item) => ({
-          value: item._id,
-          label: item.name,
-          data: item,
-        })}
-        onChange={onChange}
-        placeholder={placeholder}
-        minChars={minChars}
-        selectProps={{
-          ...selectProps,
-          components: {
-            NoOptionsMessage,
-            ...(selectProps?.components || {}),
-          },
+              {showError && err ? (
+                <div className="text-xs text-destructive">{err}</div>
+              ) : null}
+            </>
+          );
         }}
       />
-
-      <SlugCreateModal onCreated={handleCreated} />
-    </>
+    </div>
   );
 }
 
 
-src/components/commons/selects/city-select.tsx
-----------------------------------------------
-import MultiInfiniteSelect from "./base/multi-infinite-select";
+src/components/commons/form/examples/ExampleForm.tsx
+----------------------------------------------------
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { cn } from "@/lib/utils";
+import { z } from "zod";
+import { TextField } from "../TextField";
+import { NumberField } from "../NumberField";
+import { handleSubmitNormalized } from "../utils/rhfSubmit";
+import { TextAreaField } from "../TextAreaField";
 
-type CityItem = {
-  _id: string;
-  name: string;
-  state: { _id: string; name: string };
-  country: { _id: string; name: string };
-};
+export const exampleFormZ = z.object({
+  title: z.string().min(1, "Title is required").max(300),
+  description: z.string().max(150).optional(),
+  rewardAmountCap: z.number().min(1, "Total tokens must be > 0"),
+  price: z.number().min(1, "Price must be ≥ 0"),
+  discount: z.number().optional(),
+});
 
-type Option = {
-  value: string;
-  label: string;
-  data?: CityItem;
-};
-
-type Props = {
-  value?: Option[];
-  onChange?: (options: Option[]) => void;
-  pageSize?: number;
-  placeholder?: string;
-  selectProps?: Parameters<
-    typeof MultiInfiniteSelect<CityItem>
-  >[0]["selectProps"];
-};
-
-export default function CitySelect({
-  value,
-  onChange,
-  pageSize = 50,
-  placeholder = "Search cities...",
-  selectProps,
-}: Props) {
+export type ExampleFormValues = z.infer<typeof exampleFormZ>;
+export default function ExampleForm() {
+  const form = useForm<ExampleFormValues>({
+    mode: "onChange",
+    resolver: zodResolver(exampleFormZ),
+  });
+  const {
+    formState: { isValid, isSubmitting },
+  } = form;
+  const onSubmit = (data: ExampleFormValues) => {
+    console.log("FORM DATA →", data);
+  };
   return (
-    <MultiInfiniteSelect<CityItem>
-      route="/common/location/cities"
-      pageSize={pageSize}
-      getFilters={(search) => ({ q: search })}
-      mapItemToOption={(item) => ({
-        value: item._id,
-        label: `${item.name}, ${item.state.name}, ${item.country.name}`,
-        data: item,
-      })}
-      value={value}
-      onChange={onChange as any}
-      placeholder={placeholder}
-      selectProps={selectProps}
-    />
+    <div className="max-w-xl mx-auto mt-16 rounded-2xl border bg-white p-6 shadow-sm">
+      <h2 className="text-xl font-semibold text-gray-900">Create something</h2>
+      <form
+        onSubmit={handleSubmitNormalized(exampleFormZ, form, onSubmit)}
+        className="mt-6 space-y-5"
+        noValidate
+      >
+        <TextField<ExampleFormValues>
+          form={form}
+          schema={exampleFormZ}
+          name="title"
+          label="Title"
+          placeholder="Enter title"
+          helperText="A short title users will see in the list. A short title users will see in the list. A short title users will see in the list. A short title users will see in the list. A short title users will see in the list. A short title users will see in the list."
+          showCounter
+          showError
+        />
+        <NumberField<ExampleFormValues>
+          form={form}
+          schema={exampleFormZ}
+          name="rewardAmountCap"
+          label="Reward Amount Cap"
+          placeholder="0"
+          decimalScale={0}
+          helperText="Total tokens allowed for this campaign."
+          showError
+        />
+        <NumberField<ExampleFormValues>
+          form={form}
+          schema={exampleFormZ}
+          name="price"
+          label="Price"
+          placeholder="0.00"
+          decimalScale={2}
+          helperText="2 decimal places allowed."
+          showError
+        />
+        <NumberField<ExampleFormValues>
+          form={form}
+          schema={exampleFormZ}
+          name="discount"
+          label="Discount (optional)"
+          placeholder="0.00"
+          decimalScale={3}
+          helperText="Leave empty if no discount."
+          showError
+        />
+        <TextAreaField<ExampleFormValues>
+          form={form}
+          schema={exampleFormZ}
+          name="description"
+          label="Description"
+          placeholder="Explain in a short sentence…"
+          helperText="Optional. Max 150 characters."
+          rows={4}
+          showCounter
+          showError
+        />
+        <button
+          type="submit"
+          disabled={!isValid || isSubmitting}
+          className={cn(
+            "w-full rounded-full py-3 text-sm font-semibold text-white transition",
+            isValid
+              ? "bg-blue hover:bg-[#29d8d8]"
+              : "bg-gray-300 cursor-not-allowed",
+          )}
+        >
+          Submit
+        </button>
+      </form>
+    </div>
+  );
+}
+
+
+src/components/commons/form/TextAreaField.tsx
+---------------------------------------------
+// src/components/commons/form/TextAreaField.tsx
+import { useEffect } from "react";
+import type { FieldValues, Path, UseFormReturn } from "react-hook-form";
+import { Controller } from "react-hook-form";
+import { z } from "zod";
+import { cn } from "@/lib/utils";
+import { getZodFieldMeta, getZodStringMax } from "./utils/zodFieldMeta";
+
+type Props<T extends FieldValues> = {
+  form: UseFormReturn<T>;
+  schema: z.ZodObject<any>;
+  name: Path<T>;
+  label?: string;
+  placeholder?: string;
+  helperText?: string;
+  rows?: number;
+  showError?: boolean;
+  showCounter?: boolean;
+  className?: string;
+};
+
+export function TextAreaField<T extends FieldValues>({
+  form,
+  schema,
+  name,
+  label,
+  placeholder,
+  helperText,
+  rows = 4,
+  showError,
+  showCounter,
+  className,
+}: Props<T>) {
+  const { control, setValue, getValues, formState } = form;
+
+  const meta = getZodFieldMeta(schema, String(name));
+  const maxLen = getZodStringMax(schema, String(name));
+  const isRequired = !!label && !meta.optional;
+
+  useEffect(() => {
+    if (meta.base !== "string") return;
+    const v = getValues(name);
+    if (!meta.optional && v === undefined) {
+      setValue(name, "" as any, { shouldDirty: false, shouldTouch: false });
+    }
+  }, [meta.base, meta.optional, getValues, name, setValue]);
+
+  const err = (formState.errors as any)?.[name]?.message as string | undefined;
+
+  return (
+    <div className={cn("space-y-2", className)}>
+      {label ? (
+        <label className="text-sm font-normal tracking-wide">
+          {label}
+          {isRequired ? <span className="ml-1 text-red-600">*</span> : null}
+        </label>
+      ) : null}
+
+      <Controller
+        control={control}
+        name={name}
+        render={({ field }) => {
+          const value = field.value ?? "";
+          const len = String(value).length;
+
+          return (
+            <>
+              <textarea
+                value={value}
+                rows={rows}
+                placeholder={placeholder}
+                onBlur={field.onBlur}
+                onChange={(e) => {
+                  const raw = e.target.value;
+
+                  if (
+                    meta.base === "string" &&
+                    meta.optional &&
+                    raw.trim() === ""
+                  ) {
+                    field.onChange(undefined);
+                    return;
+                  }
+
+                  field.onChange(raw);
+                }}
+                className={cn(
+                  "w-full min-h-[120px] rounded-2xl border px-3 py-2 text-base font-light tracking-wide bg-transparent outline-none focus:ring-2",
+                  err
+                    ? "border-red-500 focus:ring-red-200"
+                    : "border-border focus:ring-muted",
+                )}
+              />
+
+              {showCounter || helperText ? (
+                <div className="mt-1 flex items-start justify-between gap-3">
+                  {helperText ? (
+                    <div className="text-xs text-muted-foreground">
+                      {helperText}
+                    </div>
+                  ) : (
+                    <div />
+                  )}
+
+                  {showCounter ? (
+                    <div className="text-xs text-muted-foreground">
+                      {maxLen ? `${len}/${maxLen}` : len}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {showError && err ? (
+                <div className="text-xs text-destructive">{err}</div>
+              ) : null}
+            </>
+          );
+        }}
+      />
+    </div>
   );
 }
