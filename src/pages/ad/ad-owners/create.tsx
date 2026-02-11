@@ -1,4 +1,5 @@
-import { useEffect, useMemo } from "react";
+// src/pages/ad/ad-owners/create.tsx
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,25 +22,26 @@ const formSchema = z
   .strict();
 
 type FormValues = z.infer<typeof formSchema>;
+
+function pickApiMessage(e: any) {
+  return (
+    e?.data?.message ||
+    e?.response?.data?.message ||
+    e?.message ||
+    "Request failed"
+  );
+}
+
+function isDuplicateNameError(e: any) {
+  const msg = String(pickApiMessage(e) || "").toLowerCase();
+  // Backend messages we know:
+  // - "Advertisement owner name already exists"
+  // - "Industry name already exists"
+  return msg.includes("name already exists") || msg.includes("already exists");
+}
+
 export default function CreateAdOwnerPage() {
   const navigate = useNavigate();
-
-  const { mutateAsync: createMutateAsync } = useApiMutation<
-    { name: string; description: string | null },
-    any
-  >({
-    route: endpoints.entities.ad.adOwners.create,
-    method: "POST",
-    onSuccess: async (data) => {
-      appToast.success("Ad owner created");
-      const createdAdOwnerId = data?.data?._id;
-      if (!createdAdOwnerId) return navigate("/ad/ad-owners");
-      navigate(`/ad/ad-owners/${createdAdOwnerId}`);
-    },
-    onError: (e: any) => {
-      appToast.error(e?.message ?? "Failed to create ad owner");
-    },
-  });
 
   const defaultValues: FormValues = useMemo(
     () => ({
@@ -57,11 +59,35 @@ export default function CreateAdOwnerPage() {
 
   const {
     formState: { isValid, isSubmitting },
+    setError,
   } = form;
 
-  useEffect(() => {
-    console.log("isSubmitting", isSubmitting);
-  }, [isSubmitting]);
+  const { mutateAsync: createMutateAsync } = useApiMutation<
+    { name: string; description: string | null },
+    any
+  >({
+    route: endpoints.entities.ad.adOwners.create,
+    method: "POST",
+    onSuccess: async (data) => {
+      appToast.success("Ad owner created");
+      const createdAdOwnerId = data?.data?._id;
+      if (!createdAdOwnerId) return navigate("/ad/ad-owners");
+      navigate(`/ad/ad-owners/${createdAdOwnerId}`);
+    },
+    onError: (e: any) => {
+      if (isDuplicateNameError(e)) {
+        setError("name", {
+          type: "server",
+          message:
+            "This ad owner name already exists. Please use another name.",
+        });
+        // appToast.error("Ad owner name already exists");
+        return;
+      }
+
+      // appToast.error(pickApiMessage(e) ?? "Failed to create ad owner");
+    },
+  });
 
   const isBusy = isSubmitting;
 
@@ -70,7 +96,6 @@ export default function CreateAdOwnerPage() {
       name: v.name.trim(),
       description: v.description?.trim() ? v.description.trim() : null,
     };
-    console.log("CREATE AD OWNER PAYLOAD →", payload);
     await createMutateAsync(payload);
   };
 

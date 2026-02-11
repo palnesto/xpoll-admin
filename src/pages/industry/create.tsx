@@ -23,25 +23,22 @@ const formSchema = z
 
 type FormValues = z.infer<typeof formSchema>;
 
+function pickApiMessage(e: any) {
+  return (
+    e?.data?.message ||
+    e?.response?.data?.message ||
+    e?.message ||
+    "Request failed"
+  );
+}
+
+function isDuplicateNameError(e: any) {
+  const msg = String(pickApiMessage(e) || "").toLowerCase();
+  return msg.includes("name already exists") || msg.includes("already exists");
+}
+
 export default function CreateIndustryPage() {
   const navigate = useNavigate();
-
-  const { mutateAsync: createMutateAsync } = useApiMutation<
-    { name: string; description: string | null },
-    any
-  >({
-    route: endpoints.entities.industry.create,
-    method: "POST",
-    onSuccess: async (data) => {
-      appToast.success("Industry created");
-      const createdId = data?.data?._id;
-      if (!createdId) return navigate("/industry");
-      navigate(`/industry/${createdId}`);
-    },
-    onError: (e: any) => {
-      appToast.error(e?.message ?? "Failed to create industry");
-    },
-  });
 
   const defaultValues: FormValues = useMemo(
     () => ({
@@ -59,7 +56,35 @@ export default function CreateIndustryPage() {
 
   const {
     formState: { isValid, isSubmitting },
+    setError,
   } = form;
+
+  const { mutateAsync: createMutateAsync } = useApiMutation<
+    { name: string; description: string | null },
+    any
+  >({
+    route: endpoints.entities.industry.create,
+    method: "POST",
+    onSuccess: async (data) => {
+      appToast.success("Industry created");
+      const createdId = data?.data?._id;
+      if (!createdId) return navigate("/industry");
+      navigate(`/industry/${createdId}`);
+    },
+    onError: (e: any) => {
+      if (isDuplicateNameError(e)) {
+        setError("name", {
+          type: "server",
+          message:
+            "This industry name already exists. Please use another name.",
+        });
+        // appToast.error("Industry name already exists");
+        return;
+      }
+
+      // appToast.error(pickApiMessage(e) ?? "Failed to create industry");
+    },
+  });
 
   const isBusy = isSubmitting;
 
@@ -68,7 +93,6 @@ export default function CreateIndustryPage() {
       name: v.name.trim(),
       description: v.description?.trim() ? v.description.trim() : null,
     };
-    console.log("CREATE INDUSTRY PAYLOAD →", payload);
     await createMutateAsync(payload);
   };
 

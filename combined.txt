@@ -1,740 +1,4 @@
 
-src/components/commons/form/utils/rhfSubmit.ts
-----------------------------------------------
-// src/components/form/utils/rhfSubmit.ts
-import type {
-  FieldValues,
-  SubmitHandler,
-  UseFormReturn,
-} from "react-hook-form";
-import { z } from "zod";
-import { normalizeFormDataBySchema } from "./normalizeFormData";
-
-export function handleSubmitNormalized<T extends FieldValues>(
-  schema: z.ZodObject<any>,
-  form: UseFormReturn<T>,
-  onValid: SubmitHandler<T>,
-) {
-  return form.handleSubmit((data) => {
-    const normalized = normalizeFormDataBySchema(schema, data);
-    return onValid(normalized);
-  });
-}
-
-
-src/components/commons/form/utils/normalizeFormData.ts
-------------------------------------------------------
-// src/components/form/utils/normalizeFormData.ts
-import { z } from "zod";
-import { getZodFieldMeta } from "./zodFieldMeta";
-
-export function normalizeFormDataBySchema<T extends Record<string, any>>(
-  schema: z.ZodObject<any>,
-  data: T,
-): T {
-  const out: any = { ...data };
-  const shape = schema.shape as Record<string, z.ZodTypeAny>;
-
-  for (const key of Object.keys(shape)) {
-    const meta = getZodFieldMeta(schema, key);
-
-    // If optional field is undefined, turn into null
-    if (meta.optional && out[key] === undefined) {
-      if (meta.base === "string" || meta.base === "number") {
-        out[key] = null;
-      }
-    }
-  }
-
-  return out as T;
-}
-
-
-src/components/commons/form/utils/zodFieldMeta.ts
--------------------------------------------------
-// src/components/form/utils/zodFieldMeta.ts
-import { z } from "zod";
-
-type AnyZod = z.ZodTypeAny;
-
-function unwrapAll(t: AnyZod): AnyZod {
-  let cur: AnyZod = t;
-  while (cur instanceof z.ZodEffects) cur = cur._def.schema;
-  if (cur instanceof z.ZodDefault) cur = cur._def.innerType;
-  return cur;
-}
-
-function peelOptionalNullable(t: AnyZod) {
-  let cur: AnyZod = unwrapAll(t);
-  let optional = false;
-  let nullable = false;
-
-  while (cur instanceof z.ZodOptional || cur instanceof z.ZodNullable) {
-    if (cur instanceof z.ZodOptional) optional = true;
-    if (cur instanceof z.ZodNullable) nullable = true;
-    cur = unwrapAll(cur._def.innerType);
-  }
-
-  return { inner: cur, optional, nullable };
-}
-
-function getFieldSchema(schema: z.ZodObject<any>, path: string): AnyZod {
-  const parts = path.split(".");
-  let cur: AnyZod = schema;
-
-  for (const p of parts) {
-    const u = unwrapAll(cur);
-    if (!(u instanceof z.ZodObject)) {
-      throw new Error(`Path "${path}" is not a ZodObject at "${p}"`);
-    }
-    const shape = u.shape as Record<string, AnyZod>;
-    cur = shape[p];
-    if (!cur) throw new Error(`Field "${p}" not found in schema for "${path}"`);
-  }
-
-  return cur;
-}
-
-export function getZodFieldMeta(schema: z.ZodObject<any>, path: string) {
-  const field = getFieldSchema(schema, path);
-  const { inner, optional, nullable } = peelOptionalNullable(field);
-
-  const base =
-    inner instanceof z.ZodString
-      ? "string"
-      : inner instanceof z.ZodNumber
-        ? "number"
-        : "other";
-
-  return { optional, nullable, base };
-}
-
-export function getZodStringMax(
-  schema: z.ZodObject<any>,
-  path: string,
-): number | null {
-  const field = getFieldSchema(schema, path);
-  const { inner } = peelOptionalNullable(field);
-  if (!(inner instanceof z.ZodString)) return null;
-
-  const checks = (inner._def as any)?.checks as Array<any> | undefined;
-  const maxCheck = checks?.find((c) => c.kind === "max");
-  return typeof maxCheck?.value === "number" ? maxCheck.value : null;
-}
-
-
-src/components/commons/form/NumberField.tsx
--------------------------------------------
-// src/components/commons/form/NumberField.tsx
-import { useEffect, useState } from "react";
-import type { FieldValues, Path, UseFormReturn } from "react-hook-form";
-import { Controller, useWatch } from "react-hook-form";
-import { z } from "zod";
-import { cn } from "@/lib/utils";
-import { getZodFieldMeta } from "./utils/zodFieldMeta";
-
-type Props<T extends FieldValues> = {
-  form: UseFormReturn<T>;
-  schema: z.ZodObject<any>;
-  name: Path<T>;
-  label?: string;
-  placeholder?: string;
-  helperText?: string;
-  decimalScale?: number;
-  showError?: boolean;
-  className?: string;
-};
-
-function isValidNumericInput(raw: string, decimalScale: number) {
-  if (!/^-?\d*\.?\d*$/.test(raw)) return false;
-
-  if (decimalScale <= 0) return /^-?\d*$/.test(raw);
-
-  const parts = raw.split(".");
-  if (parts.length > 2) return false;
-  if (parts[1] && parts[1].length > decimalScale) return false;
-
-  return true;
-}
-
-export function NumberField<T extends FieldValues>({
-  form,
-  schema,
-  name,
-  label,
-  placeholder,
-  helperText,
-  decimalScale = 0,
-  showError,
-  className,
-}: Props<T>) {
-  const { control, setValue, getValues, formState } = form;
-  const meta = getZodFieldMeta(schema, String(name));
-  const err = (formState.errors as any)?.[name]?.message as string | undefined;
-  const isRequired = !!label && !meta.optional;
-
-  const [text, setText] = useState<string>("");
-  const watchedValue = useWatch({ control, name });
-
-  useEffect(() => {
-    if (meta.base !== "number") return;
-    const v = getValues(name);
-    if (!meta.optional && v === undefined) {
-      setValue(name, 0 as any, { shouldDirty: false, shouldTouch: false });
-    }
-  }, [meta.base, meta.optional, getValues, name, setValue]);
-
-  useEffect(() => {
-    const v = watchedValue as any;
-
-    if (v === undefined || v === null) {
-      if (text === "" || text === "-" || text === "." || text === "-.")
-        setText("");
-      return;
-    }
-
-    const next = String(v);
-    if (next !== text) setText(next);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watchedValue]);
-
-  return (
-    <div className={cn("space-y-2", className)}>
-      {label ? (
-        <label className="text-sm font-normal tracking-wide">
-          {label}
-          {isRequired ? <span className="ml-1 text-red-600">*</span> : null}
-        </label>
-      ) : null}
-
-      <Controller
-        control={control}
-        name={name}
-        render={({ field }) => (
-          <>
-            <input
-              inputMode={decimalScale > 0 ? "decimal" : "numeric"}
-              value={text}
-              placeholder={placeholder}
-              onBlur={(e) => {
-                field.onBlur();
-                const raw = e.target.value.trim();
-
-                if (raw === "" || raw === "-" || raw === "." || raw === "-.") {
-                  if (meta.optional) {
-                    field.onChange(undefined);
-                    setText("");
-                  } else {
-                    field.onChange(0);
-                    setText("0");
-                  }
-                  return;
-                }
-
-                const n = Number(raw);
-                if (!Number.isFinite(n)) {
-                  if (meta.optional) {
-                    field.onChange(undefined);
-                    setText("");
-                  } else {
-                    field.onChange(0);
-                    setText("0");
-                  }
-                  return;
-                }
-
-                field.onChange(n);
-                setText(String(n));
-              }}
-              onChange={(e) => {
-                const raw = e.target.value;
-
-                if (raw === "") {
-                  setText("");
-                  if (meta.optional) field.onChange(undefined);
-                  else field.onChange(0);
-                  return;
-                }
-
-                if (!isValidNumericInput(raw, decimalScale)) return;
-
-                setText(raw);
-
-                if (
-                  raw === "-" ||
-                  raw === "." ||
-                  raw === "-." ||
-                  raw.endsWith(".")
-                )
-                  return;
-
-                const n = Number(raw);
-                if (Number.isFinite(n)) field.onChange(n);
-              }}
-              className={cn(
-                "w-full h-11 rounded-2xl border px-3 text-base font-light tracking-wide bg-transparent outline-none focus:ring-2",
-                err
-                  ? "border-red-500 focus:ring-red-200"
-                  : "border-border focus:ring-muted",
-              )}
-            />
-
-            {helperText ? (
-              <div className="mt-1 text-xs text-muted-foreground">
-                {helperText}
-              </div>
-            ) : null}
-
-            {showError && err ? (
-              <div className="text-xs text-destructive">{err}</div>
-            ) : null}
-          </>
-        )}
-      />
-    </div>
-  );
-}
-
-
-src/components/commons/form/TextField.tsx
------------------------------------------
-// src/components/commons/form/TextField.tsx
-import { useEffect } from "react";
-import type { FieldValues, Path, UseFormReturn } from "react-hook-form";
-import { Controller } from "react-hook-form";
-import { z } from "zod";
-import { cn } from "@/lib/utils";
-import { getZodFieldMeta, getZodStringMax } from "./utils/zodFieldMeta";
-
-type Props<T extends FieldValues> = {
-  form: UseFormReturn<T>;
-  schema: z.ZodObject<any>;
-  name: Path<T>;
-  label?: string;
-  placeholder?: string;
-  helperText?: string;
-  showError?: boolean;
-  showCounter?: boolean;
-  className?: string;
-};
-
-export function TextField<T extends FieldValues>({
-  form,
-  schema,
-  name,
-  label,
-  placeholder,
-  helperText,
-  showError,
-  showCounter,
-  className,
-}: Props<T>) {
-  const { control, setValue, getValues, formState } = form;
-
-  const meta = getZodFieldMeta(schema, String(name));
-  const maxLen = getZodStringMax(schema, String(name));
-  const isRequired = !!label && !meta.optional;
-
-  useEffect(() => {
-    if (meta.base !== "string") return;
-    const v = getValues(name);
-    if (!meta.optional && v === undefined) {
-      setValue(name, "" as any, { shouldDirty: false, shouldTouch: false });
-    }
-  }, [meta.base, meta.optional, getValues, name, setValue]);
-
-  const err = (formState.errors as any)?.[name]?.message as string | undefined;
-
-  return (
-    <div className={cn("space-y-2", className)}>
-      {label ? (
-        <label className="text-sm font-normal tracking-wide">
-          {label}
-          {isRequired ? <span className="ml-1 text-red-600">*</span> : null}
-        </label>
-      ) : null}
-
-      <Controller
-        control={control}
-        name={name}
-        render={({ field }) => {
-          const value = field.value ?? "";
-          const len = String(value).length;
-
-          return (
-            <>
-              <input
-                value={value}
-                placeholder={placeholder}
-                onBlur={field.onBlur}
-                onChange={(e) => {
-                  const raw = e.target.value;
-
-                  // optional string: empty => undefined (later normalized to null on submit)
-                  if (
-                    meta.base === "string" &&
-                    meta.optional &&
-                    raw.trim() === ""
-                  ) {
-                    field.onChange(undefined);
-                    return;
-                  }
-
-                  field.onChange(raw);
-                }}
-                className={cn(
-                  "w-full h-11 rounded-2xl border px-3 text-base font-light tracking-wide bg-transparent outline-none focus:ring-2",
-                  err
-                    ? "border-red-500 focus:ring-red-200"
-                    : "border-border focus:ring-muted",
-                )}
-              />
-
-              {showCounter || helperText ? (
-                <div className="mt-1 flex items-start justify-between gap-3">
-                  {helperText ? (
-                    <div className="text-xs text-muted-foreground">
-                      {helperText}
-                    </div>
-                  ) : (
-                    <div />
-                  )}
-
-                  {showCounter ? (
-                    <div className="text-xs text-muted-foreground">
-                      {maxLen ? `${len}/${maxLen}` : len}
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-
-              {showError && err ? (
-                <div className="text-xs text-destructive">{err}</div>
-              ) : null}
-            </>
-          );
-        }}
-      />
-    </div>
-  );
-}
-
-
-src/components/commons/form/examples/ExampleForm.tsx
-----------------------------------------------------
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { cn } from "@/lib/utils";
-import { z } from "zod";
-import { TextField } from "../TextField";
-import { NumberField } from "../NumberField";
-import { handleSubmitNormalized } from "../utils/rhfSubmit";
-import { TextAreaField } from "../TextAreaField";
-
-export const exampleFormZ = z.object({
-  title: z.string().min(1, "Title is required").max(300),
-  description: z.string().max(150).optional(),
-  rewardAmountCap: z.number().min(1, "Total tokens must be > 0"),
-  price: z.number().min(1, "Price must be ≥ 0"),
-  discount: z.number().optional(),
-});
-
-export type ExampleFormValues = z.infer<typeof exampleFormZ>;
-
-const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
-
-export default function ExampleForm() {
-  const form = useForm<ExampleFormValues>({
-    mode: "onChange",
-    resolver: zodResolver(exampleFormZ),
-  });
-
-  const {
-    formState: { isValid, isSubmitting },
-  } = form;
-
-  const onSubmit = async (data: ExampleFormValues) => {
-    console.log("FORM DATA →", data);
-
-    // ✅ keep isSubmitting=true for 3s (example)
-    await sleep(3000);
-
-    console.log("AFTER 3s →", data);
-  };
-
-  return (
-    <div className="max-w-xl mx-auto mt-16 rounded-2xl border bg-white p-6 shadow-sm">
-      <h2 className="text-xl font-semibold text-gray-900">Create something</h2>
-
-      <form
-        onSubmit={handleSubmitNormalized(exampleFormZ, form, onSubmit)}
-        className="mt-6 space-y-5"
-        noValidate
-      >
-        <TextField<ExampleFormValues>
-          form={form}
-          schema={exampleFormZ}
-          name="title"
-          label="Title"
-          placeholder="Enter title"
-          helperText="A short title users will see in the list. A short title users will see in the list. A short title users will see in the list. A short title users will see in the list. A short title users will see in the list. A short title users will see in the list."
-          showCounter
-          showError
-        />
-
-        <NumberField<ExampleFormValues>
-          form={form}
-          schema={exampleFormZ}
-          name="rewardAmountCap"
-          label="Reward Amount Cap"
-          placeholder="0"
-          decimalScale={0}
-          helperText="Total tokens allowed for this campaign."
-          showError
-        />
-
-        <NumberField<ExampleFormValues>
-          form={form}
-          schema={exampleFormZ}
-          name="price"
-          label="Price"
-          placeholder="0.00"
-          decimalScale={2}
-          helperText="2 decimal places allowed."
-          showError
-        />
-
-        <NumberField<ExampleFormValues>
-          form={form}
-          schema={exampleFormZ}
-          name="discount"
-          label="Discount (optional)"
-          placeholder="0.00"
-          decimalScale={3}
-          helperText="Leave empty if no discount."
-          showError
-        />
-
-        <TextAreaField<ExampleFormValues>
-          form={form}
-          schema={exampleFormZ}
-          name="description"
-          label="Description"
-          placeholder="Explain in a short sentence…"
-          helperText="Optional. Max 150 characters."
-          rows={4}
-          showCounter
-          showError
-        />
-
-        <button
-          type="submit"
-          disabled={!isValid || isSubmitting}
-          className={cn(
-            "w-full rounded-full py-3 text-sm font-semibold text-white transition",
-            isValid && !isSubmitting
-              ? "bg-blue hover:bg-[#29d8d8]"
-              : "bg-gray-300 cursor-not-allowed",
-          )}
-        >
-          {isSubmitting ? "Submitting..." : "Submit"}
-        </button>
-      </form>
-    </div>
-  );
-}
-
-
-src/components/commons/form/TextAreaField.tsx
----------------------------------------------
-// src/components/commons/form/TextAreaField.tsx
-import { useEffect } from "react";
-import type { FieldValues, Path, UseFormReturn } from "react-hook-form";
-import { Controller } from "react-hook-form";
-import { z } from "zod";
-import { cn } from "@/lib/utils";
-import { getZodFieldMeta, getZodStringMax } from "./utils/zodFieldMeta";
-
-type Props<T extends FieldValues> = {
-  form: UseFormReturn<T>;
-  schema: z.ZodObject<any>;
-  name: Path<T>;
-  label?: string;
-  placeholder?: string;
-  helperText?: string;
-  rows?: number;
-  showError?: boolean;
-  showCounter?: boolean;
-  className?: string;
-};
-
-export function TextAreaField<T extends FieldValues>({
-  form,
-  schema,
-  name,
-  label,
-  placeholder,
-  helperText,
-  rows = 4,
-  showError,
-  showCounter,
-  className,
-}: Props<T>) {
-  const { control, setValue, getValues, formState } = form;
-
-  const meta = getZodFieldMeta(schema, String(name));
-  const maxLen = getZodStringMax(schema, String(name));
-  const isRequired = !!label && !meta.optional;
-
-  useEffect(() => {
-    if (meta.base !== "string") return;
-    const v = getValues(name);
-    if (!meta.optional && v === undefined) {
-      setValue(name, "" as any, { shouldDirty: false, shouldTouch: false });
-    }
-  }, [meta.base, meta.optional, getValues, name, setValue]);
-
-  const err = (formState.errors as any)?.[name]?.message as string | undefined;
-
-  return (
-    <div className={cn("space-y-2", className)}>
-      {label ? (
-        <label className="text-sm font-normal tracking-wide">
-          {label}
-          {isRequired ? <span className="ml-1 text-red-600">*</span> : null}
-        </label>
-      ) : null}
-
-      <Controller
-        control={control}
-        name={name}
-        render={({ field }) => {
-          const value = field.value ?? "";
-          const len = String(value).length;
-
-          return (
-            <>
-              <textarea
-                value={value}
-                rows={rows}
-                placeholder={placeholder}
-                onBlur={field.onBlur}
-                onChange={(e) => {
-                  const raw = e.target.value;
-
-                  if (
-                    meta.base === "string" &&
-                    meta.optional &&
-                    raw.trim() === ""
-                  ) {
-                    field.onChange(undefined);
-                    return;
-                  }
-
-                  field.onChange(raw);
-                }}
-                className={cn(
-                  "w-full min-h-[120px] rounded-2xl border px-3 py-2 text-base font-light tracking-wide bg-transparent outline-none focus:ring-2",
-                  err
-                    ? "border-red-500 focus:ring-red-200"
-                    : "border-border focus:ring-muted",
-                )}
-              />
-
-              {showCounter || helperText ? (
-                <div className="mt-1 flex items-start justify-between gap-3">
-                  {helperText ? (
-                    <div className="text-xs text-muted-foreground">
-                      {helperText}
-                    </div>
-                  ) : (
-                    <div />
-                  )}
-
-                  {showCounter ? (
-                    <div className="text-xs text-muted-foreground">
-                      {maxLen ? `${len}/${maxLen}` : len}
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-
-              {showError && err ? (
-                <div className="text-xs text-destructive">{err}</div>
-              ) : null}
-            </>
-          );
-        }}
-      />
-    </div>
-  );
-}
-
-
-src/stores/useAdOwnerFilters.ts
--------------------------------
-import { create } from "zustand";
-import { persist } from "zustand/middleware";
-
-export type Opt<T = unknown> = { value: string; label: string; data?: T };
-
-type State = {
-  // filters
-  name: string;
-  description: string;
-
-  /**
-   * API expects includeArchived boolean.
-   * - false => show only non-archived
-   * - true  => include archived too
-   */
-  includeArchived: boolean;
-
-  /**
-   * Selected excluded owners (we store full options to keep label for chips).
-   * This maps to API query param: excludeIds=id1,id2
-   */
-  excludedOwnerOpts: Opt[];
-
-  // paging
-  page: number;
-
-  // UI nonce to re-mount fields on hard reset (if needed)
-  uiNonce: number;
-
-  patch: (partial: Partial<State>) => void;
-  reset: () => void;
-};
-
-const initialBase = {
-  name: "",
-  description: "",
-  includeArchived: false,
-  excludedOwnerOpts: [] as Opt[],
-  page: 1,
-};
-
-const initial: Omit<State, "patch" | "reset"> = {
-  ...initialBase,
-  uiNonce: 0,
-};
-
-export const useAdOwnerFilters = create<State>()(
-  persist(
-    (set) => ({
-      ...initial,
-      patch: (partial) => set((s) => ({ ...s, ...partial })),
-      reset: () =>
-        set((s) => ({
-          ...initialBase,
-          uiNonce: s.uiNonce + 1,
-        })),
-    }),
-    { name: "ad-owner-filters" },
-  ),
-);
-
-
 src/components/commons/selects/base/infinite-select.tsx
 -------------------------------------------------------
 import { useApiInfiniteQuery } from "@/hooks/useApiInfiniteQuery";
@@ -1247,10 +511,17 @@ type Props = {
   debounceMs?: number;
 
   /**
-   * Used to prevent picking already-selected ones.
-   * (We still guard in onChange in the page too.)
+   * ✅ Pass API query params directly (except "name" which is set from search).
+   * Example:
+   *  queryParams={{ includeArchived: false, excludeIds: "id1,id2" }}
    */
-  excludeIds?: string[];
+  queryParams?: Record<string, unknown>;
+
+  /**
+   * ✅ If you need query params to depend on `search`, use this.
+   * If provided, it wins over `queryParams`.
+   */
+  getQueryParams?: (search: string) => Record<string, unknown>;
 
   selectProps?: Partial<
     React.ComponentProps<typeof Select<BaseOption<AdOwnerItem>>>
@@ -1263,7 +534,8 @@ export default function AdOwnerInfiniteSelect({
   pageSize = 50,
   minChars = 0,
   debounceMs = 300,
-  excludeIds,
+  queryParams,
+  getQueryParams,
   selectProps,
 }: Props) {
   return (
@@ -1274,17 +546,17 @@ export default function AdOwnerInfiniteSelect({
       minChars={minChars}
       fetchTrigger="open"
       getFilters={(search) => {
-        const f: Record<string, unknown> = {
-          includeArchived: true, // allow selecting even archived ones (still fine to exclude)
-        };
+        // Caller fully controls params if they want
+        const base = getQueryParams
+          ? getQueryParams(search)
+          : { ...(queryParams ?? {}) };
 
-        if (search?.trim()) f.name = search.trim();
+        // Standard search behavior for this select: search is mapped to `name`
+        const s = search?.trim();
+        if (s) (base as any).name = s;
+        else delete (base as any).name;
 
-        // If your API supports excludeIds for listing results, pass it to avoid showing already selected.
-        // If API ignores it, no harm.
-        if (excludeIds?.length) f.excludeIds = excludeIds.join(",");
-
-        return f;
+        return base as Record<string, unknown>;
       }}
       mapItemToOption={(item) => ({
         value: item._id,
@@ -1300,6 +572,70 @@ export default function AdOwnerInfiniteSelect({
     />
   );
 }
+
+
+src/stores/useAdOwnerFilters.ts
+-------------------------------
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+
+export type Opt<T = unknown> = { value: string; label: string; data?: T };
+
+type State = {
+  // filters
+  name: string;
+  description: string;
+
+  /**
+   * API expects includeArchived boolean.
+   * - false => show only non-archived
+   * - true  => include archived too
+   */
+  includeArchived: boolean;
+
+  /**
+   * Selected excluded owners (we store full options to keep label for chips).
+   * This maps to API query param: excludeIds=id1,id2
+   */
+  excludedOwnerOpts: Opt[];
+
+  // paging
+  page: number;
+
+  // UI nonce to re-mount fields on hard reset (if needed)
+  uiNonce: number;
+
+  patch: (partial: Partial<State>) => void;
+  reset: () => void;
+};
+
+const initialBase = {
+  name: "",
+  description: "",
+  includeArchived: false,
+  excludedOwnerOpts: [] as Opt[],
+  page: 1,
+};
+
+const initial: Omit<State, "patch" | "reset"> = {
+  ...initialBase,
+  uiNonce: 0,
+};
+
+export const useAdOwnerFilters = create<State>()(
+  persist(
+    (set) => ({
+      ...initial,
+      patch: (partial) => set((s) => ({ ...s, ...partial })),
+      reset: () =>
+        set((s) => ({
+          ...initialBase,
+          uiNonce: s.uiNonce + 1,
+        })),
+    }),
+    { name: "ad-owner-filters" },
+  ),
+);
 
 
 src/components/modals/ad/ad-owner/delete.tsx
@@ -1486,158 +822,6 @@ export default function ConfirmArchiveAdOwnerModal({
         </div>
       </div>
     </CustomModal>
-  );
-}
-
-
-src/pages/ad/ad-owners/create.tsx
----------------------------------
-import { useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { Loader2 } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
-import { TextField } from "@/components/commons/form/TextField";
-import { TextAreaField } from "@/components/commons/form/TextAreaField";
-import { handleSubmitNormalized } from "@/components/commons/form/utils/rhfSubmit";
-import { useApiMutation } from "@/hooks/useApiMutation";
-import { endpoints } from "@/api/endpoints";
-import { appToast } from "@/utils/toast";
-
-const formSchema = z
-  .object({
-    name: z.string().trim().min(1, "Name is required").max(200),
-    description: z.string().trim().max(2000).optional(),
-  })
-  .strict();
-
-type FormValues = z.infer<typeof formSchema>;
-export default function CreateAdOwnerPage() {
-  const navigate = useNavigate();
-
-  const { mutateAsync: createMutateAsync } = useApiMutation<
-    { name: string; description: string | null },
-    any
-  >({
-    route: endpoints.entities.ad.adOwners.create,
-    method: "POST",
-    onSuccess: async (data) => {
-      appToast.success("Ad owner created");
-      const createdAdOwnerId = data?.data?._id;
-      if (!createdAdOwnerId) return navigate("/ad/ad-owners");
-      navigate(`/ad/ad-owners/${createdAdOwnerId}`);
-    },
-    onError: (e: any) => {
-      appToast.error(e?.message ?? "Failed to create ad owner");
-    },
-  });
-
-  const defaultValues: FormValues = useMemo(
-    () => ({
-      name: "",
-      description: undefined,
-    }),
-    [],
-  );
-
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues,
-    mode: "onChange",
-  });
-
-  const {
-    formState: { isValid, isSubmitting },
-  } = form;
-
-  useEffect(() => {
-    console.log("isSubmitting", isSubmitting);
-  }, [isSubmitting]);
-
-  const isBusy = isSubmitting;
-
-  const onSubmit = async (v: FormValues) => {
-    const payload = {
-      name: v.name.trim(),
-      description: v.description?.trim() ? v.description.trim() : null,
-    };
-    console.log("CREATE AD OWNER PAYLOAD →", payload);
-    await createMutateAsync(payload);
-  };
-
-  return (
-    <div className="p-6 space-y-8 w-full">
-      {/* Header */}
-      <div className="flex justify-between items-center w-full">
-        <h1 className="text-2xl tracking-wider">Create Ad Owner</h1>
-
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => navigate("/ad/ad-owners")}
-            disabled={isBusy}
-            className="text-base font-light tracking-wide"
-          >
-            Cancel
-          </Button>
-
-          <Button
-            type="submit"
-            form="ad-owner-form"
-            disabled={isBusy || !isValid}
-            className="text-base font-light tracking-wide"
-          >
-            {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Create Ad Owner
-          </Button>
-        </div>
-      </div>
-
-      <form
-        id="ad-owner-form"
-        onSubmit={handleSubmitNormalized(formSchema, form, onSubmit)}
-        className="space-y-10"
-        noValidate
-      >
-        <div className="grid grid-cols-1 gap-6">
-          <div className="rounded-3xl bg-primary/5 p-6 space-y-6">
-            <div className="space-y-1">
-              <h2 className="text-base tracking-wider">Basic Info</h2>
-              <p className="text-xs text-muted-foreground">
-                Name is required. Description is optional.
-              </p>
-            </div>
-
-            <TextField<FormValues>
-              form={form}
-              schema={formSchema}
-              name="name"
-              label="Owner Name"
-              placeholder="Enter owner name"
-              helperText="Required. Max 200 characters."
-              showCounter
-              showError
-            />
-
-            <TextAreaField<FormValues>
-              form={form}
-              schema={formSchema}
-              name="description"
-              label="Description (Optional)"
-              placeholder="Write a short description"
-              helperText="Optional. Max 2000 characters."
-              rows={5}
-              showCounter
-              showError
-            />
-          </div>
-        </div>
-      </form>
-    </div>
   );
 }
 
@@ -1847,7 +1031,6 @@ const MemoAdOwnersPage = () => {
     reset,
   } = useAdOwnerFilters();
 
-  // Debounce only "typing" inputs that would refetch per keystroke
   const debouncedName = useDebouncedValue(name, SEARCH_DEBOUNCE_MS);
   const debouncedDescription = useDebouncedValue(
     description,
@@ -1867,11 +1050,11 @@ const MemoAdOwnersPage = () => {
 
     const tn = debouncedName.trim();
     const td = debouncedDescription.trim();
-    const excludeCsv = excludedIds.length ? excludedIds.join(",") : "";
 
     if (tn) usp.set("name", tn);
     if (td) usp.set("description", td);
-    if (excludeCsv) usp.set("excludeIds", excludeCsv);
+
+    if (excludedIds.length) usp.set("excludeIds", excludedIds.join(","));
 
     const base = endpoints.entities.ad.adOwners.advancedListing;
     const qs = usp.toString();
@@ -1963,8 +1146,11 @@ const MemoAdOwnersPage = () => {
           </label>
 
           <AdOwnerInfiniteSelect
-            excludeIds={excludedIds}
             placeholder="Select an ad owner to exclude…"
+            queryParams={{
+              includeArchived: false, // ✅ hide archived from this select
+              excludeIds: excludedIds.join(","), // ✅ exclude already-selected in chips
+            }}
             onChange={(opt) => addExcludedOwner(opt as any)}
             selectProps={{ menuPortalTarget: document.body }}
           />
@@ -2016,192 +1202,153 @@ const AdOwnersPage = memo(MemoAdOwnersPage);
 export default AdOwnersPage;
 
 
-src/pages/ad/ad-owners/[id].tsx
--------------------------------
-// src/pages/ad/ad-owners/[id].tsx
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { Loader2, Trash2, ArrowLeft, Pencil } from "lucide-react";
+src/pages/ad/ad-owners/create.tsx
+---------------------------------
+import { useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { TextField } from "@/components/commons/form/TextField";
+import { TextAreaField } from "@/components/commons/form/TextAreaField";
+import { handleSubmitNormalized } from "@/components/commons/form/utils/rhfSubmit";
+import { useApiMutation } from "@/hooks/useApiMutation";
 import { endpoints } from "@/api/endpoints";
-import { useApiQuery } from "@/hooks/useApiQuery";
+import { appToast } from "@/utils/toast";
 
-import ConfirmArchiveAdOwnerModal from "@/components/modals/ad/ad-owner/delete";
-import { utcToAdminFormatted } from "@/utils/time";
+const formSchema = z
+  .object({
+    name: z.string().trim().min(1, "Name is required").max(200),
+    description: z.string().trim().max(2000).optional(),
+  })
+  .strict();
 
-type AdOwner = {
-  _id: string;
-  name: string;
-  description?: string | null;
-  internalAuthor?: string | null;
-  archivedAt?: string | null;
-  createdAt?: string;
-  updatedAt?: string;
-};
-
-export default function SpecificAdOwnerPage() {
+type FormValues = z.infer<typeof formSchema>;
+export default function CreateAdOwnerPage() {
   const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
-  const [isArchiveOpen, setIsArchiveOpen] = useState(false);
 
-  const urlWithQuery = useMemo(() => {
-    if (!id) return "";
-    return endpoints.entities.ad.adOwners.getById(
-      { adOwnerId: id },
-      { includeArchived: "true" },
-    );
-  }, [id]);
+  const { mutateAsync: createMutateAsync } = useApiMutation<
+    { name: string; description: string | null },
+    any
+  >({
+    route: endpoints.entities.ad.adOwners.create,
+    method: "POST",
+    onSuccess: async (data) => {
+      appToast.success("Ad owner created");
+      const createdAdOwnerId = data?.data?._id;
+      if (!createdAdOwnerId) return navigate("/ad/ad-owners");
+      navigate(`/ad/ad-owners/${createdAdOwnerId}`);
+    },
+    onError: (e: any) => {
+      appToast.error(e?.message ?? "Failed to create ad owner");
+    },
+  });
 
-  const { data, isLoading, isFetching, error, refetch } = useApiQuery(
-    urlWithQuery,
-    { key: ["ad-owner-by-id-view", id, urlWithQuery], enabled: !!id } as any,
+  const defaultValues: FormValues = useMemo(
+    () => ({
+      name: "",
+      description: undefined,
+    }),
+    [],
   );
 
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues,
+    mode: "onChange",
+  });
+
+  const {
+    formState: { isValid, isSubmitting },
+  } = form;
+
   useEffect(() => {
-    if (!urlWithQuery) return;
-    try {
-      (refetch as any)?.();
-    } catch {}
-  }, [urlWithQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+    console.log("isSubmitting", isSubmitting);
+  }, [isSubmitting]);
 
-  const owner: AdOwner | null = (data as any)?.data?.data ?? null;
+  const isBusy = isSubmitting;
 
-  const isBusy = isLoading || isFetching;
-  const archived = !!owner?.archivedAt;
-
-  const fmt = (iso?: string | null) => (iso ? utcToAdminFormatted(iso) : "—");
+  const onSubmit = async (v: FormValues) => {
+    const payload = {
+      name: v.name.trim(),
+      description: v.description?.trim() ? v.description.trim() : null,
+    };
+    console.log("CREATE AD OWNER PAYLOAD →", payload);
+    await createMutateAsync(payload);
+  };
 
   return (
-    <div className="p-6 space-y-6 w-full">
-      {/* Sleek Header */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
+    <div className="p-6 space-y-8 w-full">
+      {/* Header */}
+      <div className="flex justify-between items-center w-full">
+        <h1 className="text-2xl tracking-wider">Create Ad Owner</h1>
+
+        <div className="flex items-center gap-2">
           <Button
+            type="button"
             variant="secondary"
-            size="icon"
             onClick={() => navigate("/ad/ad-owners")}
-            className="shrink-0"
-            aria-label="Back"
-            title="Back"
+            disabled={isBusy}
+            className="text-base font-light tracking-wide"
           >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 min-w-0">
-              <h1 className="text-xl font-semibold tracking-wide truncate">
-                {owner?.name || "Ad Owner"}
-              </h1>
-
-              {archived ? (
-                <span className="shrink-0 text-[11px] px-2 py-0.5 rounded-full font-semibold bg-red-500/20 text-red-200 border border-red-500/30">
-                  Archived
-                </span>
-              ) : null}
-            </div>
-
-            <p className="text-xs text-muted-foreground">Ad Owner details</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => id && navigate(`/ad/ad-owners/edit/${id}`)}
-            disabled={!id || isBusy || archived}
-            title={archived ? "Archived owners cannot be edited" : "Edit owner"}
-          >
-            <Pencil className="mr-2 h-4 w-4" />
-            Edit
+            Cancel
           </Button>
 
           <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => setIsArchiveOpen(true)}
-            disabled={!id || archived || isBusy}
-            title={archived ? "Already archived" : "Archive this owner"}
+            type="submit"
+            form="ad-owner-form"
+            disabled={isBusy || !isValid}
+            className="text-base font-light tracking-wide"
           >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Archive
+            {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Create Ad Owner
           </Button>
         </div>
       </div>
 
-      {error ? (
-        <div className="text-red-500 text-sm">Failed to load ad owner.</div>
-      ) : null}
+      <form
+        id="ad-owner-form"
+        onSubmit={handleSubmitNormalized(formSchema, form, onSubmit)}
+        className="space-y-10"
+        noValidate
+      >
+        <div className="grid grid-cols-1 gap-6">
+          <div className="rounded-3xl bg-primary/5 p-6 space-y-6">
+            <div className="space-y-1">
+              <h2 className="text-base tracking-wider">Basic Info</h2>
+              <p className="text-xs text-muted-foreground">
+                Name is required. Description is optional.
+              </p>
+            </div>
 
-      {isBusy ? (
-        <div className="flex items-center gap-2">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span className="text-sm text-muted-foreground">Loading…</span>
+            <TextField<FormValues>
+              form={form}
+              schema={formSchema}
+              name="name"
+              label="Owner Name"
+              placeholder="Enter owner name"
+              helperText="Required. Max 200 characters."
+              showCounter
+              showError
+            />
+
+            <TextAreaField<FormValues>
+              form={form}
+              schema={formSchema}
+              name="description"
+              label="Description (Optional)"
+              placeholder="Write a short description"
+              helperText="Optional. Max 2000 characters."
+              rows={5}
+              showCounter
+              showError
+            />
+          </div>
         </div>
-      ) : null}
-
-      {/* Content */}
-      {owner ? (
-        <Card
-          className={cn(
-            "@container/card rounded-3xl",
-            archived ? "bg-red-500/10 border-red-500/30" : "bg-primary/5",
-          )}
-        >
-          <CardHeader className="flex flex-col gap-4">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <CardTitle className="text-lg font-semibold @[250px]/card:text-xl line-clamp-1">
-                  {owner.name}
-                </CardTitle>
-                <CardDescription className="text-muted-foreground mt-2">
-                  <p className="line-clamp-2">{owner.description || "—"}</p>
-                </CardDescription>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 text-xs text-muted-foreground">
-              <div>
-                <span className="font-medium">Owner ID:</span>{" "}
-                <span className="font-mono break-all">{owner._id}</span>
-              </div>
-              <div>
-                <span className="font-medium">Created:</span>{" "}
-                {fmt(owner.createdAt)}
-              </div>
-              <div>
-                <span className="font-medium">Updated:</span>{" "}
-                {fmt(owner.updatedAt)}
-              </div>
-              {archived ? (
-                <div className="">
-                  <span className="font-medium">Archived At:</span>{" "}
-                  {fmt(owner.archivedAt)}
-                </div>
-              ) : null}
-            </div>
-          </CardHeader>
-        </Card>
-      ) : !isBusy ? (
-        <div className="text-sm text-muted-foreground">No owner found.</div>
-      ) : null}
-
-      {/* Modal */}
-      {id ? (
-        <ConfirmArchiveAdOwnerModal
-          isOpen={isArchiveOpen}
-          onClose={() => setIsArchiveOpen(false)}
-          adOwnerId={id}
-        />
-      ) : null}
+      </form>
     </div>
   );
 }
@@ -2482,6 +1629,1422 @@ export default function EditAdOwnerPage() {
             </CardHeader>
           </Card>
         </form>
+      ) : null}
+    </div>
+  );
+}
+
+
+src/pages/ad/ad-owners/[id].tsx
+-------------------------------
+// src/pages/ad/ad-owners/[id].tsx
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { Loader2, Trash2, ArrowLeft, Pencil } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import { endpoints } from "@/api/endpoints";
+import { useApiQuery } from "@/hooks/useApiQuery";
+
+import ConfirmArchiveAdOwnerModal from "@/components/modals/ad/ad-owner/delete";
+import { utcToAdminFormatted } from "@/utils/time";
+
+type AdOwner = {
+  _id: string;
+  name: string;
+  description?: string | null;
+  internalAuthor?: string | null;
+  archivedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export default function SpecificAdOwnerPage() {
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const [isArchiveOpen, setIsArchiveOpen] = useState(false);
+
+  const urlWithQuery = useMemo(() => {
+    if (!id) return "";
+    return endpoints.entities.ad.adOwners.getById(
+      { adOwnerId: id },
+      { includeArchived: "true" },
+    );
+  }, [id]);
+
+  const { data, isLoading, isFetching, error, refetch } = useApiQuery(
+    urlWithQuery,
+    { key: ["ad-owner-by-id-view", id, urlWithQuery], enabled: !!id } as any,
+  );
+
+  useEffect(() => {
+    if (!urlWithQuery) return;
+    try {
+      (refetch as any)?.();
+    } catch {}
+  }, [urlWithQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const owner: AdOwner | null = (data as any)?.data?.data ?? null;
+
+  const isBusy = isLoading || isFetching;
+  const archived = !!owner?.archivedAt;
+
+  const fmt = (iso?: string | null) => (iso ? utcToAdminFormatted(iso) : "—");
+
+  return (
+    <div className="p-6 space-y-6 w-full">
+      {/* Sleek Header */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <Button
+            variant="secondary"
+            size="icon"
+            onClick={() => navigate("/ad/ad-owners")}
+            className="shrink-0"
+            aria-label="Back"
+            title="Back"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <h1 className="text-xl font-semibold tracking-wide truncate">
+                {owner?.name || "Ad Owner"}
+              </h1>
+
+              {archived ? (
+                <span className="shrink-0 text-[11px] px-2 py-0.5 rounded-full font-semibold bg-red-500/20 text-red-200 border border-red-500/30">
+                  Archived
+                </span>
+              ) : null}
+            </div>
+
+            <p className="text-xs text-muted-foreground">Ad Owner details</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => id && navigate(`/ad/ad-owners/edit/${id}`)}
+            disabled={!id || isBusy || archived}
+            title={archived ? "Archived owners cannot be edited" : "Edit owner"}
+          >
+            <Pencil className="mr-2 h-4 w-4" />
+            Edit
+          </Button>
+
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setIsArchiveOpen(true)}
+            disabled={!id || archived || isBusy}
+            title={archived ? "Already archived" : "Archive this owner"}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Archive
+          </Button>
+        </div>
+      </div>
+
+      {error ? (
+        <div className="text-red-500 text-sm">Failed to load ad owner.</div>
+      ) : null}
+
+      {isBusy ? (
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="text-sm text-muted-foreground">Loading…</span>
+        </div>
+      ) : null}
+
+      {/* Content */}
+      {owner ? (
+        <Card
+          className={cn(
+            "@container/card rounded-3xl",
+            archived ? "bg-red-500/10 border-red-500/30" : "bg-primary/5",
+          )}
+        >
+          <CardHeader className="flex flex-col gap-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <CardTitle className="text-lg font-semibold @[250px]/card:text-xl line-clamp-1">
+                  {owner.name}
+                </CardTitle>
+                <CardDescription className="text-muted-foreground mt-2">
+                  <p className="line-clamp-2">{owner.description || "—"}</p>
+                </CardDescription>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 text-xs text-muted-foreground">
+              <div>
+                <span className="font-medium">Owner ID:</span>{" "}
+                <span className="font-mono break-all">{owner._id}</span>
+              </div>
+              <div>
+                <span className="font-medium">Created:</span>{" "}
+                {fmt(owner.createdAt)}
+              </div>
+              <div>
+                <span className="font-medium">Updated:</span>{" "}
+                {fmt(owner.updatedAt)}
+              </div>
+              {archived ? (
+                <div className="">
+                  <span className="font-medium">Archived At:</span>{" "}
+                  {fmt(owner.archivedAt)}
+                </div>
+              ) : null}
+            </div>
+          </CardHeader>
+        </Card>
+      ) : !isBusy ? (
+        <div className="text-sm text-muted-foreground">No owner found.</div>
+      ) : null}
+
+      {/* Modal */}
+      {id ? (
+        <ConfirmArchiveAdOwnerModal
+          isOpen={isArchiveOpen}
+          onClose={() => setIsArchiveOpen(false)}
+          adOwnerId={id}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+
+src/stores/useIndustryFilters.ts
+--------------------------------
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+
+export type Opt<T = unknown> = { value: string; label: string; data?: T };
+
+type State = {
+  name: string;
+  description: string;
+
+  /**
+   * API expects includeArchived boolean.
+   * - false => show only non-archived
+   * - true  => include archived too
+   */
+  includeArchived: boolean;
+
+  /**
+   * Selected excluded industries (store full option for chips).
+   * Maps to API query param: excludeIds=id1,id2
+   */
+  excludedIndustryOpts: Opt[];
+
+  page: number;
+
+  uiNonce: number;
+
+  patch: (partial: Partial<State>) => void;
+  reset: () => void;
+};
+
+const initialBase = {
+  name: "",
+  description: "",
+  includeArchived: false,
+  excludedIndustryOpts: [] as Opt[],
+  page: 1,
+};
+
+const initial: Omit<State, "patch" | "reset"> = {
+  ...initialBase,
+  uiNonce: 0,
+};
+
+export const useIndustryFilters = create<State>()(
+  persist(
+    (set) => ({
+      ...initial,
+      patch: (partial) => set((s) => ({ ...s, ...partial })),
+      reset: () =>
+        set((s) => ({
+          ...initialBase,
+          uiNonce: s.uiNonce + 1,
+        })),
+    }),
+    { name: "industry-filters" },
+  ),
+);
+
+
+src/components/modals/industry/delete.tsx
+-----------------------------------------
+// src/components/modals/industry/delete.tsx
+import { useCallback, useEffect, useMemo } from "react";
+import { Loader2 } from "lucide-react";
+
+import { endpoints } from "@/api/endpoints";
+import { queryClient } from "@/api/queryClient";
+import { CustomModal } from "@/components/modals/custom-modal";
+import { Button } from "@/components/ui/button";
+import { useApiMutation } from "@/hooks/useApiMutation";
+import { useApiQuery } from "@/hooks/useApiQuery";
+import { appToast } from "@/utils/toast";
+
+type Industry = {
+  _id: string;
+  name: string;
+  description?: string | null;
+  archivedAt?: string | null;
+};
+
+type Props = {
+  isOpen: boolean;
+  onClose: () => void;
+  industryId: string;
+};
+
+export default function ConfirmArchiveIndustryModal({
+  isOpen,
+  onClose,
+  industryId,
+}: Props) {
+  const getUrl = useMemo(() => {
+    if (!industryId) return "";
+    return endpoints.entities.industry.getById(
+      { industryId },
+      { includeArchived: "true" },
+    );
+  }, [industryId]);
+
+  const {
+    data: byIdData,
+    isLoading: isLoadingById,
+    isFetching: isFetchingById,
+    error: byIdError,
+    refetch,
+  } = useApiQuery(getUrl, {
+    key: ["industry-by-id", industryId, getUrl],
+    enabled: !!industryId && isOpen,
+  } as any);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    try {
+      (refetch as any)?.();
+    } catch {}
+  }, [isOpen, getUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const industry: Industry | null = (byIdData as any)?.data?.data ?? null;
+
+  const isDetailsReady = !!industry?._id && !isLoadingById && !isFetchingById;
+  const isAlreadyArchived = !!industry?.archivedAt;
+
+  const { mutateAsync, isPending } = useApiMutation<any, any>({
+    route: endpoints.entities.industry.delete(industryId),
+    method: "DELETE",
+    onSuccess: () => {
+      appToast.success("Industry archived");
+
+      const viewUrl = endpoints.entities.industry.getById(
+        { industryId },
+        { includeArchived: "true" },
+      );
+
+      queryClient.invalidateQueries({ queryKey: ["GET", viewUrl] });
+      queryClient.invalidateQueries({ queryKey: [viewUrl] });
+
+      queryClient.invalidateQueries({
+        predicate: (q) => {
+          const key0 = String(q.queryKey?.[0] ?? "");
+          return (
+            key0.includes("/internal/industry/advanced-listing") ||
+            key0.includes("/internal/industry/")
+          );
+        },
+      });
+
+      onClose();
+    },
+    onError: (e: any) => {
+      appToast.error(e?.message ?? "Failed to archive industry");
+    },
+  });
+
+  const doArchive = useCallback(async () => {
+    if (!industryId) return;
+    await mutateAsync(undefined as any);
+  }, [industryId, mutateAsync]);
+
+  if (!isOpen) return null;
+
+  const showLoading = !!industryId && (isLoadingById || isFetchingById);
+
+  return (
+    <CustomModal
+      isOpen={true}
+      onClose={onClose}
+      title={isAlreadyArchived ? "Industry Archived" : "Archive Industry"}
+      footer={<></>}
+      onSubmit={() => {}}
+      needX
+      isSubmitting={isPending}
+      isLoading={showLoading}
+      loader={<div className="animate-pulse">Loading...</div>}
+    >
+      <div className="space-y-4">
+        {byIdError ? (
+          <p className="text-sm text-red-500">
+            Failed to fetch industry details. Please close and try again.
+          </p>
+        ) : null}
+
+        <p className="text-sm text-muted-foreground">
+          {isAlreadyArchived
+            ? "This industry is already archived."
+            : "This action will archive the industry and remove it from active listings."}
+        </p>
+
+        <div className="rounded-xl border bg-muted/20 p-3 space-y-3">
+          <div>
+            <div className="text-xs text-muted-foreground">Name</div>
+            <div className="text-sm font-medium">
+              {isDetailsReady ? industry?.name || "—" : "Loading..."}
+            </div>
+          </div>
+
+          <div>
+            <div className="text-xs text-muted-foreground">Description</div>
+            <div className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
+              {isDetailsReady
+                ? industry?.description?.trim()
+                  ? industry.description
+                  : "—"
+                : "Loading..."}
+            </div>
+          </div>
+
+          <div>
+            <div className="text-xs text-muted-foreground">Industry ID</div>
+            <div className="font-mono text-xs break-all">{industryId}</div>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={onClose} disabled={isPending}>
+            Close
+          </Button>
+
+          <Button
+            variant="destructive"
+            onClick={doArchive}
+            disabled={!isDetailsReady || isPending || isAlreadyArchived}
+            title={
+              !isDetailsReady
+                ? "Fetching industry details..."
+                : isAlreadyArchived
+                  ? "Already archived"
+                  : "Archive this industry"
+            }
+          >
+            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Archive
+          </Button>
+        </div>
+      </div>
+    </CustomModal>
+  );
+}
+
+
+src/pages/industry/index.tsx
+----------------------------
+// src/pages/industry/index.tsx
+import { memo, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+
+import { cn } from "@/lib/utils";
+import { useApiQuery } from "@/hooks/useApiQuery";
+import { endpoints } from "@/api/endpoints";
+import ListingPagination from "@/components/commons/listing-pagination";
+import { Plus, X } from "lucide-react";
+
+// ✅ you should create this store same as useAdOwnerFilters but for industries
+import { useIndustryFilters, Opt } from "@/stores/useIndustryFilters";
+import IndustryInfiniteSelect from "@/components/commons/selects/industry-infinite-select";
+
+// ✅ new select
+
+const PAGE_SIZE = 10;
+const SEARCH_DEBOUNCE_MS = 350;
+
+type Industry = {
+  _id: string;
+  name: string;
+  description?: string | null;
+  archivedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+function useDebouncedValue<T>(value: T, delayMs: number) {
+  const [debounced, setDebounced] = useState<T>(value);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setDebounced(value), delayMs);
+    return () => window.clearTimeout(t);
+  }, [value, delayMs]);
+
+  return debounced;
+}
+
+function Chip({ label, onRemove }: { label: string; onRemove: () => void }) {
+  return (
+    <span className="inline-flex items-center gap-1 text-xs bg-muted px-2 py-1 rounded-full border">
+      {label}
+      <button
+        type="button"
+        onClick={onRemove}
+        className="hover:opacity-80 transition"
+        aria-label="Remove"
+      >
+        <X className="w-3 h-3" />
+      </button>
+    </span>
+  );
+}
+
+function ArchivedTag() {
+  return (
+    <span className="absolute top-4 right-4 w-fit text-xs px-2 py-1 rounded-xl font-semibold border bg-red-600/15 text-red-400 border-red-600/25">
+      Archived
+    </span>
+  );
+}
+
+function IndustryCard({
+  item,
+  onOpen,
+}: {
+  item: Industry;
+  onOpen: (id: string) => void;
+}) {
+  const isArchived = item.archivedAt != null;
+
+  return (
+    <Card
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpen(item._id)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") onOpen(item._id);
+      }}
+      className={cn(
+        "@container/card rounded-3xl cursor-pointer transition",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        isArchived
+          ? "bg-red-500/10 hover:bg-red-500/15"
+          : "bg-primary/5 hover:bg-primary/10",
+      )}
+    >
+      <CardHeader className="relative flex flex-col gap-2 pr-20">
+        {isArchived ? <ArchivedTag /> : null}
+
+        <CardTitle
+          className={cn(
+            "text-lg font-semibold @[250px]/card:text-xl",
+            "line-clamp-1",
+          )}
+          title={item.name}
+        >
+          {item.name}
+        </CardTitle>
+
+        <CardDescription className="text-muted-foreground">
+          <p className="line-clamp-2">{item.description || "—"}</p>
+        </CardDescription>
+
+        <div className="text-xs text-muted-foreground">
+          <span className="mr-3">ID: {item._id}</span>
+        </div>
+      </CardHeader>
+    </Card>
+  );
+}
+
+function Header({
+  onReset,
+  onCreate,
+}: {
+  onReset: () => void;
+  onCreate: () => void;
+}) {
+  return (
+    <section className="flex flex-col gap-4">
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-3xl font-bold">Industries</h1>
+          <p className="text-muted-foreground">Manage and review industries</p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button variant="default" onClick={onCreate}>
+            <Plus className="h-4 w-4" /> Create Industry
+          </Button>
+          <Button variant="secondary" onClick={onReset}>
+            Reset Filters
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function LoadState({ error, loading }: { error: boolean; loading: boolean }) {
+  return (
+    <>
+      {error ? (
+        <div className="text-red-500 text-sm">Failed to load industries.</div>
+      ) : null}
+
+      {loading ? (
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Loading…</span>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+function ItemsList({
+  entries,
+  onOpenItem,
+}: {
+  entries: Industry[];
+  onOpenItem: (id: string) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
+      {entries.map((x) => (
+        <IndustryCard key={x._id} item={x} onOpen={onOpenItem} />
+      ))}
+    </div>
+  );
+}
+
+const MemoIndustriesPage = () => {
+  const navigate = useNavigate();
+
+  const {
+    name,
+    description,
+    includeArchived,
+    excludedIndustryOpts,
+    page,
+    patch,
+    reset,
+  } = useIndustryFilters();
+
+  const debouncedName = useDebouncedValue(name, SEARCH_DEBOUNCE_MS);
+  const debouncedDescription = useDebouncedValue(
+    description,
+    SEARCH_DEBOUNCE_MS,
+  );
+
+  const excludedIds = useMemo(
+    () => excludedIndustryOpts.map((o) => o.value),
+    [excludedIndustryOpts],
+  );
+
+  const urlWithQuery = useMemo(() => {
+    const usp = new URLSearchParams();
+    usp.set("page", String(page));
+    usp.set("pageSize", String(PAGE_SIZE));
+    usp.set("includeArchived", String(includeArchived));
+
+    const tn = debouncedName.trim();
+    const td = debouncedDescription.trim();
+
+    if (tn) usp.set("name", tn);
+    if (td) usp.set("description", td);
+    if (excludedIds.length) usp.set("excludeIds", excludedIds.join(","));
+
+    const base = endpoints.entities.industry.advancedListing;
+    const qs = usp.toString();
+    return qs ? `${base}?${qs}` : base;
+  }, [page, includeArchived, debouncedName, debouncedDescription, excludedIds]);
+
+  const { data, isLoading, isFetching, error, refetch } = useApiQuery(
+    urlWithQuery,
+    { key: ["industries-advanced", urlWithQuery] } as any,
+  );
+
+  useEffect(() => {
+    try {
+      (refetch as any)?.();
+    } catch {}
+  }, [urlWithQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const payload = data?.data?.data ?? {};
+  const entries: Industry[] = Array.isArray(payload.entries)
+    ? payload.entries
+    : [];
+  const total: number =
+    typeof payload.total === "number" ? payload.total : (entries.length ?? 0);
+
+  const totalPages = Math.max(1, Math.ceil((total || 1) / PAGE_SIZE));
+
+  const handleResetAll = () => {
+    useIndustryFilters.persist?.clearStorage?.();
+    reset();
+  };
+
+  const openItem = (id: string) => navigate(`/industry/${id}`);
+  const goToCreate = () => navigate("/industry/create");
+
+  const addExcluded = (opt: Opt | null) => {
+    if (!opt) return;
+    if (excludedIndustryOpts.some((x) => x.value === opt.value)) return;
+
+    patch({
+      page: 1,
+      excludedIndustryOpts: [...excludedIndustryOpts, opt],
+    });
+  };
+
+  const removeExcluded = (id: string) => {
+    patch({
+      page: 1,
+      excludedIndustryOpts: excludedIndustryOpts.filter((x) => x.value !== id),
+    });
+  };
+
+  const handlers = {
+    setName: (v: string) => patch({ page: 1, name: v }),
+    setDescription: (v: string) => patch({ page: 1, description: v }),
+    setIncludeArchived: (v: boolean) => patch({ page: 1, includeArchived: v }),
+    setPage: (next: number) => patch({ page: next }),
+  };
+
+  return (
+    <div className="flex flex-col gap-6 md:px-4 h-full">
+      <Header onReset={handleResetAll} onCreate={goToCreate} />
+
+      <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+        <section className="flex flex-col gap-1">
+          <label className="text-sm text-muted-foreground">Name</label>
+          <Input
+            placeholder="Search by name…"
+            value={name}
+            onChange={(e) => handlers.setName(e.target.value)}
+            autoComplete="off"
+          />
+        </section>
+
+        <section className="flex flex-col gap-1">
+          <label className="text-sm text-muted-foreground">Description</label>
+          <Input
+            placeholder="Search by description…"
+            value={description}
+            onChange={(e) => handlers.setDescription(e.target.value)}
+            autoComplete="off"
+          />
+        </section>
+
+        <section className="flex flex-col gap-1">
+          <label className="text-sm text-muted-foreground">
+            Exclude Industries
+          </label>
+
+          <IndustryInfiniteSelect
+            placeholder="Select an industry to exclude…"
+            queryParams={{
+              includeArchived: false, // ✅ hide archived inside exclude select
+              excludeIds: excludedIds.join(","), // ✅ hide already-selected chip values
+            }}
+            onChange={(opt) => addExcluded(opt as any)}
+            selectProps={{ menuPortalTarget: document.body }}
+          />
+
+          {excludedIndustryOpts.length > 0 && (
+            <div className="flex flex-wrap gap-2 pt-2">
+              {excludedIndustryOpts.map((o) => (
+                <Chip
+                  key={o.value}
+                  label={o.label}
+                  onRemove={() => removeExcluded(o.value)}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="flex flex-col gap-1">
+          <label className="text-sm text-muted-foreground flex items-center justify-between">
+            Include Archived
+            <Switch
+              checked={includeArchived}
+              onCheckedChange={handlers.setIncludeArchived}
+              aria-label="Toggle include archived"
+            />
+          </label>
+
+          <div className="text-xs text-muted-foreground">
+            {includeArchived
+              ? "Showing archived + active"
+              : "Showing active only"}
+          </div>
+        </section>
+      </section>
+
+      <LoadState error={!!error} loading={isLoading || isFetching} />
+
+      <ItemsList entries={entries} onOpenItem={openItem} />
+
+      <ListingPagination
+        page={page}
+        totalPages={totalPages}
+        onPageChange={handlers.setPage}
+      />
+    </div>
+  );
+};
+
+const IndustriesPage = memo(MemoIndustriesPage);
+export default IndustriesPage;
+
+
+src/pages/industry/create.tsx
+-----------------------------
+// src/pages/industry/create.tsx
+import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { Loader2 } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { TextField } from "@/components/commons/form/TextField";
+import { TextAreaField } from "@/components/commons/form/TextAreaField";
+import { handleSubmitNormalized } from "@/components/commons/form/utils/rhfSubmit";
+import { useApiMutation } from "@/hooks/useApiMutation";
+import { endpoints } from "@/api/endpoints";
+import { appToast } from "@/utils/toast";
+
+const formSchema = z
+  .object({
+    name: z.string().trim().min(1, "Name is required").max(200),
+    description: z.string().trim().max(2000).optional(),
+  })
+  .strict();
+
+type FormValues = z.infer<typeof formSchema>;
+
+export default function CreateIndustryPage() {
+  const navigate = useNavigate();
+
+  const { mutateAsync: createMutateAsync } = useApiMutation<
+    { name: string; description: string | null },
+    any
+  >({
+    route: endpoints.entities.industry.create,
+    method: "POST",
+    onSuccess: async (data) => {
+      appToast.success("Industry created");
+      const createdId = data?.data?._id;
+      if (!createdId) return navigate("/industry");
+      navigate(`/industry/${createdId}`);
+    },
+    onError: (e: any) => {
+      appToast.error(e?.message ?? "Failed to create industry");
+    },
+  });
+
+  const defaultValues: FormValues = useMemo(
+    () => ({
+      name: "",
+      description: undefined,
+    }),
+    [],
+  );
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues,
+    mode: "onChange",
+  });
+
+  const {
+    formState: { isValid, isSubmitting },
+  } = form;
+
+  const isBusy = isSubmitting;
+
+  const onSubmit = async (v: FormValues) => {
+    const payload = {
+      name: v.name.trim(),
+      description: v.description?.trim() ? v.description.trim() : null,
+    };
+    console.log("CREATE INDUSTRY PAYLOAD →", payload);
+    await createMutateAsync(payload);
+  };
+
+  return (
+    <div className="p-6 space-y-8 w-full">
+      <div className="flex justify-between items-center w-full">
+        <h1 className="text-2xl tracking-wider">Create Industry</h1>
+
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => navigate("/industry")}
+            disabled={isBusy}
+            className="text-base font-light tracking-wide"
+          >
+            Cancel
+          </Button>
+
+          <Button
+            type="submit"
+            form="industry-form"
+            disabled={isBusy || !isValid}
+            className="text-base font-light tracking-wide"
+          >
+            {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Create Industry
+          </Button>
+        </div>
+      </div>
+
+      <form
+        id="industry-form"
+        onSubmit={handleSubmitNormalized(formSchema, form, onSubmit)}
+        className="space-y-10"
+        noValidate
+      >
+        <div className="grid grid-cols-1 gap-6">
+          <div className="rounded-3xl bg-primary/5 p-6 space-y-6">
+            <div className="space-y-1">
+              <h2 className="text-base tracking-wider">Basic Info</h2>
+              <p className="text-xs text-muted-foreground">
+                Name is required. Description is optional.
+              </p>
+            </div>
+
+            <TextField<FormValues>
+              form={form}
+              schema={formSchema}
+              name="name"
+              label="Industry Name"
+              placeholder="Enter industry name"
+              helperText="Required. Max 200 characters."
+              showCounter
+              showError
+            />
+
+            <TextAreaField<FormValues>
+              form={form}
+              schema={formSchema}
+              name="description"
+              label="Description (Optional)"
+              placeholder="Write a short description"
+              helperText="Optional. Max 2000 characters."
+              rows={5}
+              showCounter
+              showError
+            />
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+
+src/pages/industry/edit/[id].tsx
+--------------------------------
+// src/pages/industry/edit/[id].tsx
+import { useEffect, useMemo } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { ArrowLeft, Loader2, Save } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { TextField } from "@/components/commons/form/TextField";
+import { TextAreaField } from "@/components/commons/form/TextAreaField";
+import { handleSubmitNormalized } from "@/components/commons/form/utils/rhfSubmit";
+
+import { endpoints } from "@/api/endpoints";
+import { queryClient } from "@/api/queryClient";
+import { useApiQuery } from "@/hooks/useApiQuery";
+import { useApiMutation } from "@/hooks/useApiMutation";
+import { appToast } from "@/utils/toast";
+import { utcToAdminFormatted } from "@/utils/time";
+
+type Industry = {
+  _id: string;
+  name: string;
+  description?: string | null;
+  archivedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+const formSchema = z
+  .object({
+    name: z.string().trim().min(1, "Name is required").max(200),
+    description: z.string().trim().max(2000).optional(),
+  })
+  .strict();
+
+type FormValues = z.infer<typeof formSchema>;
+
+export default function EditIndustryPage() {
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+
+  const getUrl = useMemo(() => {
+    if (!id) return "";
+    return endpoints.entities.industry.getById(
+      { industryId: id },
+      { includeArchived: "true" },
+    );
+  }, [id]);
+
+  const { data, isLoading, isFetching, error, refetch } = useApiQuery(getUrl, {
+    key: ["industry-by-id-edit", id, getUrl],
+    enabled: !!id,
+  } as any);
+
+  useEffect(() => {
+    if (!getUrl) return;
+    try {
+      (refetch as any)?.();
+    } catch {}
+  }, [getUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const industry: Industry | null = (data as any)?.data?.data ?? null;
+  const archived = !!industry?.archivedAt;
+
+  const defaultValues: FormValues = useMemo(
+    () => ({ name: "", description: undefined }),
+    [],
+  );
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues,
+    mode: "onChange",
+  });
+
+  const {
+    formState: { isValid, isSubmitting, isDirty },
+    reset,
+  } = form;
+
+  useEffect(() => {
+    if (!industry) return;
+    reset(
+      {
+        name: industry.name ?? "",
+        description: industry.description ?? undefined,
+      },
+      { keepDirty: false, keepTouched: false },
+    );
+  }, [industry, reset]);
+
+  const { mutateAsync: editMutateAsync, isPending } = useApiMutation<
+    { name?: string; description?: string | null },
+    any
+  >({
+    route: id ? endpoints.entities.industry.edit(id) : "",
+    method: "PATCH",
+    onSuccess: () => {
+      appToast.success("Industry updated");
+
+      // invalidate view + listing
+      const viewUrl = endpoints.entities.industry.getById(
+        { industryId: String(id) },
+        { includeArchived: "true" },
+      );
+
+      queryClient.invalidateQueries({ queryKey: ["GET", viewUrl] });
+      queryClient.invalidateQueries({ queryKey: [viewUrl] });
+
+      queryClient.invalidateQueries({
+        predicate: (q) => {
+          const k = String(q.queryKey?.[0] ?? "");
+          return (
+            k.includes("/internal/industry/advanced-listing") ||
+            k.includes("/internal/industry/") ||
+            k.includes("industry-by-id-")
+          );
+        },
+      });
+
+      if (id) navigate(`/industry/${id}`);
+      else navigate("/industry");
+    },
+    onError: (e: any) => {
+      appToast.error(e?.message ?? "Failed to update industry");
+    },
+  });
+
+  const isBusy = isLoading || isFetching || isSubmitting || isPending;
+
+  const onSubmit = async (v: FormValues) => {
+    if (!id || archived) return;
+
+    const name = v.name.trim();
+    const description = v.description?.trim() ? v.description.trim() : null;
+
+    const patch: { name?: string; description?: string | null } = {};
+    if (name !== (industry?.name ?? "")) patch.name = name;
+    if ((industry?.description ?? null) !== description)
+      patch.description = description;
+
+    if (!patch.name && patch.description === undefined) {
+      appToast.success("No changes to save");
+      return;
+    }
+
+    console.log("EDIT INDUSTRY PATCH →", patch);
+    await editMutateAsync(patch);
+  };
+
+  return (
+    <div className="p-6 space-y-6 w-full">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <Button
+            variant="secondary"
+            size="icon"
+            onClick={() =>
+              id ? navigate(`/industry/${id}`) : navigate("/industry")
+            }
+            className="shrink-0"
+            aria-label="Back"
+            title="Back"
+            disabled={isBusy}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+
+          <div className="min-w-0">
+            <h1 className="text-xl font-semibold tracking-wide truncate">
+              Edit Industry
+            </h1>
+            <p className="text-xs text-muted-foreground">
+              {industry?.updatedAt
+                ? `Last updated ${utcToAdminFormatted(industry.updatedAt)}`
+                : "Update name/description"}
+            </p>
+          </div>
+        </div>
+
+        {!archived ? (
+          <Button
+            type="submit"
+            form="industry-edit-form"
+            size="sm"
+            disabled={!id || isBusy || !isValid || !isDirty}
+            title={!isDirty ? "No changes" : "Save changes"}
+          >
+            {(isSubmitting || isPending) && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            )}
+            <Save className="mr-2 h-4 w-4" />
+            Save
+          </Button>
+        ) : null}
+      </div>
+
+      {error ? (
+        <div className="text-red-500 text-sm">Failed to load industry.</div>
+      ) : null}
+
+      {(isLoading || isFetching) && (
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="text-sm text-muted-foreground">Loading…</span>
+        </div>
+      )}
+
+      {archived ? (
+        <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          This industry is archived and you can not edit it.
+        </div>
+      ) : null}
+
+      {!archived ? (
+        <form
+          id="industry-edit-form"
+          onSubmit={handleSubmitNormalized(formSchema, form, onSubmit)}
+          className="space-y-6"
+          noValidate
+        >
+          <Card className="rounded-3xl bg-primary/5">
+            <CardHeader className="space-y-4">
+              <div className="space-y-1">
+                <CardTitle className="text-base tracking-wider">
+                  Basic Info
+                </CardTitle>
+                <CardDescription className="text-xs text-muted-foreground">
+                  Name is required. Description is optional.
+                </CardDescription>
+              </div>
+
+              <TextField<FormValues>
+                form={form}
+                schema={formSchema}
+                name="name"
+                label="Industry Name"
+                placeholder="Enter industry name"
+                helperText="Required. Max 200 characters."
+                showCounter
+                showError
+              />
+
+              <TextAreaField<FormValues>
+                form={form}
+                schema={formSchema}
+                name="description"
+                label="Description (Optional)"
+                placeholder="Write a short description"
+                helperText="Optional. Max 2000 characters."
+                rows={5}
+                showCounter
+                showError
+              />
+
+              {industry?._id ? (
+                <div className="text-xs text-muted-foreground">
+                  <span className="font-medium">Industry ID:</span>{" "}
+                  <span className="font-mono break-all">{industry._id}</span>
+                </div>
+              ) : null}
+            </CardHeader>
+          </Card>
+        </form>
+      ) : null}
+    </div>
+  );
+}
+
+
+src/pages/industry/[id].tsx
+---------------------------
+// src/pages/industry/[id].tsx
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { Loader2, Trash2, ArrowLeft, Pencil } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import { endpoints } from "@/api/endpoints";
+import { useApiQuery } from "@/hooks/useApiQuery";
+import { utcToAdminFormatted } from "@/utils/time";
+import ConfirmArchiveIndustryModal from "@/components/modals/industry/delete";
+
+type Industry = {
+  _id: string;
+  name: string;
+  description?: string | null;
+  internalAuthor?: string | null;
+  archivedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export default function SpecificIndustryPage() {
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const [isArchiveOpen, setIsArchiveOpen] = useState(false);
+
+  const urlWithQuery = useMemo(() => {
+    if (!id) return "";
+    return endpoints.entities.industry.getById(
+      { industryId: id },
+      { includeArchived: "true" },
+    );
+  }, [id]);
+
+  const { data, isLoading, isFetching, error, refetch } = useApiQuery(
+    urlWithQuery,
+    { key: ["industry-by-id-view", id, urlWithQuery], enabled: !!id } as any,
+  );
+
+  useEffect(() => {
+    if (!urlWithQuery) return;
+    try {
+      (refetch as any)?.();
+    } catch {}
+  }, [urlWithQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const industry: Industry | null = (data as any)?.data?.data ?? null;
+
+  const isBusy = isLoading || isFetching;
+  const archived = !!industry?.archivedAt;
+
+  const fmt = (iso?: string | null) => (iso ? utcToAdminFormatted(iso) : "—");
+
+  return (
+    <div className="p-6 space-y-6 w-full">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <Button
+            variant="secondary"
+            size="icon"
+            onClick={() => navigate("/industry")}
+            className="shrink-0"
+            aria-label="Back"
+            title="Back"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <h1 className="text-xl font-semibold tracking-wide truncate">
+                {industry?.name || "Industry"}
+              </h1>
+
+              {archived ? (
+                <span className="shrink-0 text-[11px] px-2 py-0.5 rounded-full font-semibold bg-red-500/20 text-red-200 border border-red-500/30">
+                  Archived
+                </span>
+              ) : null}
+            </div>
+
+            <p className="text-xs text-muted-foreground">Industry details</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => id && navigate(`/industry/edit/${id}`)}
+            disabled={!id || isBusy || archived}
+            title={
+              archived
+                ? "Archived industries cannot be edited"
+                : "Edit industry"
+            }
+          >
+            <Pencil className="mr-2 h-4 w-4" />
+            Edit
+          </Button>
+
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setIsArchiveOpen(true)}
+            disabled={!id || archived || isBusy}
+            title={archived ? "Already archived" : "Archive this industry"}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Archive
+          </Button>
+        </div>
+      </div>
+
+      {error ? (
+        <div className="text-red-500 text-sm">Failed to load industry.</div>
+      ) : null}
+
+      {isBusy ? (
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="text-sm text-muted-foreground">Loading…</span>
+        </div>
+      ) : null}
+
+      {industry ? (
+        <Card
+          className={cn(
+            "@container/card rounded-3xl",
+            archived ? "bg-red-500/10 border-red-500/30" : "bg-primary/5",
+          )}
+        >
+          <CardHeader className="flex flex-col gap-4">
+            <div className="min-w-0">
+              <CardTitle className="text-lg font-semibold @[250px]/card:text-xl line-clamp-1">
+                {industry.name}
+              </CardTitle>
+              <CardDescription className="text-muted-foreground mt-2">
+                <p className="line-clamp-2">{industry.description || "—"}</p>
+              </CardDescription>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 text-xs text-muted-foreground">
+              <div>
+                <span className="font-medium">Industry ID:</span>{" "}
+                <span className="font-mono break-all">{industry._id}</span>
+              </div>
+              <div>
+                <span className="font-medium">Created:</span>{" "}
+                {fmt(industry.createdAt)}
+              </div>
+              <div>
+                <span className="font-medium">Updated:</span>{" "}
+                {fmt(industry.updatedAt)}
+              </div>
+              {archived ? (
+                <div>
+                  <span className="font-medium">Archived At:</span>{" "}
+                  {fmt(industry.archivedAt)}
+                </div>
+              ) : null}
+            </div>
+          </CardHeader>
+        </Card>
+      ) : !isBusy ? (
+        <div className="text-sm text-muted-foreground">No industry found.</div>
+      ) : null}
+
+      {id ? (
+        <ConfirmArchiveIndustryModal
+          isOpen={isArchiveOpen}
+          onClose={() => setIsArchiveOpen(false)}
+          industryId={id}
+        />
       ) : null}
     </div>
   );

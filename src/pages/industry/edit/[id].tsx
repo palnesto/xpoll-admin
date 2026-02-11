@@ -42,6 +42,20 @@ const formSchema = z
 
 type FormValues = z.infer<typeof formSchema>;
 
+function pickApiMessage(e: any) {
+  return (
+    e?.data?.message ||
+    e?.response?.data?.message ||
+    e?.message ||
+    "Request failed"
+  );
+}
+
+function isDuplicateNameError(e: any) {
+  const msg = String(pickApiMessage(e) || "").toLowerCase();
+  return msg.includes("name already exists") || msg.includes("already exists");
+}
+
 export default function EditIndustryPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -83,6 +97,7 @@ export default function EditIndustryPage() {
   const {
     formState: { isValid, isSubmitting, isDirty },
     reset,
+    setError,
   } = form;
 
   useEffect(() => {
@@ -129,7 +144,16 @@ export default function EditIndustryPage() {
       else navigate("/industry");
     },
     onError: (e: any) => {
-      appToast.error(e?.message ?? "Failed to update industry");
+      if (isDuplicateNameError(e)) {
+        setError("name", {
+          type: "server",
+          message:
+            "This industry name already exists. Please use another name.",
+        });
+        // appToast.error("Industry name already exists");
+        return;
+      }
+      // appToast.error(pickApiMessage(e) ?? "Failed to update industry");
     },
   });
 
@@ -151,7 +175,6 @@ export default function EditIndustryPage() {
       return;
     }
 
-    console.log("EDIT INDUSTRY PATCH →", patch);
     await editMutateAsync(patch);
   };
 

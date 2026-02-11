@@ -1,4 +1,3 @@
-// src/pages/ad/ad-owners/edit/[id].tsx
 import { useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import dayjs from "dayjs";
@@ -44,6 +43,20 @@ const formSchema = z
 
 type FormValues = z.infer<typeof formSchema>;
 
+function pickApiMessage(e: any) {
+  return (
+    e?.data?.message ||
+    e?.response?.data?.message ||
+    e?.message ||
+    "Request failed"
+  );
+}
+
+function isDuplicateNameError(e: any) {
+  const msg = String(pickApiMessage(e) || "").toLowerCase();
+  return msg.includes("name already exists") || msg.includes("already exists");
+}
+
 export default function EditAdOwnerPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -88,6 +101,7 @@ export default function EditAdOwnerPage() {
   const {
     formState: { isValid, isSubmitting, isDirty },
     reset,
+    setError,
   } = form;
 
   useEffect(() => {
@@ -127,7 +141,16 @@ export default function EditAdOwnerPage() {
       else navigate("/ad/ad-owners");
     },
     onError: (e: any) => {
-      appToast.error(e?.message ?? "Failed to update ad owner");
+      if (isDuplicateNameError(e)) {
+        setError("name", {
+          type: "server",
+          message:
+            "This ad owner name already exists. Please use another name.",
+        });
+        // appToast.error("Ad owner name already exists");
+        return;
+      }
+      // appToast.error(pickApiMessage(e) ?? "Failed to update ad owner");
     },
   });
 
