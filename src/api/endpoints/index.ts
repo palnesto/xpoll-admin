@@ -103,7 +103,43 @@ export const endpoints = {
         advancedListing:
           "/internal/advertisement/advertisement-owner/advanced-listing",
         create: "/internal/advertisement/advertisement-owner",
+        edit: (adOwnerId: string) =>
+          `/internal/advertisement/advertisement-owner/${adOwnerId}`,
+        getById: (
+          {
+            adOwnerId,
+          }: {
+            adOwnerId: string;
+          },
+          queryParams: Record<string, string>,
+        ) => {
+          const baseUrl = `/internal/advertisement/advertisement-owner/${adOwnerId}`;
+          const searchParams = new URLSearchParams(queryParams).toString();
+          const url = searchParams ? `${baseUrl}?${searchParams}` : baseUrl;
+          return url;
+        },
+        delete: (adOwnerId: string) =>
+          `/internal/advertisement/advertisement-owner/${adOwnerId}`,
       },
+    },
+    industry: {
+      advancedListing: "/internal/industry/advanced-listing",
+      create: "/internal/industry",
+      edit: (industryId: string) => `/internal/industry/${industryId}`,
+      getById: (
+        {
+          industryId,
+        }: {
+          industryId: string;
+        },
+        queryParams: Record<string, string>,
+      ) => {
+        const baseUrl = `/internal/industry/${industryId}`;
+        const searchParams = new URLSearchParams(queryParams).toString();
+        const url = searchParams ? `${baseUrl}?${searchParams}` : baseUrl;
+        return url;
+      },
+      delete: (industryId: string) => `/internal/industry/${industryId}`,
     },
   },
   web3: {

@@ -2,7 +2,17 @@ import { readFile, writeFile, stat, readdir } from "fs/promises";
 import { join, relative } from "path";
 
 // Specify file or folder paths to combine:
-const filePaths: string[] = ["src/components/commons/form"];
+const filePaths: string[] = [
+  "src/components/commons/form",
+  "src/stores/useAdOwnerFilters.ts",
+  "src/components/commons/selects/base",
+  "src/components/commons/selects/ad/ad-owner-infinite-select.tsx",
+  "src/components/modals/ad/ad-owner/delete.tsx",
+  "src/pages/ad/ad-owners/create.tsx",
+  "src/pages/ad/ad-owners/index.tsx",
+  "src/pages/ad/ad-owners/[id].tsx",
+  "src/pages/ad/ad-owners/edit",
+];
 const outputFile = "combined.txt";
 
 /**

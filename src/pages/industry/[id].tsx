@@ -1,4 +1,4 @@
-// src/pages/ad/ad-owners/[id].tsx
+// src/pages/industry/[id].tsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Loader2, Trash2, ArrowLeft, Pencil } from "lucide-react";
@@ -13,11 +13,10 @@ import {
 import { cn } from "@/lib/utils";
 import { endpoints } from "@/api/endpoints";
 import { useApiQuery } from "@/hooks/useApiQuery";
-
-import ConfirmArchiveAdOwnerModal from "@/components/modals/ad/ad-owner/delete";
 import { utcToAdminFormatted } from "@/utils/time";
+import ConfirmArchiveIndustryModal from "@/components/modals/industry/delete";
 
-type AdOwner = {
+type Industry = {
   _id: string;
   name: string;
   description?: string | null;
@@ -27,22 +26,22 @@ type AdOwner = {
   updatedAt?: string;
 };
 
-export default function SpecificAdOwnerPage() {
+export default function SpecificIndustryPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [isArchiveOpen, setIsArchiveOpen] = useState(false);
 
   const urlWithQuery = useMemo(() => {
     if (!id) return "";
-    return endpoints.entities.ad.adOwners.getById(
-      { adOwnerId: id },
+    return endpoints.entities.industry.getById(
+      { industryId: id },
       { includeArchived: "true" },
     );
   }, [id]);
 
   const { data, isLoading, isFetching, error, refetch } = useApiQuery(
     urlWithQuery,
-    { key: ["ad-owner-by-id-view", id, urlWithQuery], enabled: !!id } as any,
+    { key: ["industry-by-id-view", id, urlWithQuery], enabled: !!id } as any,
   );
 
   useEffect(() => {
@@ -52,22 +51,21 @@ export default function SpecificAdOwnerPage() {
     } catch {}
   }, [urlWithQuery]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const owner: AdOwner | null = (data as any)?.data?.data ?? null;
+  const industry: Industry | null = (data as any)?.data?.data ?? null;
 
   const isBusy = isLoading || isFetching;
-  const archived = !!owner?.archivedAt;
+  const archived = !!industry?.archivedAt;
 
   const fmt = (iso?: string | null) => (iso ? utcToAdminFormatted(iso) : "—");
 
   return (
     <div className="p-6 space-y-6 w-full">
-      {/* Sleek Header */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <Button
             variant="secondary"
             size="icon"
-            onClick={() => navigate("/ad/ad-owners")}
+            onClick={() => navigate("/industry")}
             className="shrink-0"
             aria-label="Back"
             title="Back"
@@ -78,7 +76,7 @@ export default function SpecificAdOwnerPage() {
           <div className="min-w-0">
             <div className="flex items-center gap-2 min-w-0">
               <h1 className="text-xl font-semibold tracking-wide truncate">
-                {owner?.name || "Ad Owner"}
+                {industry?.name || "Industry"}
               </h1>
 
               {archived ? (
@@ -88,7 +86,7 @@ export default function SpecificAdOwnerPage() {
               ) : null}
             </div>
 
-            <p className="text-xs text-muted-foreground">Ad Owner details</p>
+            <p className="text-xs text-muted-foreground">Industry details</p>
           </div>
         </div>
 
@@ -96,9 +94,13 @@ export default function SpecificAdOwnerPage() {
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => id && navigate(`/ad/ad-owners/edit/${id}`)}
+            onClick={() => id && navigate(`/industry/edit/${id}`)}
             disabled={!id || isBusy || archived}
-            title={archived ? "Archived owners cannot be edited" : "Edit owner"}
+            title={
+              archived
+                ? "Archived industries cannot be edited"
+                : "Edit industry"
+            }
           >
             <Pencil className="mr-2 h-4 w-4" />
             Edit
@@ -109,7 +111,7 @@ export default function SpecificAdOwnerPage() {
             size="sm"
             onClick={() => setIsArchiveOpen(true)}
             disabled={!id || archived || isBusy}
-            title={archived ? "Already archived" : "Archive this owner"}
+            title={archived ? "Already archived" : "Archive this industry"}
           >
             <Trash2 className="mr-2 h-4 w-4" />
             Archive
@@ -118,7 +120,7 @@ export default function SpecificAdOwnerPage() {
       </div>
 
       {error ? (
-        <div className="text-red-500 text-sm">Failed to load ad owner.</div>
+        <div className="text-red-500 text-sm">Failed to load industry.</div>
       ) : null}
 
       {isBusy ? (
@@ -128,8 +130,7 @@ export default function SpecificAdOwnerPage() {
         </div>
       ) : null}
 
-      {/* Content */}
-      {owner ? (
+      {industry ? (
         <Card
           className={cn(
             "@container/card rounded-3xl",
@@ -137,49 +138,46 @@ export default function SpecificAdOwnerPage() {
           )}
         >
           <CardHeader className="flex flex-col gap-4">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <CardTitle className="text-lg font-semibold @[250px]/card:text-xl line-clamp-1">
-                  {owner.name}
-                </CardTitle>
-                <CardDescription className="text-muted-foreground mt-2">
-                  <p className="line-clamp-2">{owner.description || "—"}</p>
-                </CardDescription>
-              </div>
+            <div className="min-w-0">
+              <CardTitle className="text-lg font-semibold @[250px]/card:text-xl line-clamp-1">
+                {industry.name}
+              </CardTitle>
+              <CardDescription className="text-muted-foreground mt-2">
+                <p className="line-clamp-2">{industry.description || "—"}</p>
+              </CardDescription>
             </div>
 
             <div className="grid grid-cols-1 gap-3 text-xs text-muted-foreground">
               <div>
-                <span className="font-medium">Owner ID:</span>{" "}
-                <span className="font-mono break-all">{owner._id}</span>
+                <span className="font-medium">Industry ID:</span>{" "}
+                <span className="font-mono break-all">{industry._id}</span>
               </div>
               <div>
                 <span className="font-medium">Created:</span>{" "}
-                {fmt(owner.createdAt)}
+                {fmt(industry.createdAt)}
               </div>
               <div>
                 <span className="font-medium">Updated:</span>{" "}
-                {fmt(owner.updatedAt)}
+                {fmt(industry.updatedAt)}
               </div>
               {archived ? (
-                <div className="">
+                <div>
                   <span className="font-medium">Archived At:</span>{" "}
-                  {fmt(owner.archivedAt)}
+                  {fmt(industry.archivedAt)}
                 </div>
               ) : null}
             </div>
           </CardHeader>
         </Card>
       ) : !isBusy ? (
-        <div className="text-sm text-muted-foreground">No owner found.</div>
+        <div className="text-sm text-muted-foreground">No industry found.</div>
       ) : null}
 
-      {/* Modal */}
       {id ? (
-        <ConfirmArchiveAdOwnerModal
+        <ConfirmArchiveIndustryModal
           isOpen={isArchiveOpen}
           onClose={() => setIsArchiveOpen(false)}
-          adOwnerId={id}
+          industryId={id}
         />
       ) : null}
     </div>

@@ -1,7 +1,6 @@
-// src/pages/ad/ad-owners/edit/[id].tsx
+// src/pages/industry/edit/[id].tsx
 import { useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import dayjs from "dayjs";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -14,7 +13,6 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-
 import { TextField } from "@/components/commons/form/TextField";
 import { TextAreaField } from "@/components/commons/form/TextAreaField";
 import { handleSubmitNormalized } from "@/components/commons/form/utils/rhfSubmit";
@@ -24,12 +22,12 @@ import { queryClient } from "@/api/queryClient";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { appToast } from "@/utils/toast";
+import { utcToAdminFormatted } from "@/utils/time";
 
-type AdOwner = {
+type Industry = {
   _id: string;
   name: string;
   description?: string | null;
-  internalAuthor?: string | null;
   archivedAt?: string | null;
   createdAt?: string;
   updatedAt?: string;
@@ -44,20 +42,20 @@ const formSchema = z
 
 type FormValues = z.infer<typeof formSchema>;
 
-export default function EditAdOwnerPage() {
+export default function EditIndustryPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
 
   const getUrl = useMemo(() => {
     if (!id) return "";
-    return endpoints.entities.ad.adOwners.getById(
-      { adOwnerId: id },
+    return endpoints.entities.industry.getById(
+      { industryId: id },
       { includeArchived: "true" },
     );
   }, [id]);
 
   const { data, isLoading, isFetching, error, refetch } = useApiQuery(getUrl, {
-    key: ["ad-owner-by-id-edit", id, getUrl],
+    key: ["industry-by-id-edit", id, getUrl],
     enabled: !!id,
   } as any);
 
@@ -68,14 +66,11 @@ export default function EditAdOwnerPage() {
     } catch {}
   }, [getUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const owner: AdOwner | null = (data as any)?.data?.data ?? null;
-  const archived = !!owner?.archivedAt;
+  const industry: Industry | null = (data as any)?.data?.data ?? null;
+  const archived = !!industry?.archivedAt;
 
   const defaultValues: FormValues = useMemo(
-    () => ({
-      name: "",
-      description: undefined,
-    }),
+    () => ({ name: "", description: undefined }),
     [],
   );
 
@@ -91,43 +86,50 @@ export default function EditAdOwnerPage() {
   } = form;
 
   useEffect(() => {
-    if (!owner) return;
+    if (!industry) return;
     reset(
       {
-        name: owner.name ?? "",
-        description: owner.description ?? undefined,
+        name: industry.name ?? "",
+        description: industry.description ?? undefined,
       },
       { keepDirty: false, keepTouched: false },
     );
-  }, [owner, reset]);
+  }, [industry, reset]);
 
   const { mutateAsync: editMutateAsync, isPending } = useApiMutation<
     { name?: string; description?: string | null },
     any
   >({
-    route: id ? endpoints.entities.ad.adOwners.edit(id) : "",
+    route: id ? endpoints.entities.industry.edit(id) : "",
     method: "PATCH",
     onSuccess: () => {
-      appToast.success("Ad owner updated");
+      appToast.success("Industry updated");
+
+      // invalidate view + listing
+      const viewUrl = endpoints.entities.industry.getById(
+        { industryId: String(id) },
+        { includeArchived: "true" },
+      );
+
+      queryClient.invalidateQueries({ queryKey: ["GET", viewUrl] });
+      queryClient.invalidateQueries({ queryKey: [viewUrl] });
 
       queryClient.invalidateQueries({
         predicate: (q) => {
           const k = String(q.queryKey?.[0] ?? "");
           return (
-            k.includes(
-              "/internal/advertisement/advertisement-owner/advanced-listing",
-            ) ||
-            k.includes("/internal/advertisement/advertisement-owner/") ||
-            k.includes("ad-owner-by-id-")
+            k.includes("/internal/industry/advanced-listing") ||
+            k.includes("/internal/industry/") ||
+            k.includes("industry-by-id-")
           );
         },
       });
 
-      if (id) navigate(`/ad/ad-owners/${id}`);
-      else navigate("/ad/ad-owners");
+      if (id) navigate(`/industry/${id}`);
+      else navigate("/industry");
     },
     onError: (e: any) => {
-      appToast.error(e?.message ?? "Failed to update ad owner");
+      appToast.error(e?.message ?? "Failed to update industry");
     },
   });
 
@@ -140,8 +142,8 @@ export default function EditAdOwnerPage() {
     const description = v.description?.trim() ? v.description.trim() : null;
 
     const patch: { name?: string; description?: string | null } = {};
-    if (name !== (owner?.name ?? "")) patch.name = name;
-    if ((owner?.description ?? null) !== description)
+    if (name !== (industry?.name ?? "")) patch.name = name;
+    if ((industry?.description ?? null) !== description)
       patch.description = description;
 
     if (!patch.name && patch.description === undefined) {
@@ -149,19 +151,19 @@ export default function EditAdOwnerPage() {
       return;
     }
 
+    console.log("EDIT INDUSTRY PATCH →", patch);
     await editMutateAsync(patch);
   };
 
   return (
     <div className="p-6 space-y-6 w-full">
-      {/* Sleek Header */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <Button
             variant="secondary"
             size="icon"
             onClick={() =>
-              id ? navigate(`/ad/ad-owners/${id}`) : navigate("/ad/ad-owners")
+              id ? navigate(`/industry/${id}`) : navigate("/industry")
             }
             className="shrink-0"
             aria-label="Back"
@@ -173,13 +175,11 @@ export default function EditAdOwnerPage() {
 
           <div className="min-w-0">
             <h1 className="text-xl font-semibold tracking-wide truncate">
-              Edit Ad Owner
+              Edit Industry
             </h1>
             <p className="text-xs text-muted-foreground">
-              {owner?.updatedAt
-                ? `Last updated ${dayjs(owner.updatedAt).format(
-                    "MMM D, YYYY • HH:mm",
-                  )}`
+              {industry?.updatedAt
+                ? `Last updated ${utcToAdminFormatted(industry.updatedAt)}`
                 : "Update name/description"}
             </p>
           </div>
@@ -188,7 +188,7 @@ export default function EditAdOwnerPage() {
         {!archived ? (
           <Button
             type="submit"
-            form="ad-owner-edit-form"
+            form="industry-edit-form"
             size="sm"
             disabled={!id || isBusy || !isValid || !isDirty}
             title={!isDirty ? "No changes" : "Save changes"}
@@ -203,7 +203,7 @@ export default function EditAdOwnerPage() {
       </div>
 
       {error ? (
-        <div className="text-red-500 text-sm">Failed to load ad owner.</div>
+        <div className="text-red-500 text-sm">Failed to load industry.</div>
       ) : null}
 
       {(isLoading || isFetching) && (
@@ -213,17 +213,15 @@ export default function EditAdOwnerPage() {
         </div>
       )}
 
-      {/* Archived Message Only */}
       {archived ? (
         <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-          This ad owner is archived and you can not edit it.
+          This industry is archived and you can not edit it.
         </div>
       ) : null}
 
-      {/* Form (hide when archived) */}
       {!archived ? (
         <form
-          id="ad-owner-edit-form"
+          id="industry-edit-form"
           onSubmit={handleSubmitNormalized(formSchema, form, onSubmit)}
           className="space-y-6"
           noValidate
@@ -243,8 +241,8 @@ export default function EditAdOwnerPage() {
                 form={form}
                 schema={formSchema}
                 name="name"
-                label="Owner Name"
-                placeholder="Enter owner name"
+                label="Industry Name"
+                placeholder="Enter industry name"
                 helperText="Required. Max 200 characters."
                 showCounter
                 showError
@@ -262,10 +260,10 @@ export default function EditAdOwnerPage() {
                 showError
               />
 
-              {owner?._id ? (
+              {industry?._id ? (
                 <div className="text-xs text-muted-foreground">
-                  <span className="font-medium">Owner ID:</span>{" "}
-                  <span className="font-mono break-all">{owner._id}</span>
+                  <span className="font-medium">Industry ID:</span>{" "}
+                  <span className="font-mono break-all">{industry._id}</span>
                 </div>
               ) : null}
             </CardHeader>

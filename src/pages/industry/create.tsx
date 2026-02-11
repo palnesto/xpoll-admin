@@ -1,4 +1,5 @@
-import { useEffect, useMemo } from "react";
+// src/pages/industry/create.tsx
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,23 +22,24 @@ const formSchema = z
   .strict();
 
 type FormValues = z.infer<typeof formSchema>;
-export default function CreateAdOwnerPage() {
+
+export default function CreateIndustryPage() {
   const navigate = useNavigate();
 
   const { mutateAsync: createMutateAsync } = useApiMutation<
     { name: string; description: string | null },
     any
   >({
-    route: endpoints.entities.ad.adOwners.create,
+    route: endpoints.entities.industry.create,
     method: "POST",
     onSuccess: async (data) => {
-      appToast.success("Ad owner created");
-      const createdAdOwnerId = data?.data?._id;
-      if (!createdAdOwnerId) return navigate("/ad/ad-owners");
-      navigate(`/ad/ad-owners/${createdAdOwnerId}`);
+      appToast.success("Industry created");
+      const createdId = data?.data?._id;
+      if (!createdId) return navigate("/industry");
+      navigate(`/industry/${createdId}`);
     },
     onError: (e: any) => {
-      appToast.error(e?.message ?? "Failed to create ad owner");
+      appToast.error(e?.message ?? "Failed to create industry");
     },
   });
 
@@ -59,10 +61,6 @@ export default function CreateAdOwnerPage() {
     formState: { isValid, isSubmitting },
   } = form;
 
-  useEffect(() => {
-    console.log("isSubmitting", isSubmitting);
-  }, [isSubmitting]);
-
   const isBusy = isSubmitting;
 
   const onSubmit = async (v: FormValues) => {
@@ -70,21 +68,20 @@ export default function CreateAdOwnerPage() {
       name: v.name.trim(),
       description: v.description?.trim() ? v.description.trim() : null,
     };
-    console.log("CREATE AD OWNER PAYLOAD →", payload);
+    console.log("CREATE INDUSTRY PAYLOAD →", payload);
     await createMutateAsync(payload);
   };
 
   return (
     <div className="p-6 space-y-8 w-full">
-      {/* Header */}
       <div className="flex justify-between items-center w-full">
-        <h1 className="text-2xl tracking-wider">Create Ad Owner</h1>
+        <h1 className="text-2xl tracking-wider">Create Industry</h1>
 
         <div className="flex items-center gap-2">
           <Button
             type="button"
             variant="secondary"
-            onClick={() => navigate("/ad/ad-owners")}
+            onClick={() => navigate("/industry")}
             disabled={isBusy}
             className="text-base font-light tracking-wide"
           >
@@ -93,18 +90,18 @@ export default function CreateAdOwnerPage() {
 
           <Button
             type="submit"
-            form="ad-owner-form"
+            form="industry-form"
             disabled={isBusy || !isValid}
             className="text-base font-light tracking-wide"
           >
             {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Create Ad Owner
+            Create Industry
           </Button>
         </div>
       </div>
 
       <form
-        id="ad-owner-form"
+        id="industry-form"
         onSubmit={handleSubmitNormalized(formSchema, form, onSubmit)}
         className="space-y-10"
         noValidate
@@ -122,8 +119,8 @@ export default function CreateAdOwnerPage() {
               form={form}
               schema={formSchema}
               name="name"
-              label="Owner Name"
-              placeholder="Enter owner name"
+              label="Industry Name"
+              placeholder="Enter industry name"
               helperText="Required. Max 200 characters."
               showCounter
               showError

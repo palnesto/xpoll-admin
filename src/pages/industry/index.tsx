@@ -1,4 +1,4 @@
-// src/pages/ad/ad-owners/index.tsx
+// src/pages/industry/index.tsx
 import { memo, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -15,15 +15,19 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { endpoints } from "@/api/endpoints";
-import { useAdOwnerFilters, Opt } from "@/stores/useAdOwnerFilters";
 import ListingPagination from "@/components/commons/listing-pagination";
 import { Plus, X } from "lucide-react";
-import AdOwnerInfiniteSelect from "@/components/commons/selects/ad/ad-owner-infinite-select";
+
+// ✅ you should create this store same as useAdOwnerFilters but for industries
+import { useIndustryFilters, Opt } from "@/stores/useIndustryFilters";
+import IndustryInfiniteSelect from "@/components/commons/selects/industry-infinite-select";
+
+// ✅ new select
 
 const PAGE_SIZE = 10;
 const SEARCH_DEBOUNCE_MS = 350;
 
-type AdOwner = {
+type Industry = {
   _id: string;
   name: string;
   description?: string | null;
@@ -32,9 +36,6 @@ type AdOwner = {
   updatedAt?: string;
 };
 
-/* -----------------------------
-   Small hooks / helpers
------------------------------- */
 function useDebouncedValue<T>(value: T, delayMs: number) {
   const [debounced, setDebounced] = useState<T>(value);
 
@@ -46,9 +47,6 @@ function useDebouncedValue<T>(value: T, delayMs: number) {
   return debounced;
 }
 
-/* -----------------------------
-   Presentational pieces
------------------------------- */
 function Chip({ label, onRemove }: { label: string; onRemove: () => void }) {
   return (
     <span className="inline-flex items-center gap-1 text-xs bg-muted px-2 py-1 rounded-full border">
@@ -73,22 +71,22 @@ function ArchivedTag() {
   );
 }
 
-function AdOwnerCard({
-  owner,
+function IndustryCard({
+  item,
   onOpen,
 }: {
-  owner: AdOwner;
+  item: Industry;
   onOpen: (id: string) => void;
 }) {
-  const isArchived = owner.archivedAt != null;
+  const isArchived = item.archivedAt != null;
 
   return (
     <Card
       role="button"
       tabIndex={0}
-      onClick={() => onOpen(owner._id)}
+      onClick={() => onOpen(item._id)}
       onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") onOpen(owner._id);
+        if (e.key === "Enter" || e.key === " ") onOpen(item._id);
       }}
       className={cn(
         "@container/card rounded-3xl cursor-pointer transition",
@@ -106,17 +104,17 @@ function AdOwnerCard({
             "text-lg font-semibold @[250px]/card:text-xl",
             "line-clamp-1",
           )}
-          title={owner.name}
+          title={item.name}
         >
-          {owner.name}
+          {item.name}
         </CardTitle>
 
         <CardDescription className="text-muted-foreground">
-          <p className="line-clamp-2">{owner.description || "—"}</p>
+          <p className="line-clamp-2">{item.description || "—"}</p>
         </CardDescription>
 
         <div className="text-xs text-muted-foreground">
-          <span className="mr-3">ID: {owner._id}</span>
+          <span className="mr-3">ID: {item._id}</span>
         </div>
       </CardHeader>
     </Card>
@@ -134,15 +132,13 @@ function Header({
     <section className="flex flex-col gap-4">
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-bold">Ad Owners</h1>
-          <p className="text-muted-foreground">
-            Manage and review advertisement owners
-          </p>
+          <h1 className="text-3xl font-bold">Industries</h1>
+          <p className="text-muted-foreground">Manage and review industries</p>
         </div>
 
         <div className="flex items-center gap-2">
           <Button variant="default" onClick={onCreate}>
-            <Plus className="h-4 w-4" /> Create Ad Owner
+            <Plus className="h-4 w-4" /> Create Industry
           </Button>
           <Button variant="secondary" onClick={onReset}>
             Reset Filters
@@ -157,7 +153,7 @@ function LoadState({ error, loading }: { error: boolean; loading: boolean }) {
   return (
     <>
       {error ? (
-        <div className="text-red-500 text-sm">Failed to load ad owners.</div>
+        <div className="text-red-500 text-sm">Failed to load industries.</div>
       ) : null}
 
       {loading ? (
@@ -169,37 +165,34 @@ function LoadState({ error, loading }: { error: boolean; loading: boolean }) {
   );
 }
 
-function OwnersList({
+function ItemsList({
   entries,
-  onOpenOwner,
+  onOpenItem,
 }: {
-  entries: AdOwner[];
-  onOpenOwner: (id: string) => void;
+  entries: Industry[];
+  onOpenItem: (id: string) => void;
 }) {
   return (
     <div className="flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
-      {entries.map((owner) => (
-        <AdOwnerCard key={owner._id} owner={owner} onOpen={onOpenOwner} />
+      {entries.map((x) => (
+        <IndustryCard key={x._id} item={x} onOpen={onOpenItem} />
       ))}
     </div>
   );
 }
 
-/* -----------------------------
-   Page component
------------------------------- */
-const MemoAdOwnersPage = () => {
+const MemoIndustriesPage = () => {
   const navigate = useNavigate();
 
   const {
     name,
     description,
     includeArchived,
-    excludedOwnerOpts,
+    excludedIndustryOpts,
     page,
     patch,
     reset,
-  } = useAdOwnerFilters();
+  } = useIndustryFilters();
 
   const debouncedName = useDebouncedValue(name, SEARCH_DEBOUNCE_MS);
   const debouncedDescription = useDebouncedValue(
@@ -208,8 +201,8 @@ const MemoAdOwnersPage = () => {
   );
 
   const excludedIds = useMemo(
-    () => excludedOwnerOpts.map((o) => o.value),
-    [excludedOwnerOpts],
+    () => excludedIndustryOpts.map((o) => o.value),
+    [excludedIndustryOpts],
   );
 
   const urlWithQuery = useMemo(() => {
@@ -223,17 +216,16 @@ const MemoAdOwnersPage = () => {
 
     if (tn) usp.set("name", tn);
     if (td) usp.set("description", td);
-
     if (excludedIds.length) usp.set("excludeIds", excludedIds.join(","));
 
-    const base = endpoints.entities.ad.adOwners.advancedListing;
+    const base = endpoints.entities.industry.advancedListing;
     const qs = usp.toString();
     return qs ? `${base}?${qs}` : base;
   }, [page, includeArchived, debouncedName, debouncedDescription, excludedIds]);
 
   const { data, isLoading, isFetching, error, refetch } = useApiQuery(
     urlWithQuery,
-    { key: ["ad-owners-advanced", urlWithQuery] } as any,
+    { key: ["industries-advanced", urlWithQuery] } as any,
   );
 
   useEffect(() => {
@@ -243,7 +235,7 @@ const MemoAdOwnersPage = () => {
   }, [urlWithQuery]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const payload = data?.data?.data ?? {};
-  const entries: AdOwner[] = Array.isArray(payload.entries)
+  const entries: Industry[] = Array.isArray(payload.entries)
     ? payload.entries
     : [];
   const total: number =
@@ -252,27 +244,27 @@ const MemoAdOwnersPage = () => {
   const totalPages = Math.max(1, Math.ceil((total || 1) / PAGE_SIZE));
 
   const handleResetAll = () => {
-    useAdOwnerFilters.persist?.clearStorage?.();
+    useIndustryFilters.persist?.clearStorage?.();
     reset();
   };
 
-  const openOwner = (id: string) => navigate(`/ad/ad-owners/${id}`);
-  const goToCreate = () => navigate("/ad/ad-owners/create");
+  const openItem = (id: string) => navigate(`/industry/${id}`);
+  const goToCreate = () => navigate("/industry/create");
 
-  const addExcludedOwner = (opt: Opt | null) => {
+  const addExcluded = (opt: Opt | null) => {
     if (!opt) return;
-    if (excludedOwnerOpts.some((x) => x.value === opt.value)) return;
+    if (excludedIndustryOpts.some((x) => x.value === opt.value)) return;
 
     patch({
       page: 1,
-      excludedOwnerOpts: [...excludedOwnerOpts, opt],
+      excludedIndustryOpts: [...excludedIndustryOpts, opt],
     });
   };
 
-  const removeExcludedOwner = (id: string) => {
+  const removeExcluded = (id: string) => {
     patch({
       page: 1,
-      excludedOwnerOpts: excludedOwnerOpts.filter((x) => x.value !== id),
+      excludedIndustryOpts: excludedIndustryOpts.filter((x) => x.value !== id),
     });
   };
 
@@ -287,7 +279,6 @@ const MemoAdOwnersPage = () => {
     <div className="flex flex-col gap-6 md:px-4 h-full">
       <Header onReset={handleResetAll} onCreate={goToCreate} />
 
-      {/* Filters */}
       <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
         <section className="flex flex-col gap-1">
           <label className="text-sm text-muted-foreground">Name</label>
@@ -309,29 +300,28 @@ const MemoAdOwnersPage = () => {
           />
         </section>
 
-        {/* Exclude IDs (Infinite Select + chips) */}
         <section className="flex flex-col gap-1">
           <label className="text-sm text-muted-foreground">
-            Exclude Ad Owners
+            Exclude Industries
           </label>
 
-          <AdOwnerInfiniteSelect
-            placeholder="Select an ad owner to exclude…"
+          <IndustryInfiniteSelect
+            placeholder="Select an industry to exclude…"
             queryParams={{
-              includeArchived: false, // ✅ hide archived from this select
-              excludeIds: excludedIds.join(","), // ✅ exclude already-selected in chips
+              includeArchived: false, // ✅ hide archived inside exclude select
+              excludeIds: excludedIds.join(","), // ✅ hide already-selected chip values
             }}
-            onChange={(opt) => addExcludedOwner(opt as any)}
+            onChange={(opt) => addExcluded(opt as any)}
             selectProps={{ menuPortalTarget: document.body }}
           />
 
-          {excludedOwnerOpts.length > 0 && (
+          {excludedIndustryOpts.length > 0 && (
             <div className="flex flex-wrap gap-2 pt-2">
-              {excludedOwnerOpts.map((o) => (
+              {excludedIndustryOpts.map((o) => (
                 <Chip
                   key={o.value}
                   label={o.label}
-                  onRemove={() => removeExcludedOwner(o.value)}
+                  onRemove={() => removeExcluded(o.value)}
                 />
               ))}
             </div>
@@ -347,6 +337,7 @@ const MemoAdOwnersPage = () => {
               aria-label="Toggle include archived"
             />
           </label>
+
           <div className="text-xs text-muted-foreground">
             {includeArchived
               ? "Showing archived + active"
@@ -357,7 +348,7 @@ const MemoAdOwnersPage = () => {
 
       <LoadState error={!!error} loading={isLoading || isFetching} />
 
-      <OwnersList entries={entries} onOpenOwner={openOwner} />
+      <ItemsList entries={entries} onOpenItem={openItem} />
 
       <ListingPagination
         page={page}
@@ -368,5 +359,5 @@ const MemoAdOwnersPage = () => {
   );
 };
 
-const AdOwnersPage = memo(MemoAdOwnersPage);
-export default AdOwnersPage;
+const IndustriesPage = memo(MemoIndustriesPage);
+export default IndustriesPage;
