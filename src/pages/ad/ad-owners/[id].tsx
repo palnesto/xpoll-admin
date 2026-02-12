@@ -1,4 +1,5 @@
 // src/pages/ad/ad-owners/[id].tsx
+
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Loader2, Trash2, ArrowLeft, Pencil } from "lucide-react";
@@ -9,13 +10,18 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
+  CardContent,
 } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
+
 import { endpoints } from "@/api/endpoints";
 import { useApiQuery } from "@/hooks/useApiQuery";
+import { utcToAdminFormatted } from "@/utils/time";
 
 import ConfirmArchiveAdOwnerModal from "@/components/modals/ad/ad-owner/delete";
-import { utcToAdminFormatted } from "@/utils/time";
 
 type AdOwner = {
   _id: string;
@@ -60,15 +66,15 @@ export default function SpecificAdOwnerPage() {
   const fmt = (iso?: string | null) => (iso ? utcToAdminFormatted(iso) : "—");
 
   return (
-    <div className="p-6 space-y-6 w-full">
-      {/* Sleek Header */}
+    <div className="p-6 space-y-6 w-full max-w-5xl mx-auto">
+      {/* header */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <Button
             variant="secondary"
             size="icon"
             onClick={() => navigate("/ad/ad-owners")}
-            className="shrink-0"
+            className="shrink-0 rounded-2xl"
             aria-label="Back"
             title="Back"
           >
@@ -82,13 +88,13 @@ export default function SpecificAdOwnerPage() {
               </h1>
 
               {archived ? (
-                <span className="shrink-0 text-[11px] px-2 py-0.5 rounded-full font-semibold bg-red-500/20 text-red-200 border border-red-500/30">
+                <Badge className="shrink-0 rounded-full bg-red-500/15 text-red-200 border border-red-500/30 hover:bg-red-500/15">
                   Archived
-                </span>
+                </Badge>
               ) : null}
             </div>
 
-            <p className="text-xs text-muted-foreground">Ad Owner details</p>
+            <p className="text-xs text-muted-foreground">Owner details</p>
           </div>
         </div>
 
@@ -98,6 +104,7 @@ export default function SpecificAdOwnerPage() {
             size="sm"
             onClick={() => id && navigate(`/ad/ad-owners/edit/${id}`)}
             disabled={!id || isBusy || archived}
+            className="rounded-xl"
             title={archived ? "Archived owners cannot be edited" : "Edit owner"}
           >
             <Pencil className="mr-2 h-4 w-4" />
@@ -109,6 +116,7 @@ export default function SpecificAdOwnerPage() {
             size="sm"
             onClick={() => setIsArchiveOpen(true)}
             disabled={!id || archived || isBusy}
+            className="rounded-xl"
             title={archived ? "Already archived" : "Archive this owner"}
           >
             <Trash2 className="mr-2 h-4 w-4" />
@@ -118,7 +126,9 @@ export default function SpecificAdOwnerPage() {
       </div>
 
       {error ? (
-        <div className="text-red-500 text-sm">Failed to load ad owner.</div>
+        <Alert variant="destructive" className="rounded-2xl">
+          <AlertDescription>Failed to load ad owner.</AlertDescription>
+        </Alert>
       ) : null}
 
       {isBusy ? (
@@ -128,53 +138,78 @@ export default function SpecificAdOwnerPage() {
         </div>
       ) : null}
 
-      {/* Content */}
       {owner ? (
         <Card
           className={cn(
-            "@container/card rounded-3xl",
-            archived ? "bg-red-500/10 border-red-500/30" : "bg-primary/5",
+            "rounded-3xl overflow-hidden",
+            "bg-gradient-to-b from-primary/10 via-background to-background",
+            archived ? "border-red-500/30" : "",
           )}
         >
-          <CardHeader className="flex flex-col gap-4">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <CardTitle className="text-lg font-semibold @[250px]/card:text-xl line-clamp-1">
-                  {owner.name}
-                </CardTitle>
-                <CardDescription className="text-muted-foreground mt-2">
-                  <p className="line-clamp-2">{owner.description || "—"}</p>
-                </CardDescription>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 text-xs text-muted-foreground">
-              <div>
-                <span className="font-medium">Owner ID:</span>{" "}
-                <span className="font-mono break-all">{owner._id}</span>
-              </div>
-              <div>
-                <span className="font-medium">Created:</span>{" "}
-                {fmt(owner.createdAt)}
-              </div>
-              <div>
-                <span className="font-medium">Updated:</span>{" "}
-                {fmt(owner.updatedAt)}
-              </div>
-              {archived ? (
-                <div className="">
-                  <span className="font-medium">Archived At:</span>{" "}
-                  {fmt(owner.archivedAt)}
-                </div>
-              ) : null}
+          <CardHeader className="pb-3">
+            <div className="min-w-0">
+              <CardTitle className="text-lg font-semibold md:text-xl line-clamp-1">
+                {owner.name}
+              </CardTitle>
+              <CardDescription className="text-muted-foreground mt-2">
+                <p className="line-clamp-3 break-words">
+                  {owner.description?.trim() ? owner.description : "—"}
+                </p>
+              </CardDescription>
             </div>
           </CardHeader>
+
+          <CardContent className="pt-0">
+            <Separator className="my-4" />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-muted-foreground">
+              <div className="rounded-2xl border bg-background/50 p-3">
+                <div className="text-[11px] uppercase tracking-wide opacity-80">
+                  Owner ID
+                </div>
+                <div className="font-mono break-all mt-1 text-foreground/90">
+                  {owner._id}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border bg-background/50 p-3">
+                <div className="text-[11px] uppercase tracking-wide opacity-80">
+                  Created
+                </div>
+                <div className="mt-1 tabular-nums">{fmt(owner.createdAt)}</div>
+              </div>
+
+              <div className="rounded-2xl border bg-background/50 p-3">
+                <div className="text-[11px] uppercase tracking-wide opacity-80">
+                  Updated
+                </div>
+                <div className="mt-1 tabular-nums">{fmt(owner.updatedAt)}</div>
+              </div>
+
+              {archived ? (
+                <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-3">
+                  <div className="text-[11px] uppercase tracking-wide opacity-80 text-red-200">
+                    Archived At
+                  </div>
+                  <div className="mt-1 tabular-nums text-red-100">
+                    {fmt(owner.archivedAt)}
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-2xl border bg-background/50 p-3">
+                  <div className="text-[11px] uppercase tracking-wide opacity-80">
+                    Status
+                  </div>
+                  <div className="mt-1">Active</div>
+                </div>
+              )}
+            </div>
+          </CardContent>
         </Card>
       ) : !isBusy ? (
         <div className="text-sm text-muted-foreground">No owner found.</div>
       ) : null}
 
-      {/* Modal */}
       {id ? (
         <ConfirmArchiveAdOwnerModal
           isOpen={isArchiveOpen}

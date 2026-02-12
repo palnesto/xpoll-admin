@@ -1,23 +1,30 @@
 // src/components/modals/ad/ad-owner/delete.tsx
-import { useCallback, useEffect, useMemo } from "react";
-import { Loader2 } from "lucide-react";
+
+import { useEffect, useMemo } from "react";
+import { Loader2, AlertTriangle } from "lucide-react";
 
 import { endpoints } from "@/api/endpoints";
 import { queryClient } from "@/api/queryClient";
-import { CustomModal } from "@/components/modals/custom-modal";
-import { Button } from "@/components/ui/button";
+import { appToast } from "@/utils/toast";
+
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { useApiQuery } from "@/hooks/useApiQuery";
-import { appToast } from "@/utils/toast";
+
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 type AdOwner = {
   _id: string;
   name: string;
   description?: string | null;
-  internalAuthor?: string | null;
   archivedAt?: string | null;
-  createdAt?: string;
-  updatedAt?: string;
 };
 
 type Props = {
@@ -50,7 +57,6 @@ export default function ConfirmArchiveAdOwnerModal({
     enabled: !!adOwnerId && isOpen,
   } as any);
 
-  // ensure we fetch fresh when opening
   useEffect(() => {
     if (!isOpen) return;
     try {
@@ -59,9 +65,8 @@ export default function ConfirmArchiveAdOwnerModal({
   }, [isOpen, getUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const owner: AdOwner | null = (byIdData as any)?.data?.data ?? null;
-
-  const isDetailsReady = !!owner?._id && !isLoadingById && !isFetchingById;
   const isAlreadyArchived = !!owner?.archivedAt;
+  const showLoading = !!adOwnerId && (isLoadingById || isFetchingById);
 
   const { mutateAsync, isPending } = useApiMutation<any, any>({
     route: endpoints.entities.ad.adOwners.delete(adOwnerId),
@@ -69,7 +74,7 @@ export default function ConfirmArchiveAdOwnerModal({
     onSuccess: () => {
       appToast.success("Ad owner archived");
 
-      // ✅ invalidate view + listing
+      // invalidate view + listings
       const viewUrl = endpoints.entities.ad.adOwners.getById(
         { adOwnerId },
         { includeArchived: "true" },
@@ -96,89 +101,99 @@ export default function ConfirmArchiveAdOwnerModal({
     },
   });
 
-  const doArchive = useCallback(async () => {
+  const onConfirm = async () => {
     if (!adOwnerId) return;
-    await mutateAsync(undefined as any);
-  }, [adOwnerId, mutateAsync]);
-
-  if (!isOpen) return null;
-
-  const showLoading = !!adOwnerId && (isLoadingById || isFetchingById);
+    return mutateAsync(undefined as any).catch(() => undefined);
+  };
 
   return (
-    <CustomModal
-      isOpen={true}
-      onClose={onClose}
-      title={isAlreadyArchived ? "Ad Owner Archived" : "Archive Ad Owner"}
-      footer={<></>}
-      onSubmit={() => {}}
-      needX
-      isSubmitting={isPending}
-      isLoading={showLoading}
-      loader={<div className="animate-pulse">Loading...</div>}
-    >
-      <div className="space-y-4">
+    <Dialog open={isOpen} onOpenChange={(v) => (!v ? onClose() : null)}>
+      <DialogContent className="max-w-md rounded-3xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-2xl bg-red-500/15 border border-red-500/25">
+              <AlertTriangle className="h-4 w-4 text-red-300" />
+            </span>
+            {isAlreadyArchived ? "Ad Owner Archived" : "Archive Ad Owner?"}
+          </DialogTitle>
+          <DialogDescription>
+            {isAlreadyArchived
+              ? "This ad owner is already archived."
+              : "This will archive the ad owner and remove it from active listings."}
+          </DialogDescription>
+        </DialogHeader>
+
         {byIdError ? (
-          <p className="text-sm text-red-500">
-            Failed to fetch owner details. Please close and try again.
-          </p>
+          <div className="text-sm text-red-200 rounded-2xl border border-red-500/30 bg-red-500/10 p-3">
+            Failed to fetch owner details. Close and try again.
+          </div>
         ) : null}
 
-        <p className="text-sm text-muted-foreground">
-          {isAlreadyArchived
-            ? "This ad owner is already archived."
-            : "This action will archive the ad owner and remove it from active listings."}
-        </p>
-
-        {/* Details */}
-        <div className="rounded-xl border bg-muted/20 p-3 space-y-3">
+        <div className="rounded-2xl border bg-background/50 p-3 space-y-3">
           <div>
-            <div className="text-xs text-muted-foreground">Name</div>
-            <div className="text-sm font-medium">
-              {isDetailsReady ? owner?.name || "—" : "Loading..."}
+            <div className="text-[11px] uppercase tracking-wide opacity-80">
+              Name
+            </div>
+            <div className="text-sm font-medium mt-1">
+              {showLoading ? "Loading…" : owner?.name || "—"}
             </div>
           </div>
 
           <div>
-            <div className="text-xs text-muted-foreground">Description</div>
-            <div className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
-              {isDetailsReady
-                ? owner?.description?.trim()
+            <div className="text-[11px] uppercase tracking-wide opacity-80">
+              Description
+            </div>
+            <div className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap break-words line-clamp-6">
+              {showLoading
+                ? "Loading…"
+                : owner?.description?.trim()
                   ? owner.description
-                  : "—"
-                : "Loading..."}
+                  : "—"}
             </div>
           </div>
 
           <div>
-            <div className="text-xs text-muted-foreground">Owner ID</div>
-            <div className="font-mono text-xs break-all">{adOwnerId}</div>
+            <div className="text-[11px] uppercase tracking-wide opacity-80">
+              Owner ID
+            </div>
+            <div className="font-mono text-xs break-all mt-1">{adOwnerId}</div>
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={onClose} disabled={isPending}>
+        <DialogFooter className="gap-2">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            disabled={isPending}
+            className="rounded-2xl"
+          >
             Close
           </Button>
 
           <Button
             variant="destructive"
-            onClick={doArchive}
-            disabled={!isDetailsReady || isPending || isAlreadyArchived}
+            onClick={onConfirm}
+            disabled={isPending || showLoading || isAlreadyArchived}
+            className="rounded-2xl"
             title={
-              !isDetailsReady
+              showLoading
                 ? "Fetching owner details..."
                 : isAlreadyArchived
                   ? "Already archived"
                   : "Archive this owner"
             }
           >
-            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Archive
+            {isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Archiving…
+              </>
+            ) : (
+              "Archive"
+            )}
           </Button>
-        </div>
-      </div>
-    </CustomModal>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
