@@ -105,8 +105,8 @@ const createAdBaseZ = z
   .object({
     adOwnerId: z.string().trim().min(1, "Ad owner is required"),
 
-    title: z.string().trim().min(1, "Title is required").max(300),
-    description: z.string().trim().min(1, "Description is required").max(5000),
+    title: z.string().trim().min(1, "Title is required").max(200),
+    description: z.string().trim().min(1, "Description is required").max(500),
 
     hyperlink: z.string().trim().nullable().optional(),
     buttonText: z.string().trim().nullable().optional(),
