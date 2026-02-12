@@ -1,18 +1,18 @@
 // src/pages/industry/edit/[id].tsx
-import { useEffect, useMemo } from "react";
+
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { ArrowLeft, Loader2, Save } from "lucide-react";
+import { ArrowLeft, Loader2, RotateCcw, Save } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Form } from "@/components/ui/form";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+
 import { TextField } from "@/components/commons/form/TextField";
 import { TextAreaField } from "@/components/commons/form/TextAreaField";
 import { handleSubmitNormalized } from "@/components/commons/form/utils/rhfSubmit";
@@ -36,7 +36,7 @@ type Industry = {
 const formSchema = z
   .object({
     name: z.string().trim().min(1, "Name is required").max(200),
-    description: z.string().trim().max(2000).optional(),
+    description: z.string().trim().max(2000).nullable().optional(),
   })
   .strict();
 
@@ -58,7 +58,7 @@ function isDuplicateNameError(e: any) {
 
 export default function EditIndustryPage() {
   const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
+  const { id = "" } = useParams<{ id: string }>();
 
   const getUrl = useMemo(() => {
     if (!id) return "";
@@ -83,32 +83,38 @@ export default function EditIndustryPage() {
   const industry: Industry | null = (data as any)?.data?.data ?? null;
   const archived = !!industry?.archivedAt;
 
-  const defaultValues: FormValues = useMemo(
-    () => ({ name: "", description: undefined }),
-    [],
-  );
-
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues,
+    defaultValues: { name: "", description: null },
     mode: "onChange",
+    criteriaMode: "firstError",
+    shouldFocusError: true,
   });
 
   const {
-    formState: { isValid, isSubmitting, isDirty },
     reset,
     setError,
+    formState: { isValid, isSubmitting, isDirty },
   } = form;
+
+  const [original, setOriginal] = useState<{
+    name: string;
+    description: string | null;
+  }>({
+    name: "",
+    description: null,
+  });
 
   useEffect(() => {
     if (!industry) return;
-    reset(
-      {
-        name: industry.name ?? "",
-        description: industry.description ?? undefined,
-      },
-      { keepDirty: false, keepTouched: false },
-    );
+    const next = {
+      name: String(industry.name ?? ""),
+      description: industry.description?.trim()
+        ? String(industry.description)
+        : null,
+    };
+    reset(next, { keepDirty: false, keepTouched: false });
+    setOriginal(next);
   }, [industry, reset]);
 
   const { mutateAsync: editMutateAsync, isPending } = useApiMutation<
@@ -120,7 +126,6 @@ export default function EditIndustryPage() {
     onSuccess: () => {
       appToast.success("Industry updated");
 
-      // invalidate view + listing
       const viewUrl = endpoints.entities.industry.getById(
         { industryId: String(id) },
         { includeArchived: "true" },
@@ -140,8 +145,7 @@ export default function EditIndustryPage() {
         },
       });
 
-      if (id) navigate(`/industry/${id}`);
-      else navigate("/industry");
+      navigate(`/industry/${id}`);
     },
     onError: (e: any) => {
       if (isDuplicateNameError(e)) {
@@ -150,10 +154,9 @@ export default function EditIndustryPage() {
           message:
             "This industry name already exists. Please use another name.",
         });
-        // appToast.error("Industry name already exists");
         return;
       }
-      // appToast.error(pickApiMessage(e) ?? "Failed to update industry");
+      appToast.error(pickApiMessage(e) ?? "Failed to update industry");
     },
   });
 
@@ -178,17 +181,29 @@ export default function EditIndustryPage() {
     await editMutateAsync(patch);
   };
 
+  if (!id) {
+    return (
+      <div className="p-6 space-y-3">
+        <div className="text-sm text-muted-foreground">
+          Missing industry id.
+        </div>
+        <Button variant="secondary" onClick={() => navigate("/industry")}>
+          Back
+        </Button>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6 space-y-6 w-full">
+    <div className="p-6 space-y-6 w-full max-w-4xl mx-auto">
+      {/* header */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <Button
             variant="secondary"
             size="icon"
-            onClick={() =>
-              id ? navigate(`/industry/${id}`) : navigate("/industry")
-            }
-            className="shrink-0"
+            onClick={() => navigate(`/industry/${id}`)}
+            className="shrink-0 rounded-2xl"
             aria-label="Back"
             title="Back"
             disabled={isBusy}
@@ -197,10 +212,19 @@ export default function EditIndustryPage() {
           </Button>
 
           <div className="min-w-0">
-            <h1 className="text-xl font-semibold tracking-wide truncate">
-              Edit Industry
-            </h1>
-            <p className="text-xs text-muted-foreground">
+            <div className="flex items-center gap-2 min-w-0">
+              <h1 className="text-xl font-semibold tracking-wide truncate">
+                Edit Industry
+              </h1>
+
+              {archived ? (
+                <Badge className="rounded-full bg-red-500/15 text-red-200 border border-red-500/30 hover:bg-red-500/15">
+                  Archived
+                </Badge>
+              ) : null}
+            </div>
+
+            <p className="text-xs text-muted-foreground truncate">
               {industry?.updatedAt
                 ? `Last updated ${utcToAdminFormatted(industry.updatedAt)}`
                 : "Update name/description"}
@@ -208,25 +232,48 @@ export default function EditIndustryPage() {
           </div>
         </div>
 
-        {!archived ? (
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            type="button"
+            variant="outline"
+            className="rounded-2xl"
+            disabled={isBusy}
+            onClick={() =>
+              reset(original, { keepDirty: false, keepTouched: false })
+            }
+            title="Reset to original values loaded from server"
+          >
+            <RotateCcw className="h-4 w-4 mr-2" />
+            Reset
+          </Button>
+
           <Button
             type="submit"
             form="industry-edit-form"
-            size="sm"
-            disabled={!id || isBusy || !isValid || !isDirty}
-            title={!isDirty ? "No changes" : "Save changes"}
+            disabled={!id || isBusy || !isValid || !isDirty || archived}
+            className="rounded-2xl"
+            title={
+              archived
+                ? "Archived industries cannot be edited"
+                : !isDirty
+                  ? "No changes"
+                  : "Save changes"
+            }
           >
-            {(isSubmitting || isPending) && (
+            {isBusy ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
             )}
-            <Save className="mr-2 h-4 w-4" />
             Save
           </Button>
-        ) : null}
+        </div>
       </div>
 
       {error ? (
-        <div className="text-red-500 text-sm">Failed to load industry.</div>
+        <Alert variant="destructive" className="rounded-2xl">
+          <AlertDescription>Failed to load industry.</AlertDescription>
+        </Alert>
       ) : null}
 
       {(isLoading || isFetching) && (
@@ -237,29 +284,31 @@ export default function EditIndustryPage() {
       )}
 
       {archived ? (
-        <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-          This industry is archived and you can not edit it.
-        </div>
+        <Alert className="rounded-2xl border-red-500/30 bg-red-500/10">
+          <AlertDescription className="text-red-200">
+            This industry is archived. Editing and saving is disabled.
+          </AlertDescription>
+        </Alert>
       ) : null}
 
-      {!archived ? (
+      <Form {...form}>
         <form
           id="industry-edit-form"
           onSubmit={handleSubmitNormalized(formSchema, form, onSubmit)}
           className="space-y-6"
           noValidate
         >
-          <Card className="rounded-3xl bg-primary/5">
-            <CardHeader className="space-y-4">
-              <div className="space-y-1">
-                <CardTitle className="text-base tracking-wider">
-                  Basic Info
-                </CardTitle>
-                <CardDescription className="text-xs text-muted-foreground">
-                  Name is required. Description is optional.
-                </CardDescription>
+          <Card className="rounded-3xl overflow-hidden bg-gradient-to-b from-primary/10 via-background to-background">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold">
+                Basic Info
+              </CardTitle>
+              <div className="text-xs text-muted-foreground">
+                Name is required. Description is optional.
               </div>
+            </CardHeader>
 
+            <CardContent className="space-y-5">
               <TextField<FormValues>
                 form={form}
                 schema={formSchema}
@@ -278,7 +327,7 @@ export default function EditIndustryPage() {
                 label="Description (Optional)"
                 placeholder="Write a short description"
                 helperText="Optional. Max 2000 characters."
-                rows={5}
+                rows={6}
                 showCounter
                 showError
               />
@@ -289,10 +338,10 @@ export default function EditIndustryPage() {
                   <span className="font-mono break-all">{industry._id}</span>
                 </div>
               ) : null}
-            </CardHeader>
+            </CardContent>
           </Card>
         </form>
-      ) : null}
+      </Form>
     </div>
   );
 }
