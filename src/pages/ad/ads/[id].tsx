@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import dayjs from "dayjs";
 import {
   Loader2,
   Trash2,
@@ -12,7 +13,6 @@ import {
   Link2,
   Tag,
   Image as ImageIcon,
-  Video,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
 
 import { endpoints } from "@/api/endpoints";
 import { useApiQuery } from "@/hooks/useApiQuery";
-import { utcToAdminFormatted } from "@/utils/time";
+import { utcToAdminFormatted, utcToAdmin, adminZone } from "@/utils/time";
 
 import ConfirmArchiveAdModal from "@/components/modals/ad/ad/delete";
 import { AdStats } from "@/components/advertisement/ad-stats";
@@ -87,6 +87,44 @@ function PreviewEmpty({
   );
 }
 
+function statusBadgeClass(status?: string | null) {
+  const s = String(status || "")
+    .trim()
+    .toUpperCase();
+  // keep it resilient: unknown values fall back to subtle neutral
+  if (s === "LIVE" || s === "ACTIVE") {
+    return "bg-emerald-500/15 text-emerald-200 border border-emerald-500/25";
+  }
+  if (s === "PAUSED") {
+    return "bg-amber-500/15 text-amber-200 border border-amber-500/25";
+  }
+  if (s === "DRAFT") {
+    return "bg-slate-500/15 text-slate-200 border border-slate-500/25";
+  }
+  if (s === "ENDED" || s === "EXPIRED") {
+    return "bg-rose-500/15 text-rose-200 border border-rose-500/25";
+  }
+  if (s === "ARCHIVED") {
+    return "bg-red-500/15 text-red-200 border border-red-500/30";
+  }
+  return "bg-muted/40 text-muted-foreground border border-border";
+}
+
+function formatCountdown(ms: number) {
+  const abs = Math.max(0, Math.floor(ms));
+  const totalSec = Math.floor(abs / 1000);
+
+  const d = Math.floor(totalSec / 86400);
+  const h = Math.floor((totalSec % 86400) / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+
+  if (d > 0) return `${d}d ${h}h ${m}m`;
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
+
 export default function SpecificAdPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -120,10 +158,60 @@ export default function SpecificAdPage() {
 
   const fmt = (iso?: string | null) => (iso ? utcToAdminFormatted(iso) : "—");
 
+  const ctaText =
+    String(ad?.buttonText || "").trim().length > 0
+      ? String(ad?.buttonText || "").trim()
+      : "Visit";
+
   const heroImage =
     Array.isArray(ad?.uploadedImageLinks) && ad?.uploadedImageLinks?.length
       ? ad!.uploadedImageLinks[0]
       : null;
+
+  const hasSchedule = !!ad?.startTime && !!ad?.endTime;
+
+  // ticking countdown (only when schedule exists)
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    if (!hasSchedule) return;
+    const t = window.setInterval(() => setTick((x) => x + 1), 1000);
+    return () => window.clearInterval(t);
+  }, [hasSchedule]);
+
+  const scheduleMeta = useMemo(() => {
+    if (!hasSchedule) return null;
+
+    const start = utcToAdmin(ad!.startTime!, adminZone);
+    const end = utcToAdmin(ad!.endTime!, adminZone);
+
+    // current time in viewer's zone (time.ts already extends timezone plugin)
+    const now = dayjs().tz(adminZone);
+
+    const isUpcoming = now.isBefore(start);
+    const isActive = now.isAfter(start) && now.isBefore(end);
+    const isEnded = now.isAfter(end);
+
+    const label = isUpcoming
+      ? `Starts in ${formatCountdown(start.diff(now))}`
+      : isActive
+        ? `Ends in ${formatCountdown(end.diff(now))}`
+        : `Ended`;
+
+    const tone = isUpcoming
+      ? "bg-indigo-500/15 text-indigo-200 border border-indigo-500/25"
+      : isActive
+        ? "bg-emerald-500/15 text-emerald-200 border border-emerald-500/25"
+        : "bg-muted/40 text-muted-foreground border border-border";
+
+    return {
+      startLabel: fmt(ad!.startTime),
+      endLabel: fmt(ad!.endTime),
+      label,
+      tone,
+      state: isUpcoming ? "upcoming" : isActive ? "active" : "ended",
+    };
+    // tick is intentionally used to refresh countdown
+  }, [hasSchedule, ad?.startTime, ad?.endTime, tick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="p-6 space-y-6 w-full max-w-6xl mx-auto">
@@ -143,7 +231,10 @@ export default function SpecificAdPage() {
 
           <div className="min-w-0">
             <div className="flex items-center gap-2 min-w-0">
-              <h1 className="text-xl font-semibold tracking-wide truncate">
+              <h1
+                className="text-xl font-semibold tracking-wide truncate"
+                title={ad?.title || "Ad"}
+              >
                 {ad?.title || "Ad"}
               </h1>
 
@@ -154,12 +245,27 @@ export default function SpecificAdPage() {
               ) : null}
 
               {ad?.status ? (
-                <Badge
-                  variant="secondary"
-                  className="shrink-0 rounded-full text-[11px]"
+                <span
+                  className={cn(
+                    "shrink-0 rounded-full text-[11px] px-3 py-1 font-medium",
+                    statusBadgeClass(ad.status),
+                  )}
+                  title={ad.status}
                 >
                   {ad.status}
-                </Badge>
+                </span>
+              ) : null}
+
+              {scheduleMeta ? (
+                <span
+                  className={cn(
+                    "shrink-0 rounded-full text-[11px] px-3 py-1 font-medium",
+                    scheduleMeta.tone,
+                  )}
+                  title={`${scheduleMeta.startLabel} → ${scheduleMeta.endLabel}`}
+                >
+                  {scheduleMeta.label}
+                </span>
               ) : null}
             </div>
 
@@ -221,30 +327,44 @@ export default function SpecificAdPage() {
           <CardHeader className="pb-3">
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div className="min-w-0">
-                <CardTitle className="text-lg font-semibold md:text-xl line-clamp-1">
+                <CardTitle
+                  className="text-lg font-semibold md:text-xl line-clamp-1 break-words"
+                  title={ad.title}
+                >
                   {ad.title}
                 </CardTitle>
                 <CardDescription className="text-muted-foreground mt-2">
-                  <p className="line-clamp-3">{ad.description || "—"}</p>
+                  <p
+                    className="line-clamp-3 break-words"
+                    title={ad.description}
+                  >
+                    {ad.description || "—"}
+                  </p>
                 </CardDescription>
               </div>
 
               {/* quick chips */}
               <div className="flex flex-wrap gap-2 md:justify-end">
-                <Badge
-                  variant="secondary"
-                  className="rounded-full text-[11px] px-3 py-1"
-                >
-                  <Calendar className="h-3.5 w-3.5 mr-1.5 opacity-80" />
-                  {fmt(ad.startTime)} → {fmt(ad.endTime)}
-                </Badge>
-
-                {ad.buttonText ? (
+                {hasSchedule ? (
                   <Badge
                     variant="secondary"
                     className="rounded-full text-[11px] px-3 py-1"
+                    title={`${fmt(ad.startTime)} → ${fmt(ad.endTime)}`}
                   >
-                    {ad.buttonText}
+                    <Calendar className="h-3.5 w-3.5 mr-1.5 opacity-80" />
+                    <span className="truncate max-w-[260px]">
+                      {fmt(ad.startTime)} → {fmt(ad.endTime)}
+                    </span>
+                  </Badge>
+                ) : null}
+
+                {ad.buttonText || ad.hyperlink ? (
+                  <Badge
+                    variant="secondary"
+                    className="rounded-full text-[11px] px-3 py-1"
+                    title={`CTA: ${ctaText}`}
+                  >
+                    CTA: {ctaText}
                   </Badge>
                 ) : null}
 
@@ -298,14 +418,15 @@ export default function SpecificAdPage() {
                   </div>
 
                   <div className="mt-3 space-y-2">
-                    <div className="flex items-start gap-2 text-sm">
-                      <Link2 className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                    <div className="flex items-start gap-2 text-sm min-w-0">
+                      <Link2 className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                       {ad.hyperlink ? (
                         <a
                           href={ad.hyperlink}
                           target="_blank"
                           rel="noreferrer"
-                          className="underline break-all"
+                          className="underline break-all line-clamp-2"
+                          title={ad.hyperlink}
                         >
                           {ad.hyperlink}
                         </a>
@@ -317,7 +438,7 @@ export default function SpecificAdPage() {
                     <div className="text-xs text-muted-foreground">
                       CTA button:{" "}
                       <span className="text-foreground font-medium">
-                        {ad.buttonText || "—"}
+                        {ad.hyperlink ? ctaText : "—"}
                       </span>
                     </div>
                   </div>
@@ -379,54 +500,6 @@ export default function SpecificAdPage() {
                   </div>
                 </div>
 
-                {/* Videos (kept simple, no metadata) */}
-                {/* <div className="rounded-2xl border bg-background/50 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-semibold">Videos</div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        Optional video assets
-                      </div>
-                    </div>
-                    {Array.isArray(ad.uploadedVideoLinks) ? (
-                      <Badge variant="secondary" className="rounded-full">
-                        {ad.uploadedVideoLinks.length}
-                      </Badge>
-                    ) : null}
-                  </div>
-
-                  <div className="mt-3">
-                    {Array.isArray(ad.uploadedVideoLinks) &&
-                    ad.uploadedVideoLinks.length ? (
-                      <div className="space-y-2">
-                        {ad.uploadedVideoLinks.map((src, i) => (
-                          <a
-                            key={`${src}-${i}`}
-                            href={src}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex items-center justify-between gap-3 rounded-xl border px-3 py-2 hover:bg-accent/20 transition"
-                            title="Open video"
-                          >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <Video className="h-4 w-4 text-muted-foreground shrink-0" />
-                              <span className="text-sm truncate">
-                                Video {i + 1}
-                              </span>
-                            </div>
-                            <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
-                          </a>
-                        ))}
-                      </div>
-                    ) : (
-                      <PreviewEmpty
-                        title="No videos uploaded"
-                        icon={<Video className="h-4 w-4" />}
-                      />
-                    )}
-                  </div>
-                </div> */}
-
                 {/* Industries */}
                 <div className="rounded-2xl border bg-background/50 p-4">
                   <div className="flex items-center justify-between gap-3">
@@ -444,10 +517,12 @@ export default function SpecificAdPage() {
                         {ad.industries.map((ind) => (
                           <span
                             key={ind._id}
-                            className="px-3 py-1 rounded-full border text-xs bg-background/70 hover:bg-accent/20 transition"
+                            className="px-3 py-1 rounded-full border text-xs bg-background/70 hover:bg-accent/20 transition max-w-full"
                             title={ind.description ?? ""}
                           >
-                            {ind.name}
+                            <span className="line-clamp-1 break-words">
+                              {ind.name}
+                            </span>
                           </span>
                         ))}
                       </div>
@@ -466,18 +541,38 @@ export default function SpecificAdPage() {
                 <div className="sticky top-6">
                   <div className="rounded-3xl border bg-background/60 p-4 shadow-sm">
                     <div className="flex items-center justify-between gap-3">
-                      <div>
+                      <div className="min-w-0">
                         <div className="text-sm font-semibold">Ad preview</div>
                         <div className="text-xs text-muted-foreground mt-1">
                           Approximate rendering
                         </div>
                       </div>
 
-                      {archived ? (
-                        <Badge className="rounded-full bg-red-500/15 text-red-200 border border-red-500/30 hover:bg-red-500/15">
-                          Archived
-                        </Badge>
-                      ) : null}
+                      <div className="flex items-center gap-2 shrink-0">
+                        {ad?.status ? (
+                          <span
+                            className={cn(
+                              "rounded-full text-[11px] px-3 py-1 font-medium",
+                              statusBadgeClass(ad.status),
+                            )}
+                            title={ad.status}
+                          >
+                            {ad.status}
+                          </span>
+                        ) : null}
+
+                        {scheduleMeta ? (
+                          <span
+                            className={cn(
+                              "rounded-full text-[11px] px-3 py-1 font-medium",
+                              scheduleMeta.tone,
+                            )}
+                            title={`${scheduleMeta.startLabel} → ${scheduleMeta.endLabel}`}
+                          >
+                            {scheduleMeta.label}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
 
                     <div className="mt-4 rounded-3xl border overflow-hidden bg-background">
@@ -497,11 +592,17 @@ export default function SpecificAdPage() {
                               className="w-full h-44 object-cover"
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/0 to-black/0" />
-                            <div className="absolute bottom-3 left-3 right-3">
-                              <div className="text-white font-semibold text-sm line-clamp-1">
+                            <div className="absolute bottom-3 left-3 right-3 min-w-0">
+                              <div
+                                className="text-white font-semibold text-sm line-clamp-1 break-words"
+                                title={ad.title}
+                              >
                                 {ad.title}
                               </div>
-                              <div className="text-white/80 text-xs line-clamp-2 mt-1">
+                              <div
+                                className="text-white/80 text-xs line-clamp-2 mt-1 break-words"
+                                title={ad.description}
+                              >
                                 {ad.description || "—"}
                               </div>
                             </div>
@@ -518,50 +619,62 @@ export default function SpecificAdPage() {
 
                       {/* preview body */}
                       <div className="p-4 space-y-3">
-                        <div className="space-y-1">
-                          <div className="text-sm font-semibold line-clamp-1">
+                        <div className="space-y-1 min-w-0">
+                          <div
+                            className="text-sm font-semibold line-clamp-1 break-words"
+                            title={ad.title}
+                          >
                             {ad.title}
                           </div>
-                          <div className="text-xs text-muted-foreground line-clamp-3">
+                          <div
+                            className="text-xs text-muted-foreground line-clamp-3 break-words"
+                            title={ad.description}
+                          >
                             {ad.description || "—"}
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                          {ad.hyperlink ? (
-                            <a
-                              href={ad.hyperlink}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="w-full"
-                            >
-                              <Button className="w-full rounded-2xl">
-                                {ad.buttonText || "Open"}
-                              </Button>
-                            </a>
-                          ) : (
-                            <Button
-                              className="w-full rounded-2xl"
-                              disabled
-                              title="No hyperlink set"
-                            >
-                              {ad.buttonText || "Open"}
+                        {/* CTA: only show if hyperlink exists. Default label: Visit */}
+                        {ad.hyperlink ? (
+                          <a
+                            href={ad.hyperlink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="block"
+                          >
+                            <Button className="w-full rounded-2xl">
+                              <span className="truncate">{ctaText}</span>
                             </Button>
-                          )}
-                        </div>
+                          </a>
+                        ) : null}
 
-                        <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                          <span className="inline-flex items-center gap-1">
-                            <Calendar className="h-3.5 w-3.5" />
-                            {fmt(ad.startTime)} → {fmt(ad.endTime)}
-                          </span>
+                        <div className="flex items-center justify-between text-[11px] text-muted-foreground gap-2">
+                          {hasSchedule ? (
+                            <span className="inline-flex items-center gap-1 min-w-0">
+                              <Calendar className="h-3.5 w-3.5 shrink-0" />
+                              <span
+                                className="truncate"
+                                title={`${fmt(ad.startTime)} → ${fmt(ad.endTime)}`}
+                              >
+                                {fmt(ad.startTime)} → {fmt(ad.endTime)}
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">
+                              No schedule
+                            </span>
+                          )}
+
                           {ad.status ? (
-                            <span className="font-medium">{ad.status}</span>
+                            <span className="font-medium shrink-0">
+                              {ad.status}
+                            </span>
                           ) : null}
                         </div>
                       </div>
                     </div>
 
+                    {/* Open destination: only if hyperlink exists */}
                     {ad.hyperlink ? (
                       <a
                         href={ad.hyperlink}

@@ -5,6 +5,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
+import dayjs from "dayjs";
 
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
@@ -28,6 +29,13 @@ import { useApiMutation } from "@/hooks/useApiMutation";
 import { endpoints } from "@/api/endpoints";
 import { appToast } from "@/utils/toast";
 import { cn } from "@/lib/utils";
+
+import {
+  adminZone,
+  utcToAdmin,
+  localAdminISOtoUTC,
+  utcToAdminFormatted,
+} from "@/utils/time";
 
 import { useImageUpload } from "@/hooks/upload/useAssetUpload";
 
@@ -56,8 +64,8 @@ type Ad = {
   description: string;
   hyperlink?: string | null;
   buttonText?: string | null;
-  startTime?: string | null; // ISO from server
-  endTime?: string | null; // ISO from server
+  startTime?: string | null; // UTC ISO from server
+  endTime?: string | null; // UTC ISO from server
   uploadedImageLinks: string[];
   uploadedVideoLinks: string[];
   industries?: Industry[];
@@ -66,41 +74,52 @@ type Ad = {
 
 /* ---------------- helpers ---------------- */
 
-// backend -> <input type="datetime-local" />
-function isoToLocalInput(iso?: string | null) {
-  if (!iso) return null;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const yyyy = d.getFullYear();
-  const mm = pad(d.getMonth() + 1);
-  const dd = pad(d.getDate());
-  const hh = pad(d.getHours());
-  const mi = pad(d.getMinutes());
-  return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+function normalizeDatetimeLocal(v: string) {
+  // input type="datetime-local" returns "YYYY-MM-DDTHH:mm"
+  // our time util expects an admin-local ISO-ish string; normalize to "YYYY-MM-DD HH:mm"
+  return v.includes("T") ? v.replace("T", " ") : v;
 }
 
-// <input type="datetime-local" /> -> ISO string (UTC) for server
+// backend UTC ISO -> <input type="datetime-local" /> (viewer/admin local)
+function isoToLocalInput(utcISO?: string | null) {
+  if (!utcISO) return null;
+  try {
+    const d = utcToAdmin(utcISO, adminZone);
+    if (!d || !d.isValid()) return null;
+    return d.format("YYYY-MM-DDTHH:mm"); // datetime-local format
+  } catch {
+    return null;
+  }
+}
+
+// <input type="datetime-local" /> (viewer/admin local) -> backend UTC ISO
 function localInputToISO(v?: string | null) {
   const s = v?.trim();
   if (!s) return null;
-  const d = new Date(s);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toISOString();
+  try {
+    return localAdminISOtoUTC(normalizeDatetimeLocal(s));
+  } catch {
+    return null;
+  }
 }
 
+// quick windows (computed in viewer/admin zone, stored as UTC ISO)
 function addDaysISO(days: number) {
-  const now = new Date();
-  const end = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
-  return { startISO: now.toISOString(), endISO: end.toISOString() };
+  const startLocal = dayjs().tz(adminZone).second(0).millisecond(0);
+  const endLocal = startLocal.add(days, "day");
+  return {
+    startISO: startLocal.utc().toISOString(),
+    endISO: endLocal.utc().toISOString(),
+  };
 }
 
 function addMonthsISO(months: number) {
-  const now = new Date();
-  const end = new Date(now);
-  end.setMonth(end.getMonth() + months);
-  return { startISO: now.toISOString(), endISO: end.toISOString() };
+  const startLocal = dayjs().tz(adminZone).second(0).millisecond(0);
+  const endLocal = startLocal.add(months, "month");
+  return {
+    startISO: startLocal.utc().toISOString(),
+    endISO: endLocal.utc().toISOString(),
+  };
 }
 
 /* ---------------- schema ---------------- */
@@ -153,9 +172,13 @@ const editAdZ = editAdBaseZ.superRefine((val, ctx) => {
     }
   }
 
+  // Use robust conversion to UTC to compare (timezone-safe)
   if (hasStart && hasEnd) {
-    const st = new Date(s!).getTime();
-    const et = new Date(e!).getTime();
+    const stISO = localInputToISO(s);
+    const etISO = localInputToISO(e);
+    const st = stISO ? new Date(stISO).getTime() : NaN;
+    const et = etISO ? new Date(etISO).getTime() : NaN;
+
     if (!Number.isNaN(st) && !Number.isNaN(et) && et < st) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -271,10 +294,12 @@ export default function EditAdPage() {
       labelMap[String(x._id)] = String(x.name ?? x._id);
     });
 
+    // IMPORTANT: image array in form is [File|string] max 1
     const firstImg = ad.uploadedImageLinks?.[0]
       ? String(ad.uploadedImageLinks[0])
       : null;
 
+    // ✅ timezone-safe: UTC -> viewer local datetime-local
     const startLocal = isoToLocalInput(ad.startTime) ?? null;
     const endLocal = isoToLocalInput(ad.endTime) ?? null;
 
@@ -345,6 +370,7 @@ export default function EditAdPage() {
   const endTime = watch("endTime");
 
   const applyWindow = (startISO: string, endISO: string) => {
+    // ✅ timezone-safe: UTC -> viewer local input values
     setValue("startTime", isoToLocalInput(startISO), {
       shouldDirty: true,
       shouldValidate: true,
@@ -384,6 +410,7 @@ export default function EditAdPage() {
       description: v.description,
       hyperlink: v.hyperlink?.trim() ? v.hyperlink.trim() : null,
       buttonText: v.buttonText?.trim() ? v.buttonText.trim() : null,
+      // ✅ timezone-safe: viewer local -> UTC ISO (Mongo stores UTC)
       startTime: localInputToISO(v.startTime),
       endTime: localInputToISO(v.endTime),
       industries: v.industries ?? [],
@@ -423,6 +450,16 @@ export default function EditAdPage() {
     String(watch("buttonText") || "").trim().length > 0
       ? String(watch("buttonText") || "").trim()
       : "Visit";
+
+  const hasSchedule = !!startTime && !!endTime;
+  const schedulePreview = useMemo(() => {
+    if (!hasSchedule) return null;
+    const stISO = localInputToISO(startTime);
+    const etISO = localInputToISO(endTime);
+    if (!stISO || !etISO) return null;
+
+    return `${utcToAdminFormatted(stISO)} → ${utcToAdminFormatted(etISO)}`;
+  }, [hasSchedule, startTime, endTime]);
 
   return (
     <div className="p-6 space-y-6 w-full max-w-6xl mx-auto">
@@ -561,7 +598,9 @@ export default function EditAdPage() {
                       <div className="text-xs text-muted-foreground">
                         Preview link
                       </div>
-                      <div className="text-sm truncate">{hyperlink}</div>
+                      <div className="text-sm truncate" title={hyperlink}>
+                        {hyperlink}
+                      </div>
                     </div>
                     <a
                       href={hyperlink}
@@ -590,7 +629,7 @@ export default function EditAdPage() {
                   Schedule
                 </CardTitle>
                 <div className="text-xs text-muted-foreground">
-                  Optional run window (start & end must be set together)
+                  Optional run window (timezone-safe; stored in UTC)
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -691,6 +730,16 @@ export default function EditAdPage() {
                     )}
                   />
                 </div>
+
+                {schedulePreview ? (
+                  <div className="rounded-2xl border bg-background/50 px-3 py-2 text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground">
+                      Preview:
+                    </span>{" "}
+                    <span className="tabular-nums">{schedulePreview}</span>{" "}
+                    <span className="opacity-70">({adminZone})</span>
+                  </div>
+                ) : null}
 
                 <Separator />
 
@@ -1006,11 +1055,17 @@ export default function EditAdPage() {
                           className="w-full h-40 object-cover"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/0 to-black/0" />
-                        <div className="absolute bottom-3 left-3 right-3">
-                          <div className="text-white font-semibold text-sm line-clamp-1">
+                        <div className="absolute bottom-3 left-3 right-3 min-w-0">
+                          <div
+                            className="text-white font-semibold text-sm line-clamp-1 break-words"
+                            title={String(watch("title") || "")}
+                          >
                             {String(watch("title") || "Title")}
                           </div>
-                          <div className="text-white/80 text-xs line-clamp-2 mt-1">
+                          <div
+                            className="text-white/80 text-xs line-clamp-2 mt-1 break-words"
+                            title={String(watch("description") || "")}
+                          >
                             {String(watch("description") || "Description")}
                           </div>
                         </div>
@@ -1018,11 +1073,17 @@ export default function EditAdPage() {
                     ) : null}
 
                     <div className="p-4 space-y-3">
-                      <div className="space-y-1">
-                        <div className="text-sm font-semibold line-clamp-1 break-words">
+                      <div className="space-y-1 min-w-0">
+                        <div
+                          className="text-sm font-semibold line-clamp-1 break-words"
+                          title={String(watch("title") || "")}
+                        >
                           {String(watch("title") || "Title")}
                         </div>
-                        <div className="text-xs text-muted-foreground line-clamp-3 break-words">
+                        <div
+                          className="text-xs text-muted-foreground line-clamp-3 break-words"
+                          title={String(watch("description") || "")}
+                        >
                           {String(watch("description") || "Description")}
                         </div>
                       </div>
@@ -1042,12 +1103,17 @@ export default function EditAdPage() {
                         </Button>
                       ) : null}
 
-                      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                        <span className="inline-flex items-center gap-1">
-                          <Calendar className="h-3.5 w-3.5" />
-                          {startTime && endTime ? "Scheduled" : "No schedule"}
+                      <div className="flex items-center justify-between text-[11px] text-muted-foreground gap-2">
+                        <span className="inline-flex items-center gap-1 min-w-0">
+                          <Calendar className="h-3.5 w-3.5 shrink-0" />
+                          <span
+                            className="truncate"
+                            title={schedulePreview || ""}
+                          >
+                            {schedulePreview ? schedulePreview : "No schedule"}
+                          </span>
                         </span>
-                        <span className="tabular-nums">
+                        <span className="tabular-nums shrink-0">
                           {(industries ?? []).length}/{MAX_INDUSTRY_PER_AD} tags
                         </span>
                       </div>
