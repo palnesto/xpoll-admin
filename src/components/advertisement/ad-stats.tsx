@@ -865,9 +865,6 @@ export const AdStats = ({ adId }: { adId: string }) => {
                   setWindow((w) => ({ ...w, windowStartTime: iso }));
                 }}
               />
-              <div className="mt-2 text-[11px] text-muted-foreground">
-                Uses map.createdAt window filter (server-side).
-              </div>
             </div>
 
             <div className="rounded-2xl border bg-background p-3">
@@ -890,9 +887,6 @@ export const AdStats = ({ adId }: { adId: string }) => {
                   setWindow((w) => ({ ...w, windowEndTime: iso }));
                 }}
               />
-              <div className="mt-2 text-[11px] text-muted-foreground">
-                If both set, start must be ≤ end.
-              </div>
             </div>
 
             <div className="rounded-2xl border bg-background p-3 flex flex-col justify-between">
@@ -1004,7 +998,7 @@ export const AdStats = ({ adId }: { adId: string }) => {
       ) : (
         <SectionCard
           title="Country-wise distribution"
-          subtitle={`${windowLabel} · Showing server TOP_STATS results`}
+          subtitle={`${windowLabel}`}
           right={
             <Badge variant="secondary" className="text-xs">
               {countryWise.length} rows
@@ -1034,7 +1028,7 @@ export const AdStats = ({ adId }: { adId: string }) => {
       ) : (
         <SectionCard
           title="State-wise distribution"
-          subtitle={`${windowLabel} · Showing server TOP_STATS results`}
+          subtitle={`${windowLabel}`}
           right={
             <Badge variant="secondary" className="text-xs">
               {stateWise.length} rows
@@ -1064,7 +1058,7 @@ export const AdStats = ({ adId }: { adId: string }) => {
       ) : (
         <SectionCard
           title="City-wise distribution"
-          subtitle={`${windowLabel} · Showing server TOP_STATS results`}
+          subtitle={`${windowLabel}`}
           right={
             <Badge variant="secondary" className="text-xs">
               {cityWise.length} rows
