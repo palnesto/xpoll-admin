@@ -3,14 +3,15 @@ import { join, relative } from "path";
 
 // Specify file or folder paths to combine:
 const filePaths: string[] = [
-  "src/components/commons/selects/base",
-  "src/components/commons/selects/ad/ad-owner-infinite-select.tsx",
-  "src/stores/useAdOwnerFilters.ts",
-  "src/components/modals/ad/ad-owner/delete.tsx",
-  "src/pages/ad",
-  "src/stores/useIndustryFilters.ts",
-  "src/components/modals/industry/delete.tsx",
-  "src/pages/industry",
+  "src/components/commons/form",
+  // "src/components/commons/selects/base",
+  // "src/components/commons/selects/ad/ad-owner-infinite-select.tsx",
+  // "src/stores/useAdOwnerFilters.ts",
+  // "src/components/modals/ad/ad-owner/delete.tsx",
+  // "src/pages/ad",
+  // "src/stores/useIndustryFilters.ts",
+  // "src/components/modals/industry/delete.tsx",
+  // "src/pages/industry",
 ];
 const outputFile = "combined.txt";
 

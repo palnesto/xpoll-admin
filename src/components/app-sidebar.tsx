@@ -46,6 +46,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     isAd,
     isAdOwners,
     isIndustry,
+    isAds,
   } = React.useMemo(() => {
     // isOverallPollStats
     const isOverallPollStats = pathname === "/";
@@ -100,7 +101,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     // Ads management
     const isAdOwners = pathname.startsWith("/ad/ad-owners");
     const isIndustry = pathname.startsWith("/industry");
-    const isAd = pathname.startsWith("/ad") || isIndustry;
+    const isAds = pathname.startsWith("/ad/ads");
+    const isAd = pathname.startsWith("/ad") || isIndustry || isAds;
 
     return {
       isOverallPollStats,
@@ -124,6 +126,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       isAd,
       isAdOwners,
       isIndustry,
+      isAds,
     };
   }, [pathname]);
 
@@ -273,6 +276,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             title: "Industry",
             url: "/industry",
             isActive: isIndustry,
+          },
+          {
+            title: "Ads",
+            url: "/ad/ads",
+            isActive: isAds,
           },
         ],
       },

@@ -121,6 +121,26 @@ export const endpoints = {
         delete: (adOwnerId: string) =>
           `/internal/advertisement/advertisement-owner/${adOwnerId}`,
       },
+      ad: {
+        advancedListing: "/internal/advertisement/ad/advanced-listing",
+        create: "/internal/advertisement/ad",
+        edit: (adOwnerId: string) => `/internal/advertisement/ad/${adOwnerId}`,
+        getById: (
+          {
+            adOwnerId,
+          }: {
+            adOwnerId: string;
+          },
+          queryParams: Record<string, string>,
+        ) => {
+          const baseUrl = `/internal/advertisement/ad/${adOwnerId}`;
+          const searchParams = new URLSearchParams(queryParams).toString();
+          const url = searchParams ? `${baseUrl}?${searchParams}` : baseUrl;
+          return url;
+        },
+        delete: (adOwnerId: string) =>
+          `/internal/advertisement/advertisement-owner/${adOwnerId}`,
+      },
     },
     industry: {
       advancedListing: "/internal/industry/advanced-listing",
