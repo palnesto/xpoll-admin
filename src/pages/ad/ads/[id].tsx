@@ -18,6 +18,7 @@ import { useApiQuery } from "@/hooks/useApiQuery";
 import { utcToAdminFormatted } from "@/utils/time";
 
 import ConfirmArchiveAdModal from "@/components/modals/ad/ad/delete";
+import { AdStats } from "@/components/advertisement/ad-stats";
 
 type Industry = {
   _id: string;
@@ -289,6 +290,9 @@ export default function SpecificAdPage() {
       ) : !isBusy ? (
         <div className="text-sm text-muted-foreground">No ad found.</div>
       ) : null}
+
+      {/* stats component */}
+      {id && <AdStats adId={id} />}
 
       {/* ✅ archive modal */}
       {id ? (

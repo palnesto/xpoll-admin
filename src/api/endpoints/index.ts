@@ -141,6 +141,13 @@ export const endpoints = {
         },
         delete: (adId: string) =>
           `/internal/advertisement/advertisement-owner/${adId}`,
+        stats: (queryParams: Record<string, string>) => {
+          const baseUrl = `/internal/advertisement/ad/stats`;
+          console.log("baseUrl", baseUrl);
+          const searchParams = new URLSearchParams(queryParams).toString();
+          const url = searchParams ? `${baseUrl}?${searchParams}` : baseUrl;
+          return url;
+        },
       },
     },
     industry: {

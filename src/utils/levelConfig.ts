@@ -8,16 +8,7 @@ import builderImg from "@/assets/builder.png";
 import strategistImg from "@/assets/strategist.png";
 import visionaryImg from "@/assets/visionary.png";
 import legendImg from "@/assets/legend.png";
-// import explorerBg from "@/assets/levels/bg1.png";
-// import settlerBg from "@/assets/levels/bg2.png";
-// import participantBg from "@/assets/levels/bg3.png";
-// import contributorBg from "@/assets/levels/bg4.png";
-// import advocateBg from "@/assets/levels/bg5.png";
-// import guardianBg from "@/assets/levels/bg6.png";
-// import builderBg from "@/assets/levels/bg7.png";
-// import strategistBg from "@/assets/levels/bg8.png";
-// import visionaryBg from "@/assets/levels/bg9.png";
-// import legendBg from "@/assets/levels/bg10.png";
+import { buildRewardTable } from "./civic-logic2";
 
 export type Level = {
   id: number;
@@ -29,11 +20,20 @@ export type Level = {
   isHidden?: boolean;
 };
 
+const rewards = buildRewardTable({
+  totalLevels: 10,
+  rewardType: "max",
+  perUserReward: 100000n,
+});
+const getReward = (levelId: number) =>
+  rewards?.[levelId - 1]?.reward.toString();
+console.log("rewards", rewards, +getReward(1));
+
 export const LEVELS: Level[] = [
   {
     id: 1,
     title: "Explorer",
-    points: 0,
+    points: +getReward(1),
     image: explorerImg,
     // bg: explorerBg,
     desc: "You’ve taken your first steps, setting out with curiosity to discover civic life.",
@@ -41,7 +41,7 @@ export const LEVELS: Level[] = [
   {
     id: 2,
     title: "Settler",
-    points: 100,
+    points: +getReward(2),
     image: settlerImg,
     // bg: settlerBg,
     desc: "You’re building roots, observing carefully, and laying down early foundations.",
@@ -49,7 +49,7 @@ export const LEVELS: Level[] = [
   {
     id: 3,
     title: "Participant",
-    points: 200,
+    points: +getReward(3),
     image: participantImg,
     // bg: participantBg,
     desc: "You’ve moved from watching to acting, casting your voice into the collective.",
@@ -57,7 +57,7 @@ export const LEVELS: Level[] = [
   {
     id: 4,
     title: "Contributor",
-    points: 300,
+    points: +getReward(4),
     image: contributorImg,
     // bg: contributorBg,
     desc: "You’re adding your own questions and ideas, helping shape the civic conversation.",
@@ -65,7 +65,7 @@ export const LEVELS: Level[] = [
   {
     id: 5,
     title: "Advocate",
-    points: 400,
+    points: +getReward(5),
     image: advocateImg,
     // bg: advocateBg,
     desc: "You’re speaking out with passion, rallying others and amplifying community voices.",
@@ -73,7 +73,7 @@ export const LEVELS: Level[] = [
   {
     id: 6,
     title: "Guardian",
-    points: 500,
+    points: +getReward(6),
     image: guardianImg,
     // bg: guardianBg,
     desc: "You stand firm for fairness, defending values and safeguarding the integrity of engagement",
@@ -81,7 +81,7 @@ export const LEVELS: Level[] = [
   {
     id: 7,
     title: "Builder",
-    points: 600,
+    points: +getReward(7),
     image: builderImg,
     // bg: builderBg,
     desc: "You’ve mastered the foundations and are now shaping bigger structures.",
@@ -89,7 +89,7 @@ export const LEVELS: Level[] = [
   {
     id: 8,
     title: "Strategist",
-    points: 700,
+    points: +getReward(8),
     image: strategistImg,
     // bg: strategistBg,
     desc: "You’re thinking several moves ahead, guiding civic energy with foresight and precision.",
@@ -97,7 +97,7 @@ export const LEVELS: Level[] = [
   {
     id: 9,
     title: "Visionary",
-    points: 800,
+    points: +getReward(9),
     image: visionaryImg,
     // bg: visionaryBg,
     desc: "You’re inspiring others with vision, illuminating the path toward greater possibilities.",
@@ -105,7 +105,7 @@ export const LEVELS: Level[] = [
   {
     id: 10,
     title: "Legend",
-    points: 900,
+    points: +getReward(10),
     image: legendImg,
     // bg: legendBg,
     desc: "You’ve become a symbol of civic excellence, leaving a lasting legacy for others to follow.",
@@ -113,7 +113,7 @@ export const LEVELS: Level[] = [
   {
     id: 11,
     title: "Legend",
-    points: 900,
+    points: +getReward(11),
     image: legendImg,
     // bg: legendBg,
     desc: "You’ve become a symbol of civic excellence, leaving a lasting legacy for others to follow.",
