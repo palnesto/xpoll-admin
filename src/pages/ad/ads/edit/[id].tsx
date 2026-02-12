@@ -8,13 +8,26 @@ import { Controller, useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
-import { Loader2, ArrowLeft } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Loader2,
+  ArrowLeft,
+  Save,
+  Image as ImageIcon,
+  Calendar,
+  ExternalLink,
+  Tag,
+  RotateCcw,
+} from "lucide-react";
 
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { endpoints } from "@/api/endpoints";
-import { queryClient } from "@/api/queryClient";
 import { appToast } from "@/utils/toast";
+import { cn } from "@/lib/utils";
 
 import { useImageUpload } from "@/hooks/upload/useAssetUpload";
 
@@ -22,7 +35,6 @@ import { TextField } from "@/components/commons/form/TextField";
 import { TextAreaField } from "@/components/commons/form/TextAreaField";
 import { handleSubmitNormalized } from "@/components/commons/form/utils/rhfSubmit";
 
-import AdOwnerInfiniteSelect from "@/components/commons/selects/ad/ad-owner-infinite-select";
 import IndustryInfiniteSelect from "@/components/commons/selects/industry-infinite-select";
 
 /* ---------------- constants ---------------- */
@@ -60,7 +72,6 @@ function isoToLocalInput(iso?: string | null) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
 
-  // datetime-local expects "YYYY-MM-DDTHH:mm" in local time
   const pad = (n: number) => String(n).padStart(2, "0");
   const yyyy = d.getFullYear();
   const mm = pad(d.getMonth() + 1);
@@ -79,6 +90,19 @@ function localInputToISO(v?: string | null) {
   return d.toISOString();
 }
 
+function addDaysISO(days: number) {
+  const now = new Date();
+  const end = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+  return { startISO: now.toISOString(), endISO: end.toISOString() };
+}
+
+function addMonthsISO(months: number) {
+  const now = new Date();
+  const end = new Date(now);
+  end.setMonth(end.getMonth() + months);
+  return { startISO: now.toISOString(), endISO: end.toISOString() };
+}
+
 /* ---------------- schema ---------------- */
 
 const editAdBaseZ = z
@@ -89,18 +113,15 @@ const editAdBaseZ = z
     hyperlink: z.string().trim().nullable().optional(),
     buttonText: z.string().trim().nullable().optional(),
 
-    // datetime-local string OR null
     startTime: z.string().nullable().optional(),
     endTime: z.string().nullable().optional(),
 
-    // editor state: [File|string] (max 1)
     uploadedImageLinks: z
       .array(z.any())
       .max(1, "Only 1 image allowed")
       .optional(),
     uploadedVideoLinks: z.array(z.any()).optional(),
 
-    // store ids in form
     industries: z
       .array(z.string().trim().min(1))
       .max(MAX_INDUSTRY_PER_AD, `Max ${MAX_INDUSTRY_PER_AD} industries allowed`)
@@ -108,7 +129,6 @@ const editAdBaseZ = z
   })
   .strict();
 
-// effects schema for validation in resolver
 const editAdZ = editAdBaseZ.superRefine((val, ctx) => {
   const s = val.startTime?.trim() ? val.startTime.trim() : null;
   const e = val.endTime?.trim() ? val.endTime.trim() : null;
@@ -116,7 +136,6 @@ const editAdZ = editAdBaseZ.superRefine((val, ctx) => {
   const hasStart = !!s;
   const hasEnd = !!e;
 
-  // either both null OR both provided
   if (hasStart !== hasEnd) {
     if (!hasStart) {
       ctx.addIssue({
@@ -134,7 +153,6 @@ const editAdZ = editAdBaseZ.superRefine((val, ctx) => {
     }
   }
 
-  // end after start (if both)
   if (hasStart && hasEnd) {
     const st = new Date(s!).getTime();
     const et = new Date(e!).getTime();
@@ -175,12 +193,10 @@ export default function EditAdPage() {
   // ===== query =====
   const showUrl = useMemo(() => {
     if (!id) return "";
-    // backend supports includeArchived query param
-    const base = endpoints.entities.ad.ad.getById(
-      { adId: id }, // NOTE: keep until you rename endpoint arg to adId
+    return endpoints.entities.ad.ad.getById(
+      { adId: id },
       { includeArchived: "true" },
     );
-    return base;
   }, [id]);
 
   const { data, isLoading, isFetching, isError } = useApiQuery(showUrl, {
@@ -189,12 +205,18 @@ export default function EditAdPage() {
   } as any);
 
   const ad: Ad | null = (data as any)?.data?.data ?? null;
+  const archived = !!ad?.archivedAt;
 
   // ===== labels for chips =====
-  const [adOwnerLabel, setAdOwnerLabel] = useState<string>("");
   const [industryLabels, setIndustryLabels] = useState<Record<string, string>>(
     {},
   );
+
+  // ===== original schedule (for reset-to-api) =====
+  const [originalSchedule, setOriginalSchedule] = useState<{
+    startTime: string | null;
+    endTime: string | null;
+  }>({ startTime: null, endTime: null });
 
   // ===== form =====
   const defaultValues = useMemo<EditAdFormValues>(
@@ -249,10 +271,12 @@ export default function EditAdPage() {
       labelMap[String(x._id)] = String(x.name ?? x._id);
     });
 
-    // IMPORTANT: image array in form is [File|string] max 1
     const firstImg = ad.uploadedImageLinks?.[0]
       ? String(ad.uploadedImageLinks[0])
       : null;
+
+    const startLocal = isoToLocalInput(ad.startTime) ?? null;
+    const endLocal = isoToLocalInput(ad.endTime) ?? null;
 
     reset(
       {
@@ -260,9 +284,8 @@ export default function EditAdPage() {
         description: String(ad.description ?? ""),
         hyperlink: ad.hyperlink ?? null,
         buttonText: ad.buttonText ?? null,
-        // convert ISO -> datetime-local value
-        startTime: isoToLocalInput(ad.startTime) ?? null,
-        endTime: isoToLocalInput(ad.endTime) ?? null,
+        startTime: startLocal,
+        endTime: endLocal,
         industries: industryIds,
         uploadedImageLinks: firstImg ? [firstImg] : [],
         uploadedVideoLinks: Array.isArray(ad.uploadedVideoLinks)
@@ -273,10 +296,7 @@ export default function EditAdPage() {
     );
 
     setIndustryLabels(labelMap);
-
-    // 1) set it onChange when user picks; OR
-    // 2) if your adOwner select can accept an initial option, wire it there.
-    setAdOwnerLabel(""); // unknown at load; user can re-pick to set label
+    setOriginalSchedule({ startTime: startLocal, endTime: endLocal });
   }, [ad, reset]);
 
   // ===== image preview =====
@@ -306,7 +326,7 @@ export default function EditAdPage() {
 
   // ===== save =====
   const { mutateAsync, isPending } = useApiMutation<any, any>({
-    route: endpoints.entities.ad.ad.edit(id), // ✅ your endpoint
+    route: endpoints.entities.ad.ad.edit(id),
     method: "PATCH",
     onSuccess: () => {
       appToast.success("Ad updated");
@@ -324,10 +344,31 @@ export default function EditAdPage() {
   const startTime = watch("startTime");
   const endTime = watch("endTime");
 
+  const applyWindow = (startISO: string, endISO: string) => {
+    setValue("startTime", isoToLocalInput(startISO), {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("endTime", isoToLocalInput(endISO), {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    void form.trigger(["startTime", "endTime"]);
+  };
+
+  const resetScheduleToOriginal = () => {
+    setValue("startTime", originalSchedule.startTime, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("endTime", originalSchedule.endTime, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    void form.trigger(["startTime", "endTime"]);
+  };
+
   const onSubmit = async (v: EditAdFormValues) => {
-    // normalize image like Poll:
-    // - if it's File -> upload -> url
-    // - if it's string -> keep
     let uploadedImageLinks: string[] = [];
     const first = (v.uploadedImageLinks ?? [])[0];
 
@@ -343,7 +384,6 @@ export default function EditAdPage() {
       description: v.description,
       hyperlink: v.hyperlink?.trim() ? v.hyperlink.trim() : null,
       buttonText: v.buttonText?.trim() ? v.buttonText.trim() : null,
-      // convert datetime-local -> ISO for server
       startTime: localInputToISO(v.startTime),
       endTime: localInputToISO(v.endTime),
       industries: v.industries ?? [],
@@ -368,7 +408,9 @@ export default function EditAdPage() {
   if (isError && !isBusy) {
     return (
       <div className="p-6 space-y-3">
-        <div className="text-sm text-red-500">Failed to load ad.</div>
+        <Alert variant="destructive" className="rounded-2xl">
+          <AlertDescription>Failed to load ad.</AlertDescription>
+        </Alert>
         <Button variant="secondary" onClick={() => navigate("/ad/ads")}>
           Back
         </Button>
@@ -376,15 +418,22 @@ export default function EditAdPage() {
     );
   }
 
+  const hyperlink = String(watch("hyperlink") || "").trim();
+  const ctaText =
+    String(watch("buttonText") || "").trim().length > 0
+      ? String(watch("buttonText") || "").trim()
+      : "Visit";
+
   return (
-    <div className="p-6 space-y-8 w-full">
+    <div className="p-6 space-y-6 w-full max-w-6xl mx-auto">
+      {/* top header */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <Button
             variant="secondary"
             size="icon"
             onClick={() => navigate(`/ad/ads/${id}`)}
-            className="shrink-0"
+            className="shrink-0 rounded-2xl"
             aria-label="Back"
             title="Back"
             disabled={isBusy}
@@ -393,9 +442,18 @@ export default function EditAdPage() {
           </Button>
 
           <div className="min-w-0">
-            <h1 className="text-2xl tracking-wider truncate">Edit Ad</h1>
+            <div className="flex items-center gap-2 min-w-0">
+              <h1 className="text-xl font-semibold tracking-wide truncate">
+                Edit Ad
+              </h1>
+              {archived ? (
+                <Badge className="rounded-full bg-red-500/15 text-red-200 border border-red-500/30 hover:bg-red-500/15">
+                  Archived
+                </Badge>
+              ) : null}
+            </div>
             <p className="text-xs text-muted-foreground truncate">
-              {ad?._id ? `Ad ID: ${ad._id}` : "Loading ad…"}
+              Update creative, destination and targeting
             </p>
           </div>
         </div>
@@ -403,10 +461,15 @@ export default function EditAdPage() {
         <Button
           type="submit"
           form="ad-edit-form"
-          disabled={isBusy || !isValid}
-          className="text-base font-light tracking-wide"
+          disabled={isBusy || !isValid || archived}
+          className={cn("rounded-2xl", archived ? "opacity-70" : "")}
+          title={archived ? "Archived ads cannot be edited" : "Save changes"}
         >
-          {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {isBusy ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Save className="mr-2 h-4 w-4" />
+          )}
           Save
         </Button>
       </div>
@@ -418,324 +481,589 @@ export default function EditAdPage() {
         </div>
       ) : null}
 
+      {/* layout */}
       <Form {...form}>
         <form
           id="ad-edit-form"
           onSubmit={handleSubmitNormalized(editAdBaseZ, form, onSubmit)}
-          className="space-y-6"
+          className="grid grid-cols-1 lg:grid-cols-5 gap-6"
           noValidate
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <TextField<EditAdFormValues>
-              form={form}
-              schema={editAdBaseZ}
-              name="title"
-              label="Title"
-              placeholder="Enter title"
-              showError
-              showCounter
-            />
+          {/* LEFT: form */}
+          <div className="lg:col-span-3 space-y-6">
+            <Card className="rounded-3xl overflow-hidden bg-gradient-to-b from-primary/10 via-background to-background">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-semibold">
+                  Content
+                </CardTitle>
+                <div className="text-xs text-muted-foreground">
+                  Title and description shown to users
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <TextField<EditAdFormValues>
+                  form={form}
+                  schema={editAdBaseZ}
+                  name="title"
+                  label="Title"
+                  placeholder="Enter title"
+                  showError
+                  showCounter
+                />
 
-            {/* Industries */}
-            <div className="space-y-2">
-              <label className="text-sm font-normal tracking-wide">
-                Industries (optional) • max {MAX_INDUSTRY_PER_AD}
-              </label>
+                <TextAreaField<EditAdFormValues>
+                  form={form}
+                  schema={editAdBaseZ}
+                  name="description"
+                  label="Description"
+                  placeholder="Write description"
+                  rows={6}
+                  showError
+                  showCounter
+                />
+              </CardContent>
+            </Card>
 
-              <IndustryInfiniteSelect
-                placeholder="Search industries..."
-                onChange={(opt) => {
-                  const indId = opt?.value ? String(opt.value) : "";
-                  const indLabel = opt?.label ? String(opt.label) : "";
-                  if (!indId) return;
+            <Card className="rounded-3xl">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-semibold">
+                  Destination
+                </CardTitle>
+                <div className="text-xs text-muted-foreground">
+                  Link + CTA button label
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <TextField<EditAdFormValues>
+                    form={form}
+                    schema={editAdBaseZ}
+                    name="hyperlink"
+                    label="Hyperlink (optional)"
+                    placeholder="https://..."
+                    showError
+                  />
 
-                  const curr = (getValues("industries") ?? []) as string[];
-                  if (curr.includes(indId)) return;
+                  <TextField<EditAdFormValues>
+                    form={form}
+                    schema={editAdBaseZ}
+                    name="buttonText"
+                    label="Button Text (optional)"
+                    placeholder="Visit"
+                    showError
+                    showCounter
+                  />
+                </div>
 
-                  if (curr.length >= MAX_INDUSTRY_PER_AD) {
-                    appToast.error(
-                      `Max ${MAX_INDUSTRY_PER_AD} industries allowed`,
-                    );
-                    return;
-                  }
-
-                  form.setValue("industries", [...curr, indId], {
-                    shouldDirty: true,
-                    shouldTouch: true,
-                    shouldValidate: true,
-                  });
-
-                  setIndustryLabels((prev) => ({
-                    ...prev,
-                    [indId]: indLabel || prev[indId] || indId,
-                  }));
-                }}
-                selectProps={{
-                  menuPortalTarget: document.body,
-                  menuPosition: "fixed",
-                  value: null as any,
-                  isClearable: true,
-                }}
-              />
-
-              <div className="text-xs text-muted-foreground">
-                Selected: {(industries ?? []).length}/{MAX_INDUSTRY_PER_AD}
-              </div>
-
-              {(industries ?? []).length > 0 ? (
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {(industries ?? []).map((indId) => (
-                    <button
-                      key={indId}
-                      type="button"
-                      onClick={() => {
-                        const curr = (getValues("industries") ??
-                          []) as string[];
-                        form.setValue(
-                          "industries",
-                          curr.filter((x) => x !== indId),
-                          {
-                            shouldDirty: true,
-                            shouldTouch: true,
-                            shouldValidate: true,
-                          },
-                        );
-                      }}
-                      className="px-3 py-1 rounded-full border text-xs hover:bg-muted"
-                      title="Remove industry"
+                {hyperlink ? (
+                  <div className="rounded-2xl border bg-background/50 p-3 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-xs text-muted-foreground">
+                        Preview link
+                      </div>
+                      <div className="text-sm truncate">{hyperlink}</div>
+                    </div>
+                    <a
+                      href={hyperlink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="shrink-0"
                     >
-                      {industryLabels[indId] || indId}{" "}
-                      <span className="ml-1 opacity-70">×</span>
-                    </button>
-                  ))}
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        className="rounded-xl"
+                      >
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Open
+                      </Button>
+                    </a>
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-3xl">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-semibold">
+                  Schedule
+                </CardTitle>
+                <div className="text-xs text-muted-foreground">
+                  Optional run window (start & end must be set together)
                 </div>
-              ) : null}
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <Controller
+                    control={form.control}
+                    name="startTime"
+                    render={({ field }) => (
+                      <div className="space-y-2">
+                        <label className="text-sm font-normal tracking-wide">
+                          Start Date (optional)
+                        </label>
 
-              {errors.industries?.message ? (
-                <p className="text-sm text-destructive">
-                  {String(errors.industries.message)}
-                </p>
-              ) : null}
-            </div>
-          </div>
+                        <div
+                          className={cn(
+                            "flex items-center gap-2 rounded-2xl border bg-transparent px-3 h-11",
+                            errors.startTime
+                              ? "border-red-500"
+                              : "border-border",
+                          )}
+                        >
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <input
+                            type="datetime-local"
+                            value={field.value ?? ""}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              field.onChange(v ? v : null);
+                              void form.trigger(["startTime", "endTime"]);
+                            }}
+                            onBlur={() => {
+                              field.onBlur();
+                              void form.trigger(["startTime", "endTime"]);
+                            }}
+                            className="w-full bg-transparent outline-none text-sm"
+                          />
+                        </div>
 
-          <TextAreaField<EditAdFormValues>
-            form={form}
-            schema={editAdBaseZ}
-            name="description"
-            label="Description"
-            placeholder="Write description"
-            rows={5}
-            showError
-            showCounter
-          />
+                        {errors.startTime?.message ? (
+                          <p className="text-sm text-destructive">
+                            {String(errors.startTime.message)}
+                          </p>
+                        ) : null}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <TextField<EditAdFormValues>
-              form={form}
-              schema={editAdBaseZ}
-              name="hyperlink"
-              label="Hyperlink (optional)"
-              placeholder="https://..."
-              showError
-            />
-
-            <TextField<EditAdFormValues>
-              form={form}
-              schema={editAdBaseZ}
-              name="buttonText"
-              label="Button Text (optional)"
-              placeholder="Learn more"
-              showError
-              showCounter
-            />
-          </div>
-
-          {/* Start / End Date (pair validation) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Controller
-              control={form.control}
-              name="startTime"
-              render={({ field }) => (
-                <div className="space-y-2">
-                  <label className="text-sm font-normal tracking-wide">
-                    Start Date (optional)
-                  </label>
-
-                  <input
-                    type="datetime-local"
-                    value={field.value ?? ""}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      field.onChange(v ? v : null);
-                      void form.trigger(["startTime", "endTime"]);
-                    }}
-                    onBlur={() => {
-                      field.onBlur();
-                      void form.trigger(["startTime", "endTime"]);
-                    }}
-                    className={[
-                      "w-full h-11 rounded-2xl border px-3 text-base font-light tracking-wide bg-transparent outline-none focus:ring-2",
-                      errors.startTime
-                        ? "border-red-500 focus:ring-red-200"
-                        : "border-border focus:ring-muted",
-                    ].join(" ")}
+                        {!errors.startTime && !!startTime && !endTime ? (
+                          <p className="text-xs text-muted-foreground">
+                            Pick an end date to complete the range.
+                          </p>
+                        ) : null}
+                      </div>
+                    )}
                   />
 
-                  {errors.startTime?.message ? (
-                    <p className="text-sm text-destructive">
-                      {String(errors.startTime.message)}
-                    </p>
-                  ) : null}
+                  <Controller
+                    control={form.control}
+                    name="endTime"
+                    render={({ field }) => (
+                      <div className="space-y-2">
+                        <label className="text-sm font-normal tracking-wide">
+                          End Date (optional)
+                        </label>
 
-                  {!errors.startTime && !!startTime && !endTime ? (
-                    <p className="text-xs text-muted-foreground">
-                      Pick an end date to complete the range.
-                    </p>
-                  ) : null}
-                </div>
-              )}
-            />
+                        <div
+                          className={cn(
+                            "flex items-center gap-2 rounded-2xl border bg-transparent px-3 h-11",
+                            errors.endTime ? "border-red-500" : "border-border",
+                          )}
+                        >
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <input
+                            type="datetime-local"
+                            value={field.value ?? ""}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              field.onChange(v ? v : null);
+                              void form.trigger(["startTime", "endTime"]);
+                            }}
+                            onBlur={() => {
+                              field.onBlur();
+                              void form.trigger(["startTime", "endTime"]);
+                            }}
+                            className="w-full bg-transparent outline-none text-sm"
+                          />
+                        </div>
 
-            <Controller
-              control={form.control}
-              name="endTime"
-              render={({ field }) => (
-                <div className="space-y-2">
-                  <label className="text-sm font-normal tracking-wide">
-                    End Date (optional)
-                  </label>
+                        {errors.endTime?.message ? (
+                          <p className="text-sm text-destructive">
+                            {String(errors.endTime.message)}
+                          </p>
+                        ) : null}
 
-                  <input
-                    type="datetime-local"
-                    value={field.value ?? ""}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      field.onChange(v ? v : null);
-                      void form.trigger(["startTime", "endTime"]);
-                    }}
-                    onBlur={() => {
-                      field.onBlur();
-                      void form.trigger(["startTime", "endTime"]);
-                    }}
-                    className={[
-                      "w-full h-11 rounded-2xl border px-3 text-base font-light tracking-wide bg-transparent outline-none focus:ring-2",
-                      errors.endTime
-                        ? "border-red-500 focus:ring-red-200"
-                        : "border-border focus:ring-muted",
-                    ].join(" ")}
+                        {!errors.endTime && !!endTime && !startTime ? (
+                          <p className="text-xs text-muted-foreground">
+                            Pick a start date to complete the range.
+                          </p>
+                        ) : null}
+                      </div>
+                    )}
                   />
-
-                  {errors.endTime?.message ? (
-                    <p className="text-sm text-destructive">
-                      {String(errors.endTime.message)}
-                    </p>
-                  ) : null}
-
-                  {!errors.endTime && !!endTime && !startTime ? (
-                    <p className="text-xs text-muted-foreground">
-                      Pick a start date to complete the range.
-                    </p>
-                  ) : null}
                 </div>
-              )}
-            />
-          </div>
 
-          {/* Image uploader (array max 1) */}
-          <div className="space-y-3 rounded-2xl border p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="text-sm font-medium tracking-wide">
-                  Image (optional)
+                <Separator />
+
+                {/* QUICK FUTURE WINDOWS */}
+                <div className="space-y-2">
+                  <div className="text-xs text-muted-foreground">
+                    Quick windows (from now)
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="rounded-xl"
+                      disabled={isBusy}
+                      onClick={() => {
+                        const { startISO, endISO } = addDaysISO(7);
+                        applyWindow(startISO, endISO);
+                      }}
+                    >
+                      Next 7 days
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="rounded-xl"
+                      disabled={isBusy}
+                      onClick={() => {
+                        const { startISO, endISO } = addDaysISO(15);
+                        applyWindow(startISO, endISO);
+                      }}
+                    >
+                      Next 15 days
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="rounded-xl"
+                      disabled={isBusy}
+                      onClick={() => {
+                        const { startISO, endISO } = addMonthsISO(1);
+                        applyWindow(startISO, endISO);
+                      }}
+                    >
+                      Next 1 month
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="rounded-xl"
+                      disabled={isBusy}
+                      onClick={() => {
+                        const { startISO, endISO } = addMonthsISO(3);
+                        applyWindow(startISO, endISO);
+                      }}
+                    >
+                      Next 3 months
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="rounded-xl"
+                      disabled={isBusy}
+                      onClick={() => {
+                        setValue("startTime", null, {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        });
+                        setValue("endTime", null, {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        });
+                        void form.trigger(["startTime", "endTime"]);
+                      }}
+                    >
+                      Clear
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="rounded-xl"
+                      disabled={isBusy}
+                      onClick={resetScheduleToOriginal}
+                      title="Reset schedule to the original values loaded from the server"
+                    >
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Reset to original
+                    </Button>
+                  </div>
                 </div>
-                <div className="text-xs text-muted-foreground">Max 1 image</div>
-              </div>
+              </CardContent>
+            </Card>
 
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    setValue("uploadedImageLinks", [], {
-                      shouldDirty: true,
-                      shouldValidate: true,
-                    })
-                  }
-                  disabled={isBusy || !(imgArr?.length ?? 0)}
-                >
-                  Remove
-                </Button>
+            <Card className="rounded-3xl">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-semibold">
+                  Targeting
+                </CardTitle>
+                <div className="text-xs text-muted-foreground">
+                  Optional industry tags (max {MAX_INDUSTRY_PER_AD})
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <IndustryInfiniteSelect
+                  placeholder="Search industries..."
+                  onChange={(opt) => {
+                    const indId = opt?.value ? String(opt.value) : "";
+                    const indLabel = opt?.label ? String(opt.label) : "";
+                    if (!indId) return;
 
-                <input
-                  ref={imageInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) {
-                      setValue("uploadedImageLinks", [f] as any, {
-                        shouldDirty: true,
-                        shouldValidate: true,
-                      });
+                    const curr = (getValues("industries") ?? []) as string[];
+                    if (curr.includes(indId)) return;
+
+                    if (curr.length >= MAX_INDUSTRY_PER_AD) {
+                      appToast.error(
+                        `Max ${MAX_INDUSTRY_PER_AD} industries allowed`,
+                      );
+                      return;
                     }
-                    e.currentTarget.value = "";
+
+                    form.setValue("industries", [...curr, indId], {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                      shouldValidate: true,
+                    });
+
+                    setIndustryLabels((prev) => ({
+                      ...prev,
+                      [indId]: indLabel || prev[indId] || indId,
+                    }));
+                  }}
+                  selectProps={{
+                    menuPortalTarget: document.body,
+                    menuPosition: "fixed",
+                    value: null as any,
+                    isClearable: true,
                   }}
                 />
 
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={isBusy}
-                  onClick={() => imageInputRef.current?.click()}
-                >
-                  Choose file
-                </Button>
-              </div>
-            </div>
-
-            {errors.uploadedImageLinks?.message ? (
-              <p className="text-sm text-destructive">
-                {String(errors.uploadedImageLinks.message)}
-              </p>
-            ) : null}
-
-            {previewUrl ? (
-              <div className="flex items-start gap-4">
-                <img
-                  src={previewUrl}
-                  alt="preview"
-                  className="h-28 w-28 rounded-xl object-cover border"
-                />
-                <div className="space-y-1">
-                  <div className="text-xs text-muted-foreground">Selected</div>
-                  <div className="text-sm break-all">
-                    {imgFirst instanceof File
-                      ? imgFirst.name
-                      : typeof imgFirst === "string"
-                        ? imgFirst
-                        : "—"}
-                  </div>
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span className="inline-flex items-center gap-1">
+                    <Tag className="h-3.5 w-3.5" />
+                    Selected: {(industries ?? []).length}/{MAX_INDUSTRY_PER_AD}
+                  </span>
                 </div>
-              </div>
-            ) : (
-              <div className="text-sm text-muted-foreground">
-                No image selected.
-              </div>
-            )}
+
+                {(industries ?? []).length > 0 ? (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {(industries ?? []).map((indId) => (
+                      <button
+                        key={indId}
+                        type="button"
+                        onClick={() => {
+                          const curr = (getValues("industries") ??
+                            []) as string[];
+                          form.setValue(
+                            "industries",
+                            curr.filter((x) => x !== indId),
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          );
+                        }}
+                        className="px-3 py-1 rounded-full border text-xs bg-background hover:bg-accent/20 transition"
+                        title="Remove industry"
+                        disabled={isBusy}
+                      >
+                        <span className="max-w-[260px] truncate inline-block align-bottom">
+                          {industryLabels[indId] || indId}
+                        </span>{" "}
+                        <span className="ml-1 opacity-70">×</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+
+                {errors.industries?.message ? (
+                  <p className="text-sm text-destructive">
+                    {String(errors.industries.message)}
+                  </p>
+                ) : null}
+              </CardContent>
+            </Card>
+
+            <div className="flex items-center justify-end gap-2 pb-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate(`/ad/ads/${id}`)}
+                disabled={isBusy}
+                className="rounded-2xl"
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate(`/ad/ads/${id}`)}
-              disabled={isBusy}
-            >
-              Cancel
-            </Button>
+          {/* RIGHT: preview */}
+          <div className="lg:col-span-2">
+            <div className="sticky top-6 space-y-4">
+              <Card className="rounded-3xl overflow-hidden">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base font-semibold">
+                    Preview
+                  </CardTitle>
+                  <div className="text-xs text-muted-foreground">
+                    How your ad may look
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-4">
+                  {/* image uploader */}
+                  <div className="rounded-2xl border bg-background/50 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium">Hero image</div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          Max 1 image
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="rounded-xl"
+                          onClick={() =>
+                            setValue("uploadedImageLinks", [], {
+                              shouldDirty: true,
+                              shouldValidate: true,
+                            })
+                          }
+                          disabled={isBusy || !(imgArr?.length ?? 0)}
+                        >
+                          Remove
+                        </Button>
+
+                        <input
+                          ref={imageInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) {
+                              setValue("uploadedImageLinks", [f] as any, {
+                                shouldDirty: true,
+                                shouldValidate: true,
+                              });
+                            }
+                            e.currentTarget.value = "";
+                          }}
+                        />
+
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="rounded-xl"
+                          disabled={isBusy}
+                          onClick={() => imageInputRef.current?.click()}
+                        >
+                          Choose
+                        </Button>
+                      </div>
+                    </div>
+
+                    {errors.uploadedImageLinks?.message ? (
+                      <p className="text-sm text-destructive mt-2">
+                        {String(errors.uploadedImageLinks.message)}
+                      </p>
+                    ) : null}
+
+                    <div className="mt-3 rounded-2xl border overflow-hidden bg-background">
+                      {previewUrl ? (
+                        <img
+                          src={previewUrl}
+                          alt="preview"
+                          className="w-full h-44 object-cover"
+                        />
+                      ) : (
+                        <div className="h-44 flex items-center justify-center bg-muted/30">
+                          <div className="text-center text-xs text-muted-foreground">
+                            <ImageIcon className="h-5 w-5 mx-auto mb-2 opacity-70" />
+                            No image selected
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-3 text-xs text-muted-foreground truncate">
+                      {imgFirst instanceof File
+                        ? imgFirst.name
+                        : typeof imgFirst === "string"
+                          ? "Existing image"
+                          : "—"}
+                    </div>
+                  </div>
+
+                  {/* mini card preview */}
+                  <div className="rounded-3xl border overflow-hidden bg-background">
+                    {previewUrl ? (
+                      <div className="relative">
+                        <img
+                          src={previewUrl}
+                          alt="card-preview"
+                          className="w-full h-40 object-cover"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/0 to-black/0" />
+                        <div className="absolute bottom-3 left-3 right-3">
+                          <div className="text-white font-semibold text-sm line-clamp-1">
+                            {String(watch("title") || "Title")}
+                          </div>
+                          <div className="text-white/80 text-xs line-clamp-2 mt-1">
+                            {String(watch("description") || "Description")}
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <div className="p-4 space-y-3">
+                      <div className="space-y-1">
+                        <div className="text-sm font-semibold line-clamp-1 break-words">
+                          {String(watch("title") || "Title")}
+                        </div>
+                        <div className="text-xs text-muted-foreground line-clamp-3 break-words">
+                          {String(watch("description") || "Description")}
+                        </div>
+                      </div>
+
+                      {/* CTA only if hyperlink exists. Default label: Visit */}
+                      {hyperlink ? (
+                        <Button
+                          type="button"
+                          className="w-full rounded-2xl"
+                          onClick={() => {
+                            window.open(hyperlink, "_blank", "noreferrer");
+                          }}
+                        >
+                          <span className="truncate max-w-full inline-block">
+                            {ctaText}
+                          </span>
+                        </Button>
+                      ) : null}
+
+                      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                        <span className="inline-flex items-center gap-1">
+                          <Calendar className="h-3.5 w-3.5" />
+                          {startTime && endTime ? "Scheduled" : "No schedule"}
+                        </span>
+                        <span className="tabular-nums">
+                          {(industries ?? []).length}/{MAX_INDUSTRY_PER_AD} tags
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {archived ? (
+                <Alert className="rounded-2xl border-red-500/30 bg-red-500/10">
+                  <AlertDescription className="text-red-200">
+                    This ad is archived. Editing and saving is disabled.
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+            </div>
           </div>
         </form>
       </Form>
