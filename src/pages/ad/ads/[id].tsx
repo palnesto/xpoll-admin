@@ -1,3 +1,5 @@
+// src/pages/ad/ads/[id].tsx
+
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Loader2, Trash2, ArrowLeft, Pencil } from "lucide-react";
@@ -10,52 +12,60 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+
+import { endpoints } from "@/api/endpoints";
 import { useApiQuery } from "@/hooks/useApiQuery";
+import { utcToAdminFormatted } from "@/utils/time";
 
 import ConfirmArchiveAdModal from "@/components/modals/ad/ad/delete";
-import { utcToAdminFormatted } from "@/utils/time";
+
+type Industry = {
+  _id: string;
+  name: string;
+  description?: string | null;
+  archivedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
 
 type Ad = {
   _id: string;
   adOwnerId: string;
+  internalAuthor?: string | null;
   title: string;
-  description?: string | null;
-
-  uploadedImageLinks?: string[];
-  uploadedVideoLinks?: string[];
-
+  description: string;
+  uploadedImageLinks: string[];
+  uploadedVideoLinks: string[];
   hyperlink?: string | null;
   buttonText?: string | null;
-
   startTime?: string | null;
   endTime?: string | null;
-
+  status?: string | null;
   archivedAt?: string | null;
   createdAt?: string;
   updatedAt?: string;
-
-  status?: "draft" | "scheduled" | "live" | "ended";
-  adOwner?: { _id: string; name: string; description?: string | null } | null;
-
-  industries?: { _id: string; name: string; description?: string | null }[];
+  industries?: Industry[];
 };
 
 export default function SpecificAdPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+
   const [isArchiveOpen, setIsArchiveOpen] = useState(false);
 
   const urlWithQuery = useMemo(() => {
     if (!id) return "";
-    return `/internal/advertisement/ad/${id}?includeArchived=true`;
+    console.log("id", id);
+    // ✅ Your endpoint builder (note: parameter name is "adOwnerId" but it is actually adId)
+    return endpoints.entities.ad.ad.getById(
+      { adId: id },
+      { includeArchived: "true" },
+    );
   }, [id]);
 
   const { data, isLoading, isFetching, error, refetch } = useApiQuery(
     urlWithQuery,
-    {
-      key: ["ad-by-id-view", id, urlWithQuery],
-      enabled: !!id,
-    } as any,
+    { enabled: !!id } as any,
   );
 
   useEffect(() => {
@@ -74,6 +84,7 @@ export default function SpecificAdPage() {
 
   return (
     <div className="p-6 space-y-6 w-full">
+      {/* header */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <Button
@@ -98,12 +109,6 @@ export default function SpecificAdPage() {
                   Archived
                 </span>
               ) : null}
-
-              {ad?.status ? (
-                <span className="shrink-0 text-[11px] px-2 py-0.5 rounded-full font-semibold border bg-muted/30 text-muted-foreground">
-                  {ad.status.toUpperCase()}
-                </span>
-              ) : null}
             </div>
 
             <p className="text-xs text-muted-foreground">Ad details</p>
@@ -122,6 +127,7 @@ export default function SpecificAdPage() {
             Edit
           </Button>
 
+          {/* ✅ Delete / Archive button */}
           <Button
             variant="destructive"
             size="sm"
@@ -146,6 +152,7 @@ export default function SpecificAdPage() {
         </div>
       ) : null}
 
+      {/* body */}
       {ad ? (
         <Card
           className={cn(
@@ -159,9 +166,7 @@ export default function SpecificAdPage() {
                 {ad.title}
               </CardTitle>
               <CardDescription className="text-muted-foreground mt-2">
-                <p className="whitespace-pre-wrap break-words">
-                  {ad.description || "—"}
-                </p>
+                <p className="line-clamp-3">{ad.description || "—"}</p>
               </CardDescription>
             </div>
 
@@ -170,32 +175,56 @@ export default function SpecificAdPage() {
                 <span className="font-medium">Ad ID:</span>{" "}
                 <span className="font-mono break-all">{ad._id}</span>
               </div>
+
               <div>
-                <span className="font-medium">Owner:</span>{" "}
-                <span className="font-medium">
-                  {ad.adOwner?.name ?? ad.adOwnerId}
-                </span>
+                <span className="font-medium">Ad Owner ID:</span>{" "}
+                <span className="font-mono break-all">{ad.adOwnerId}</span>
               </div>
+
               <div>
-                <span className="font-medium">Schedule:</span>{" "}
-                {fmt(ad.startTime)} → {fmt(ad.endTime)}
+                <span className="font-medium">Status:</span>{" "}
+                <span className="font-mono">{ad.status || "—"}</span>
               </div>
+
+              <div>
+                <span className="font-medium">Start:</span> {fmt(ad.startTime)}
+              </div>
+
+              <div>
+                <span className="font-medium">End:</span> {fmt(ad.endTime)}
+              </div>
+
               <div>
                 <span className="font-medium">Hyperlink:</span>{" "}
-                {ad.hyperlink ?? "—"}
+                {ad.hyperlink ? (
+                  <a
+                    href={ad.hyperlink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline break-all"
+                  >
+                    {ad.hyperlink}
+                  </a>
+                ) : (
+                  "—"
+                )}
               </div>
+
               <div>
                 <span className="font-medium">Button Text:</span>{" "}
-                {ad.buttonText ?? "—"}
+                {ad.buttonText || "—"}
               </div>
+
               <div>
                 <span className="font-medium">Created:</span>{" "}
                 {fmt(ad.createdAt)}
               </div>
+
               <div>
                 <span className="font-medium">Updated:</span>{" "}
                 {fmt(ad.updatedAt)}
               </div>
+
               {archived ? (
                 <div>
                   <span className="font-medium">Archived At:</span>{" "}
@@ -204,63 +233,56 @@ export default function SpecificAdPage() {
               ) : null}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div className="rounded-2xl border bg-muted/10 p-4">
-                <div className="text-xs text-muted-foreground mb-2">
-                  Industries
-                </div>
-                {Array.isArray(ad.industries) && ad.industries.length ? (
-                  <ul className="space-y-1">
-                    {ad.industries.map((i) => (
-                      <li key={i._id} className="text-sm">
-                        <span className="font-medium">{i.name}</span>{" "}
-                        <span className="text-xs text-muted-foreground">
-                          ({i._id})
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <div className="text-sm text-muted-foreground">—</div>
-                )}
+            {/* Images */}
+            <div className="pt-2 space-y-2">
+              <div className="text-xs font-medium text-foreground/80">
+                Images
               </div>
-
-              <div className="rounded-2xl border bg-muted/10 p-4">
-                <div className="text-xs text-muted-foreground mb-2">Media</div>
-                <div className="space-y-2">
-                  <div>
-                    <div className="text-xs text-muted-foreground">Images</div>
-                    {Array.isArray(ad.uploadedImageLinks) &&
-                    ad.uploadedImageLinks.length ? (
-                      <ul className="list-disc pl-5">
-                        {ad.uploadedImageLinks.map((x, idx) => (
-                          <li key={idx} className="break-all">
-                            {x}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <div className="text-sm text-muted-foreground">—</div>
-                    )}
-                  </div>
-
-                  <div>
-                    <div className="text-xs text-muted-foreground">Videos</div>
-                    {Array.isArray(ad.uploadedVideoLinks) &&
-                    ad.uploadedVideoLinks.length ? (
-                      <ul className="list-disc pl-5">
-                        {ad.uploadedVideoLinks.map((x, idx) => (
-                          <li key={idx} className="break-all">
-                            {x}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <div className="text-sm text-muted-foreground">—</div>
-                    )}
-                  </div>
+              {Array.isArray(ad.uploadedImageLinks) &&
+              ad.uploadedImageLinks.length ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {ad.uploadedImageLinks.map((src, i) => (
+                    <a
+                      key={`${src}-${i}`}
+                      href={src}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-xl border overflow-hidden hover:opacity-90"
+                      title="Open image"
+                    >
+                      <img
+                        src={src}
+                        alt={`ad-image-${i}`}
+                        className="w-full h-40 object-cover"
+                      />
+                    </a>
+                  ))}
                 </div>
+              ) : (
+                <div className="text-sm text-muted-foreground">—</div>
+              )}
+            </div>
+
+            {/* Industries */}
+            <div className="pt-2 space-y-2">
+              <div className="text-xs font-medium text-foreground/80">
+                Industries
               </div>
+              {Array.isArray(ad.industries) && ad.industries.length ? (
+                <div className="flex flex-wrap gap-2">
+                  {ad.industries.map((ind) => (
+                    <span
+                      key={ind._id}
+                      className="px-3 py-1 rounded-full border text-xs bg-background"
+                      title={ind.description ?? ""}
+                    >
+                      {ind.name}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-sm text-muted-foreground">—</div>
+              )}
             </div>
           </CardHeader>
         </Card>
@@ -268,11 +290,18 @@ export default function SpecificAdPage() {
         <div className="text-sm text-muted-foreground">No ad found.</div>
       ) : null}
 
+      {/* ✅ archive modal */}
       {id ? (
         <ConfirmArchiveAdModal
           isOpen={isArchiveOpen}
           onClose={() => setIsArchiveOpen(false)}
           adId={id}
+          onArchived={() => {
+            // after archive, refetch to show Archived badge
+            try {
+              (refetch as any)?.();
+            } catch {}
+          }}
         />
       ) : null}
     </div>

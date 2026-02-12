@@ -1,165 +1,101 @@
-import { useCallback, useEffect, useMemo } from "react";
+// src/components/modals/ad/ad/delete.tsx
+
+import { useMemo } from "react";
 import { Loader2 } from "lucide-react";
 
-import { queryClient } from "@/api/queryClient";
-import { CustomModal } from "@/components/modals/custom-modal";
 import { Button } from "@/components/ui/button";
-import { useApiMutation } from "@/hooks/useApiMutation";
-import { useApiQuery } from "@/hooks/useApiQuery";
-import { appToast } from "@/utils/toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
-type Ad = {
-  _id: string;
-  title: string;
-  description?: string | null;
-  archivedAt?: string | null;
-  status?: "draft" | "scheduled" | "live" | "ended";
-};
+import { useApiMutation } from "@/hooks/useApiMutation";
+import { endpoints } from "@/api/endpoints";
+import { queryClient } from "@/api/queryClient";
+import { appToast } from "@/utils/toast";
 
 type Props = {
   isOpen: boolean;
   onClose: () => void;
   adId: string;
+  onArchived?: () => void;
 };
 
 export default function ConfirmArchiveAdModal({
   isOpen,
   onClose,
   adId,
+  onArchived,
 }: Props) {
-  const getUrl = useMemo(() => {
-    if (!adId) return "";
-    return `/internal/advertisement/ad/${adId}?includeArchived=true`;
+  const archiveRoute = useMemo(() => {
+    // ✅ uses your existing ad edit route
+    return endpoints.entities.ad.ad.edit(adId);
   }, [adId]);
 
-  const {
-    data: byIdData,
-    isLoading: isLoadingById,
-    isFetching: isFetchingById,
-    error: byIdError,
-    refetch,
-  } = useApiQuery(getUrl, {
-    key: ["ad-by-id", adId, getUrl],
-    enabled: !!adId && isOpen,
-  } as any);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    try {
-      (refetch as any)?.();
-    } catch {}
-  }, [isOpen, getUrl]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const ad: Ad | null = (byIdData as any)?.data?.data ?? null;
-
-  const isDetailsReady = !!ad?._id && !isLoadingById && !isFetchingById;
-  const isAlreadyArchived = !!ad?.archivedAt;
-
   const { mutateAsync, isPending } = useApiMutation<any, any>({
-    route: `/internal/advertisement/ad/${adId}`,
+    route: archiveRoute,
     method: "DELETE",
     onSuccess: () => {
       appToast.success("Ad archived");
-
-      // invalidate listing + view
-      queryClient.invalidateQueries({
-        predicate: (q) => {
-          const k0 = String(q.queryKey?.[0] ?? "");
-          return (
-            k0.includes("/internal/advertisement/ad/advanced-listing") ||
-            k0.includes("/internal/advertisement/ad/")
-          );
-        },
-      });
-
+      // refresh ad list + this ad view
+      queryClient.invalidateQueries();
       onClose();
+      onArchived?.();
     },
-    onError: (e: any) => {
-      appToast.error(e?.message ?? "Failed to archive ad");
+    onError: (err: Error) => {
+      console.log("archive ad error", err);
+      appToast.error("Failed to archive ad");
     },
   });
 
-  const doArchive = useCallback(async () => {
-    if (!adId) return;
-    await mutateAsync(undefined as any);
-  }, [adId, mutateAsync]);
-
-  if (!isOpen) return null;
-
-  const showLoading = !!adId && (isLoadingById || isFetchingById);
+  const onConfirm = async () => {
+    // ✅ backend typical patch payload; adjust if your controller expects something else
+    return mutateAsync({}).catch(() => undefined);
+  };
 
   return (
-    <CustomModal
-      isOpen={true}
-      onClose={onClose}
-      title={isAlreadyArchived ? "Ad Archived" : "Archive Ad"}
-      footer={<></>}
-      onSubmit={() => {}}
-      needX
-      isSubmitting={isPending}
-      isLoading={showLoading}
-      loader={<div className="animate-pulse">Loading...</div>}
-    >
-      <div className="space-y-4">
-        {byIdError ? (
-          <p className="text-sm text-red-500">
-            Failed to fetch ad details. Please close and try again.
-          </p>
-        ) : null}
+    <Dialog open={isOpen} onOpenChange={(v) => (!v ? onClose() : null)}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Archive this ad?</DialogTitle>
+          <DialogDescription>
+            This will archive the ad and hide it from normal listings (unless
+            includeArchived is enabled).
+          </DialogDescription>
+        </DialogHeader>
 
-        <p className="text-sm text-muted-foreground">
-          {isAlreadyArchived
-            ? "This ad is already archived."
-            : "This action will archive the ad and remove it from active listings."}
-        </p>
-
-        <div className="rounded-xl border bg-muted/20 p-3 space-y-3">
+        <div className="rounded-xl border p-3 text-xs text-muted-foreground">
           <div>
-            <div className="text-xs text-muted-foreground">Title</div>
-            <div className="text-sm font-medium">
-              {isDetailsReady ? ad?.title || "—" : "Loading..."}
-            </div>
-          </div>
-
-          <div>
-            <div className="text-xs text-muted-foreground">Description</div>
-            <div className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
-              {isDetailsReady
-                ? ad?.description?.trim()
-                  ? ad.description
-                  : "—"
-                : "Loading..."}
-            </div>
-          </div>
-
-          <div>
-            <div className="text-xs text-muted-foreground">Ad ID</div>
-            <div className="font-mono text-xs break-all">{adId}</div>
+            <span className="font-medium">Ad ID:</span>{" "}
+            <span className="font-mono break-all">{adId}</span>
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 pt-2">
+        <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onClose} disabled={isPending}>
-            Close
+            Cancel
           </Button>
 
           <Button
             variant="destructive"
-            onClick={doArchive}
-            disabled={!isDetailsReady || isPending || isAlreadyArchived}
-            title={
-              !isDetailsReady
-                ? "Fetching ad details..."
-                : isAlreadyArchived
-                  ? "Already archived"
-                  : "Archive this ad"
-            }
+            onClick={onConfirm}
+            disabled={isPending}
           >
-            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Archive
+            {isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Archiving…
+              </>
+            ) : (
+              "Archive"
+            )}
           </Button>
-        </div>
-      </div>
-    </CustomModal>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
