@@ -391,7 +391,9 @@ const MemoAdsPage = () => {
             placeholder="Select an ad to exclude…"
             queryParams={{
               includeArchived: false,
-              excludeIds: excludedIds.join(","),
+              ...(excludedIds.length
+                ? { excludeIds: excludedIds.join(",") }
+                : {}),
             }}
             onChange={(opt) => addExcludedAd(opt as any)}
             selectProps={{ menuPortalTarget: document.body }}

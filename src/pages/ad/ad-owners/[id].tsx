@@ -22,6 +22,7 @@ import { useApiQuery } from "@/hooks/useApiQuery";
 import { utcToAdminFormatted } from "@/utils/time";
 
 import ConfirmArchiveAdOwnerModal from "@/components/modals/ad/ad-owner/delete";
+import AdOwnerAdsSection from "@/components/commons/selects/ad/ad-owner-ads";
 
 type AdOwner = {
   _id: string;
@@ -209,6 +210,8 @@ export default function SpecificAdOwnerPage() {
       ) : !isBusy ? (
         <div className="text-sm text-muted-foreground">No owner found.</div>
       ) : null}
+
+      {id && <AdOwnerAdsSection adOwnerId={id} />}
 
       {id ? (
         <ConfirmArchiveAdOwnerModal
