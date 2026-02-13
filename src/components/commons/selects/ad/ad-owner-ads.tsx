@@ -1,8 +1,8 @@
-// src/components/ad/ad-owner-ads-section.tsx
+// src/components/commons/selects/ad/ad-owner-ads.tsx
 
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, ExternalLink, X } from "lucide-react";
+import { Loader2, ExternalLink, X, Plus } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useApiQuery } from "@/hooks/useApiQuery";
@@ -10,13 +10,7 @@ import { useApiQuery } from "@/hooks/useApiQuery";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 import ListingPagination from "@/components/commons/listing-pagination";
 import IndustryInfiniteSelect from "@/components/commons/selects/industry-infinite-select";
@@ -122,9 +116,9 @@ function AdCard({
           <StatusTag status={ad.status} />
         </div>
 
-        <CardDescription className="text-muted-foreground">
+        <div className="text-muted-foreground text-sm">
           <p className="line-clamp-2">{ad.description || "—"}</p>
-        </CardDescription>
+        </div>
 
         <div className="text-xs text-muted-foreground space-y-1">
           <div className="font-mono">ID: {ad._id}</div>
@@ -136,9 +130,11 @@ function AdCard({
 
 export default function AdOwnerAdsSection({
   adOwnerId,
+  adOwnerName, // optional, helps show label on create page chip
   className,
 }: {
   adOwnerId: string;
+  adOwnerName?: string | null;
   className?: string;
 }) {
   const navigate = useNavigate();
@@ -161,10 +157,10 @@ export default function AdOwnerAdsSection({
     usp.set("pageSize", String(PAGE_SIZE));
     usp.set("includeArchived", String(includeArchived));
 
-    // ✅ exact owner filter (per your note)
+    // exact owner filter
     usp.set("adOwner", String(adOwnerId));
 
-    // ✅ single search input: apply to both title + description
+    // single search input -> title + description
     const q = String(debouncedSearch || "").trim();
     if (q) {
       usp.set("title", q);
@@ -205,6 +201,13 @@ export default function AdOwnerAdsSection({
 
   const openAd = (id: string) => navigate(`/ad/ads/${id}`);
 
+  const goToCreatePrefilled = () => {
+    const qs = new URLSearchParams();
+    qs.set("adOwnerId", String(adOwnerId));
+    if (adOwnerName?.trim()) qs.set("adOwnerName", adOwnerName.trim());
+    navigate(`/ad/ads/create?${qs.toString()}`);
+  };
+
   const resetAll = () => {
     setSearch("");
     setIncludeArchived(false);
@@ -236,9 +239,24 @@ export default function AdOwnerAdsSection({
                 {total ? `${total} total` : "—"}
               </span>
             </div>
+            <div className="text-xs text-muted-foreground">
+              Ads owned by this ad owner
+            </div>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            <Button
+              type="button"
+              variant="default"
+              className="rounded-xl"
+              onClick={goToCreatePrefilled}
+              disabled={!adOwnerId}
+              title="Create a new ad for this owner"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Make an Ad
+            </Button>
+
             <Button
               type="button"
               variant="secondary"

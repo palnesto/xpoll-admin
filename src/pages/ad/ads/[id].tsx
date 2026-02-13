@@ -268,10 +268,6 @@ export default function SpecificAdPage() {
                 </span>
               ) : null}
             </div>
-
-            <p className="text-xs text-muted-foreground">
-              Creative preview + performance
-            </p>
           </div>
         </div>
 

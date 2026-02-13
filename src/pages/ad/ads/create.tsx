@@ -1,7 +1,7 @@
 // src/pages/ad/ads/create.tsx
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
@@ -9,7 +9,6 @@ import dayjs from "dayjs";
 
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -44,6 +43,7 @@ import { handleSubmitNormalized } from "@/components/commons/form/utils/rhfSubmi
 
 import AdOwnerInfiniteSelect from "@/components/commons/selects/ad/ad-owner-infinite-select";
 import IndustryInfiniteSelect from "@/components/commons/selects/industry-infinite-select";
+import { useApiQuery } from "@/hooks/useApiQuery";
 
 /* ---------------- constants ---------------- */
 
@@ -194,10 +194,13 @@ export type CreateAdFormValues = z.infer<typeof createAdZ>;
 
 export default function CreateAdPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const prefillAdOwnerId = (searchParams.get("adOwnerId") ?? "").trim();
+  const prefillAdOwnerName = (searchParams.get("adOwnerName") ?? "").trim();
 
   const defaultValues = useMemo<CreateAdFormValues>(
     () => ({
-      adOwnerId: "",
+      adOwnerId: prefillAdOwnerId || "",
       title: "",
       description: "",
       hyperlink: null,
@@ -208,9 +211,8 @@ export default function CreateAdPage() {
       uploadedImageLinks: [],
       uploadedVideoLinks: [],
     }),
-    [],
+    [prefillAdOwnerId],
   );
-
   const form = useForm<CreateAdFormValues>({
     resolver: zodResolver(createAdZ),
     defaultValues,
@@ -227,7 +229,14 @@ export default function CreateAdPage() {
   } = form;
 
   // ===== labels for chips =====
-  const [adOwnerLabel, setAdOwnerLabel] = useState<string>("");
+  const [adOwnerLabel, setAdOwnerLabel] = useState<string>(
+    () => prefillAdOwnerName || "",
+  );
+  useEffect(() => {
+    if (prefillAdOwnerName?.trim() && !adOwnerLabel?.trim()) {
+      setAdOwnerLabel(prefillAdOwnerName.trim());
+    }
+  }, [prefillAdOwnerName, adOwnerLabel]);
   const [industryLabels, setIndustryLabels] = useState<Record<string, string>>(
     {},
   );
@@ -272,8 +281,22 @@ export default function CreateAdPage() {
   const { mutateAsync, isPending } = useApiMutation<any, any>({
     route: endpoints.entities.ad.ad.create,
     method: "POST",
-    onSuccess: () => {
+    onSuccess: (res: any) => {
       appToast.success("Ad created");
+
+      // try common response shapes
+      const created =
+        res?.data?.data?.data ?? res?.data?.data ?? res?.data ?? null;
+
+      const newId =
+        created?._id ?? created?.id ?? res?.data?.data?.data?._id ?? null;
+
+      if (newId) {
+        navigate(`/ad/ads/${newId}`);
+        return;
+      }
+
+      // fallback
       navigate("/ad/ads");
     },
     onError: (err: Error) => {
@@ -336,6 +359,35 @@ export default function CreateAdPage() {
   };
 
   const selectedOwnerId = watch("adOwnerId");
+  // ===== prefill label fallback (if we only have id) =====
+  const ownerLookupUrl = useMemo(() => {
+    const id = String(selectedOwnerId || "").trim();
+    if (!id) return "";
+    // includeArchived true so name resolves even if archived
+    return endpoints.entities.ad.adOwners.getById(
+      { adOwnerId: id },
+      { includeArchived: "true" },
+    );
+  }, [selectedOwnerId]);
+
+  const {
+    data: ownerByIdData,
+    isLoading: ownerLoading,
+    isFetching: ownerFetching,
+  } = useApiQuery(ownerLookupUrl, {
+    key: ["ad-owner-by-id-create", selectedOwnerId, ownerLookupUrl],
+    enabled: !!selectedOwnerId && !adOwnerLabel && !!ownerLookupUrl,
+  } as any);
+
+  useEffect(() => {
+    if (!selectedOwnerId) return;
+    if (adOwnerLabel?.trim()) return;
+
+    const owner = (ownerByIdData as any)?.data?.data ?? null;
+    const name = owner?.name ? String(owner.name).trim() : "";
+
+    if (name) setAdOwnerLabel(name);
+  }, [selectedOwnerId, adOwnerLabel, ownerByIdData]);
   const startTime = watch("startTime");
   const endTime = watch("endTime");
 
@@ -462,7 +514,10 @@ export default function CreateAdPage() {
                       disabled={isBusy}
                     >
                       <span className="max-w-[340px] truncate inline-block align-bottom">
-                        {adOwnerLabel || selectedOwnerId}
+                        {adOwnerLabel ||
+                          (ownerLoading || ownerFetching
+                            ? "Loading owner…"
+                            : selectedOwnerId)}
                       </span>{" "}
                       <span className="ml-1 opacity-70">×</span>
                     </button>
