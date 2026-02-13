@@ -95,7 +95,7 @@ export default function SpecificAdOwnerPage() {
               ) : null}
             </div>
 
-            <p className="text-xs text-muted-foreground">Owner details</p>
+            <p className="text-xs text-muted-foreground">Ad Owner details</p>
           </div>
         </div>
 
@@ -211,7 +211,7 @@ export default function SpecificAdOwnerPage() {
         <div className="text-sm text-muted-foreground">No owner found.</div>
       ) : null}
 
-      {id && <AdOwnerAdsSection adOwnerId={id} />}
+      {id && <AdOwnerAdsSection adOwnerId={id} isArchived={!!archived} />}
 
       {id ? (
         <ConfirmArchiveAdOwnerModal

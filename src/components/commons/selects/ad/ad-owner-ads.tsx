@@ -129,10 +129,12 @@ function AdCard({
 }
 
 export default function AdOwnerAdsSection({
+  isArchived,
   adOwnerId,
   adOwnerName, // optional, helps show label on create page chip
   className,
 }: {
+  isArchived: boolean;
   adOwnerId: string;
   adOwnerName?: string | null;
   className?: string;
@@ -245,17 +247,19 @@ export default function AdOwnerAdsSection({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <Button
-              type="button"
-              variant="default"
-              className="rounded-xl"
-              onClick={goToCreatePrefilled}
-              disabled={!adOwnerId}
-              title="Create a new ad for this owner"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Make an Ad
-            </Button>
+            {!isArchived && (
+              <Button
+                type="button"
+                variant="default"
+                className="rounded-xl"
+                onClick={goToCreatePrefilled}
+                disabled={!adOwnerId}
+                title="Create a new ad for this owner"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Make an Ad
+              </Button>
+            )}
 
             <Button
               type="button"
@@ -298,10 +302,6 @@ export default function AdOwnerAdsSection({
               autoComplete="off"
               className="rounded-2xl"
             />
-            <div className="text-[11px] text-muted-foreground">
-              Uses backend <span className="font-mono">title</span> +{" "}
-              <span className="font-mono">description</span>.
-            </div>
           </div>
 
           <div className="flex flex-col gap-1">

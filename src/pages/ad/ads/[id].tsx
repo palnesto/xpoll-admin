@@ -13,6 +13,8 @@ import {
   Link2,
   Tag,
   Image as ImageIcon,
+  User,
+  Building2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -44,9 +46,12 @@ type Industry = {
   updatedAt?: string;
 };
 
+type AdOwnerLite = { _id: string; name: string; description?: string | null };
+
 type Ad = {
   _id: string;
   adOwnerId: string;
+  adOwner?: AdOwnerLite | null;
   internalAuthor?: string | null;
   title: string;
   description: string;
@@ -152,7 +157,8 @@ export default function SpecificAdPage() {
   }, [urlWithQuery]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const ad: Ad | null = (data as any)?.data?.data ?? null;
-
+  const ownerId = ad?.adOwner?._id || ad?.adOwnerId || "";
+  const ownerName = ad?.adOwner?.name || "";
   const isBusy = isLoading || isFetching;
   const archived = !!ad?.archivedAt;
 
@@ -268,6 +274,17 @@ export default function SpecificAdPage() {
                 </span>
               ) : null}
             </div>
+            {ownerId ? (
+              <button
+                type="button"
+                onClick={() => navigate(`/ad/ad-owners/${ownerId}`)}
+                className="shrink-0 rounded-full text-[11px] px-3 py-1 font-medium border bg-blue-800/30 text-blue-200 hover:bg-blue-800/40 transition mt-2 flex gap-1 pr-7 "
+                title={ownerName || ownerId}
+              >
+                <Building2 className="aspect-square h-4" />
+                <span className="text--500">{ownerName || ownerId}</span>
+              </button>
+            ) : null}
           </div>
         </div>
 
