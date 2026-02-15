@@ -14,6 +14,8 @@ import meta from "@/assets/meta.png";
 import coffee from "@/assets/coffee.png";
 import curette from "@/assets/curette.png";
 import mark from "@/assets/mark.png";
+import stanton from "@/assets/stanton.png";
+import k from "@/assets/k.png";
 
 export const ASSETS = {
   X_POLL: "xPoll", // xPoll
@@ -31,6 +33,8 @@ export const ASSETS = {
   X_Mason: "xMason", // xMason
   X_Cure: "xCure", // xCure
   X_Meta: "xMeta", // xMeta
+  X_STAN_MINI: "xStanMini", // xSTAN
+  X_K_MINI: "xKMini", // xCONTRACTOR
 } as const;
 export type AssetType = (typeof ASSETS)[keyof typeof ASSETS];
 
@@ -50,6 +54,8 @@ const _assets = [
   ASSETS.X_Mason,
   ASSETS.X_Cure,
   ASSETS.X_Meta,
+  ASSETS.X_STAN_MINI,
+  ASSETS.X_K_MINI,
 ] as const;
 export const coinAssets = [
   ASSETS.X_POLL,
@@ -67,6 +73,8 @@ export const coinAssets = [
   ASSETS.X_Mason,
   ASSETS.X_Cure,
   ASSETS.X_Meta,
+  ASSETS.X_STAN_MINI,
+  ASSETS.X_K_MINI,
 ] as const;
 export const assetEnum = z.enum(_assets);
 export const sellableAssetEnum = z.enum([
@@ -259,6 +267,26 @@ export const assetSpecs: Record<
     parent: "xMeta4",
     parentSymbol: "XMT4",
     img: meta,
+    canSell: null,
+    chain: CHAINS.STRAIN,
+  },
+  [ASSETS.X_STAN_MINI]: {
+    decimal: 8,
+    name: "XSTAN_MINI",
+    symbol: "XST_MN",
+    parent: "xStanton",
+    parentSymbol: "XSTAN",
+    img: stanton,
+    canSell: null,
+    chain: CHAINS.STRAIN,
+  },
+  [ASSETS.X_K_MINI]: {
+    decimal: 8,
+    name: "XK_MINI",
+    symbol: "XK_MN",
+    parent: "xK",
+    parentSymbol: "XCONTRACTOR",
+    img: k,
     canSell: null,
     chain: CHAINS.STRAIN,
   },
