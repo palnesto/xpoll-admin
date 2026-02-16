@@ -43,11 +43,27 @@ import { handleSubmitNormalized } from "@/components/commons/form/utils/rhfSubmi
 
 import AdOwnerInfiniteSelect from "@/components/commons/selects/ad/ad-owner-infinite-select";
 import IndustryInfiniteSelect from "@/components/commons/selects/industry-infinite-select";
-import { useApiQuery } from "@/hooks/useApiQuery";
+import { useApiQuery } from "@/hooks/useApiQuery"; 
+import type { Area } from "react-easy-crop";
+import EasyReactCropper from "@/components/commons/image-cropper"; 
+import { cropImage } from "@/utils/media/cropImage";
+import { compressImage, COMPRESS_QUALITY } from "@/utils/media/compressImage";
+import { MediaDropzone } from "@/components/commons/MediaDropzone";
 
 /* ---------------- constants ---------------- */
 
 export const MAX_INDUSTRY_PER_AD = 3;
+
+// ✅ image-only constants (same behavior limits as your AddInfo pattern)
+const MAX_IMAGE_MB = 20;
+const MAX_IMAGE_BYTES = MAX_IMAGE_MB * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+] as const;
 
 /* ---------------- helpers ---------------- */
 
@@ -225,6 +241,8 @@ export default function CreateAdPage() {
     watch,
     setValue,
     getValues,
+    setError, 
+    clearErrors, 
     formState: { isSubmitting, isValid, errors },
   } = form;
 
@@ -277,6 +295,107 @@ export default function CreateAdPage() {
 
   const imageInputRef = useRef<HTMLInputElement | null>(null);
 
+  // ✅ image-only: cropper wiring  
+  const cropperRef = useRef<{ getCroppedAreaPixels: () => Area | null } | null>(
+    null,
+  );
+  const [cropperImageUrl, setCropperImageUrl] = useState<string | null>(null);
+  const [isCropping, setIsCropping] = useState(false);
+
+  const closeCropper = () => {
+    if (cropperImageUrl?.startsWith("blob:")) {
+      try {
+        URL.revokeObjectURL(cropperImageUrl);
+      } catch {
+        /* noop */
+      }
+    }
+    setCropperImageUrl(null);
+    setIsCropping(false);
+  };
+
+  const validateImageFile = (file: File) => {
+    const isAllowed = ALLOWED_IMAGE_TYPES.includes(
+      file.type as (typeof ALLOWED_IMAGE_TYPES)[number],
+    );
+    if (!isAllowed) {
+      setError("uploadedImageLinks", {
+        type: "manual",
+        message: "Only JPG, PNG, WEBP, and GIF are allowed",
+      });
+      return false;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      const mb = (file.size / (1024 * 1024)).toFixed(2);
+      setError("uploadedImageLinks", {
+        type: "manual",
+        message: `Image is ${mb} MB. Max allowed is ${MAX_IMAGE_MB} MB.`,
+      });
+      return false;
+    }
+    clearErrors("uploadedImageLinks");
+    return true;
+  };
+
+  const onPickHeroImage = (file: File) => {
+    if (!validateImageFile(file)) return;
+
+    // keep existing behavior: store File in form state
+    setValue("uploadedImageLinks", [file] as any, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+
+    // GIF: keep as-is (skip crop)
+    if (file.type === "image/gif") {
+      closeCropper();
+      return;
+    }
+
+    // open cropper on selection (image-only functionality)
+    closeCropper();
+    const blobUrl = URL.createObjectURL(file);
+    setCropperImageUrl(blobUrl);
+    setIsCropping(true);
+  };
+
+  const onApplyCrop = async () => {
+    if (!cropperImageUrl) return;
+    const area = cropperRef.current?.getCroppedAreaPixels?.();
+    if (!area) return;
+
+    const current = (getValues("uploadedImageLinks") ?? []) as any[];
+    const currentFile = current?.[0] instanceof File ? (current[0] as File) : null;
+    const currentMime = currentFile?.type ?? "image/jpeg";
+
+    try {
+      const { file: croppedFile } = await cropImage(cropperImageUrl, area, {
+        mime: currentMime,
+        fileName: "ad-hero",
+        quality: COMPRESS_QUALITY,
+      });
+
+      if (croppedFile.size > MAX_IMAGE_BYTES) {
+        const mb = (croppedFile.size / (1024 * 1024)).toFixed(2);
+        setError("uploadedImageLinks", {
+          type: "manual",
+          message: `Cropped image is ${mb} MB. Max allowed is ${MAX_IMAGE_MB} MB.`,
+        });
+        return;
+      }
+
+      setValue("uploadedImageLinks", [croppedFile] as any, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+      clearErrors("uploadedImageLinks");
+    } catch (e) {
+      console.error("Crop failed:", e);
+    } finally {
+      closeCropper();
+    }
+  };
+
   // ===== api =====
   const { mutateAsync, isPending } = useApiMutation<any, any>({
     route: endpoints.entities.ad.ad.create,
@@ -327,13 +446,33 @@ export default function CreateAdPage() {
 
   const onSubmit = async (v: CreateAdFormValues) => {
     // normalize image:
-    // - if it's File -> upload -> url
+    // - if it's File -> (compress) upload -> url
     // - if it's string -> keep
     let uploadedImageLinks: string[] = [];
     const first = (v.uploadedImageLinks ?? [])[0];
 
     if (first instanceof File) {
-      const url = await uploadImage(first);
+      let file = first;
+
+      // ✅ image-only: compress (skip gif inside compressImage)
+      try {
+        if (file.type !== "image/gif") {
+          file = await compressImage(file);
+        }
+      } catch {
+        // keep original if compress fails
+      }
+
+      if (file.size > MAX_IMAGE_BYTES) {
+        const mb = (file.size / (1024 * 1024)).toFixed(2);
+        setError("uploadedImageLinks", {
+          type: "manual",
+          message: `Image is ${mb} MB. Max allowed is ${MAX_IMAGE_MB} MB.`,
+        });
+        return;
+      }
+
+      const url = await uploadImage(file);
       if (url) uploadedImageLinks = [url];
     } else if (typeof first === "string" && first.trim().length > 0) {
       uploadedImageLinks = [first.trim()];
@@ -946,9 +1085,18 @@ export default function CreateAdPage() {
                   </div>
                 </CardHeader>
 
-                <CardContent className="space-y-4">
-                  {/* image uploader */}
-                  <div className="rounded-2xl border bg-background/50 p-4">
+                <CardContent className="space-y-4"> 
+                  <MediaDropzone
+                    slotIndex={undefined}
+                    accept="image/*"
+                    disabled={isBusy}
+                    onFiles={(files) => {
+                      const f = files?.[0];
+                      if (f) onPickHeroImage(f);
+                    }}
+                    onPickClick={() => imageInputRef.current?.click()}
+                    className="rounded-2xl border bg-background/50 p-4"
+                  >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="text-sm font-medium">Hero image</div>
@@ -958,21 +1106,28 @@ export default function CreateAdPage() {
                       </div>
 
                       <div className="flex items-center gap-2 shrink-0">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="rounded-xl"
-                          onClick={() =>
-                            setValue("uploadedImageLinks", [], {
-                              shouldDirty: true,
-                              shouldValidate: true,
-                            })
-                          }
-                          disabled={isBusy || !(imgArr?.length ?? 0)}
-                        >
-                          Remove
-                        </Button>
+                      <Button
+  type="button"
+  variant="outline"
+  size="sm"
+  className="rounded-xl"
+  onPointerDown={(e) => e.stopPropagation()}
+  onClick={(e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    closeCropper();
+    setValue("uploadedImageLinks", [], {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    clearErrors("uploadedImageLinks");
+  }}
+  disabled={isBusy || !(imgArr?.length ?? 0)}
+>
+  Remove
+</Button>
+
 
                         <input
                           ref={imageInputRef}
@@ -982,24 +1137,27 @@ export default function CreateAdPage() {
                           onChange={(e) => {
                             const f = e.target.files?.[0];
                             if (f) {
-                              setValue("uploadedImageLinks", [f] as any, {
-                                shouldDirty: true,
-                                shouldValidate: true,
-                              });
+                              onPickHeroImage(f);
                             }
                             e.currentTarget.value = "";
                           }}
                         />
 
-                        <Button
-                          type="button"
-                          size="sm"
-                          className="rounded-xl"
-                          disabled={isBusy}
-                          onClick={() => imageInputRef.current?.click()}
-                        >
-                          Choose
-                        </Button>
+<Button
+  type="button"
+  size="sm"
+  className="rounded-xl"
+  disabled={isBusy}
+  onPointerDown={(e) => e.stopPropagation()}
+  onClick={(e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    imageInputRef.current?.click();
+  }}
+>
+  Choose
+</Button>
+
                       </div>
                     </div>
 
@@ -1033,7 +1191,64 @@ export default function CreateAdPage() {
                           ? "Existing image"
                           : "—"}
                     </div>
-                  </div>
+
+                    {/* ✅ image-only: crop UI (appears only for non-GIF picks) */}
+                    {isCropping && cropperImageUrl ? (
+                      <div className="mt-3 rounded-2xl border bg-background p-3">
+                        <div className="text-xs text-muted-foreground mb-2">
+                          Crop image
+                        </div>
+
+                        <div
+  className="relative w-full overflow-hidden rounded-xl bg-muted/30"
+  style={{ height: 220 }}
+  onPointerDown={(e) => e.stopPropagation()}
+  onClick={(e) => e.stopPropagation()}
+>
+  <EasyReactCropper
+    key={cropperImageUrl}
+    image={cropperImageUrl}
+    ref={cropperRef as any}
+    width={600}
+    height={220}
+  />
+</div>
+
+
+                        <div className="mt-3 flex gap-2">
+                        <Button
+  type="button"
+  variant="outline"
+  className="rounded-xl"
+  onPointerDown={(e) => e.stopPropagation()}
+  onClick={(e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    closeCropper();
+  }}
+  disabled={isBusy}
+>
+  Cancel
+</Button>
+
+<Button
+  type="button"
+  className="rounded-xl"
+  onPointerDown={(e) => e.stopPropagation()}
+  onClick={(e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onApplyCrop();
+  }}
+  disabled={isBusy}
+>
+  Apply Crop
+</Button>
+
+                        </div>
+                      </div>
+                    ) : null}
+                  </MediaDropzone>
 
                   {/* mini card preview */}
                   <div className="rounded-3xl border overflow-hidden bg-background">
