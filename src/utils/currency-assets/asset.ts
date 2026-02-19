@@ -16,6 +16,8 @@ import curette from "@/assets/curette.png";
 import mark from "@/assets/mark.png";
 import stanton from "@/assets/stanton.png";
 import k from "@/assets/k.png";
+import scope from "@/assets/chart.png";
+import slice from "@/assets/cut.png";
 
 export const ASSETS = {
   X_POLL: "xPoll", // xPoll
@@ -302,7 +304,7 @@ export const assetSpecs: Record<
     symbol: "XSC",
     parent: "xChart",
     parentSymbol: "xCHRT",
-    img: "/img/xScope.png",
+    img: scope,
     canSell: null,
     chain: CHAINS.STRAIN,
   },
@@ -312,7 +314,7 @@ export const assetSpecs: Record<
     symbol: "XSL",
     parent: "xCut",
     parentSymbol: "xCUT",
-    img: "/img/xSlice.png",
+    img: slice ,
     canSell: null,
     chain: CHAINS.STRAIN,
   },
