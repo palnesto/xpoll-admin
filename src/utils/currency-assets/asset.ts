@@ -35,6 +35,8 @@ export const ASSETS = {
   X_Meta: "xMeta", // xMeta
   X_STAN_MINI: "xStanMini", // xSTAN
   X_K_MINI: "xKMini", // xCONTRACTOR
+  X_SCOPE: "xScope", // xChart
+  X_SLICE: "xSlice", // xCut
 } as const;
 export type AssetType = (typeof ASSETS)[keyof typeof ASSETS];
 
@@ -56,6 +58,8 @@ const _assets = [
   ASSETS.X_Meta,
   ASSETS.X_STAN_MINI,
   ASSETS.X_K_MINI,
+  ASSETS.X_SCOPE,
+  ASSETS.X_SLICE,
 ] as const;
 export const coinAssets = [
   ASSETS.X_POLL,
@@ -75,6 +79,8 @@ export const coinAssets = [
   ASSETS.X_Meta,
   ASSETS.X_STAN_MINI,
   ASSETS.X_K_MINI,
+  ASSETS.X_SCOPE,
+  ASSETS.X_SLICE,
 ] as const;
 export const assetEnum = z.enum(_assets);
 export const sellableAssetEnum = z.enum([
@@ -287,6 +293,26 @@ export const assetSpecs: Record<
     parent: "xK",
     parentSymbol: "XCONTRACTOR",
     img: k,
+    canSell: null,
+    chain: CHAINS.STRAIN,
+  },
+  [ASSETS.X_SCOPE]: {
+    decimal: 7,
+    name: "XSCOPE",
+    symbol: "XSC",
+    parent: "xChart",
+    parentSymbol: "xCHRT",
+    img: "/img/xScope.png",
+    canSell: null,
+    chain: CHAINS.STRAIN,
+  },
+  [ASSETS.X_SLICE]: {
+    decimal: 7,
+    name: "XSLICE",
+    symbol: "XSL",
+    parent: "xCut",
+    parentSymbol: "xCUT",
+    img: "/img/xSlice.png",
     canSell: null,
     chain: CHAINS.STRAIN,
   },
