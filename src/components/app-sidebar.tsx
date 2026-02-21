@@ -26,9 +26,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { pathname } = useLocation();
   const {
     isOverallPollStats,
-    isAdminAndUserPolls,
-    isTrialPolls,
-    isAllActions,
     isAllLedgers,
     isSystemReport,
     isSellIntent,
@@ -43,6 +40,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     isUsers,
     isReferralConfig,
     isAllPayments,
+    isAllOfflinePayments,
     isAd,
     isAdOwners,
     isIndustry,
@@ -50,21 +48,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   } = React.useMemo(() => {
     // isOverallPollStats
     const isOverallPollStats = pathname === "/";
-    // isAdminAndUserPolls
-    const isAdminAndUserPolls = (() => {
-      if (pathname.startsWith("/polls")) return true;
-      else return false;
-    })();
-    // isTrialPolls
-    const isTrialPolls = (() => {
-      if (pathname.startsWith("/trials")) return true;
-      return false;
-    })();
-    // isAllActions
-    const isAllActions = (() => {
-      if (pathname.startsWith("/actions")) return true;
-      return false;
-    })();
     // all ledgers
     const isAllLedgers = pathname === "/asset-ledger/all-ledger";
     const isSystemReport = pathname === "/asset-ledger/system-report";
@@ -96,7 +79,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     // Users management
     const isUsers = pathname === "/users";
     const isReferralConfig = pathname === "/referral-config";
-    const isAllPayments = pathname === "/all-payments";
+    const isAllPayments = pathname === "/asset-ledger/all-payments";
+    const isAllOfflinePayments =
+      pathname === "/asset-ledger/all-offline-payments";
 
     // Ads management
     const isAdOwners = pathname.startsWith("/ad/ad-owners");
@@ -106,9 +91,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
     return {
       isOverallPollStats,
-      isAdminAndUserPolls,
-      isTrialPolls,
-      isAllActions,
       isAllLedgers,
       isSystemReport,
       isSellIntent,
@@ -123,6 +105,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       isReferralConfig,
       isAllBlogs,
       isAllPayments,
+      isAllOfflinePayments,
       isAd,
       isAdOwners,
       isIndustry,
@@ -206,7 +189,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Asset Ledger",
         url: "#",
         icon: GraduationCap,
-        isActive: isAllLedgers || isSystemReport,
+        isActive:
+          isAllLedgers || isSystemReport || isAllPayments || isAllOfflinePayments,
         items: [
           {
             title: "All Ledgers",
@@ -227,6 +211,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             title: "All Payments",
             url: "/asset-ledger/all-payments",
             isActive: isAllPayments,
+          },
+          {
+            title: "All Offline Payments",
+            url: "/asset-ledger/all-offline-payments",
+            isActive: isAllOfflinePayments,
           },
         ],
       },

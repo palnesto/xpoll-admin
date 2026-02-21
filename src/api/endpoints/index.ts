@@ -85,6 +85,8 @@ export const endpoints = {
       sellApproveOrder: "/internal/asset-ledger/sell-approve",
       sellRejectOrder: "/internal/asset-ledger/sell-reject",
       allPayments: "/internal/payment/all-payments",
+      updateOfflinePaymentAddressStatus: (paymentId: string) =>
+        `/internal/payment/offline/${paymentId}/address-status`,
     },
     blogs: {
       all: "/internal/blogs",
