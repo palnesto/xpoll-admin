@@ -127,6 +127,7 @@ export default function InfiniteSelect<
 
   return (
     <Select<BaseOption<T>>
+      classNamePrefix="my-dropdown"
       placeholder={placeholder}
       isClearable={isClearable}
       options={options}
@@ -156,6 +157,11 @@ export default function InfiniteSelect<
       menuShouldScrollIntoView={false}
       components={{ MenuList, ...(selectProps?.components || {}) }}
       styles={{
+        menuPortal: (base) => ({
+          ...base,
+          zIndex: 9999,
+          pointerEvents: "auto",
+        }),
         control: (base, state) => ({
           ...base,
           backgroundColor: "transparent",

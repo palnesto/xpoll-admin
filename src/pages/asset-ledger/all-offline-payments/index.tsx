@@ -7,6 +7,21 @@ import { appToast } from "@/utils/toast";
 import { ThreeDotMenu } from "@/components/commons/three-dot-menu";
 import { CustomModal } from "@/components/modals/custom-modal";
 import { Button } from "@/components/ui/button";
+import FileUploadButton from "@/components/file-upload-button";
+import { usePdfUpload } from "@/hooks/upload/useAssetUpload";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { CampaignSelect } from "@/components/commons/selects/campaign-select";
+import AdInfiniteSelect from "@/components/commons/selects/ad/ad-infinite-select";
 
 import {
   Select,
@@ -55,6 +70,20 @@ type PaymentBreakdown = {
   netReceivedAmountMinor: number | null;
 };
 
+type OfflineMetadata = {
+  addressStatus?: AddressStatus;
+  expiresAt?: string | null;
+};
+
+type SoulBoundMetadata = {
+  reportLink?: string | null;
+};
+
+type PaymentMetadata = {
+  offline?: OfflineMetadata | null;
+  soulBoundSubscription?: SoulBoundMetadata | null;
+};
+
 type PaymentEntry = {
   _id: string;
   externalAccountId?: ExternalAccount | null;
@@ -64,8 +93,10 @@ type PaymentEntry = {
   amount: number;
   paymentBreakdown?: PaymentBreakdown | null;
   purpose: OfflinePaymentPurpose;
+  metadata?: PaymentMetadata | null;
   context?: unknown;
   invoiceUrl?: string | null;
+  reportLink?: string | null;
   addressStatus?: AddressStatus;
   expiresAt?: string | null;
   createdAt: string;
@@ -88,10 +119,89 @@ type PersistedFilters = {
 
 type AddressModalState = {
   paymentId: string;
+  purpose: OfflinePaymentPurpose;
   addressStatus: AddressStatusValue;
   title: string;
   message: string;
+  existingReportLink: string | null;
 };
+
+const offlinePaymentPurposeZod = z.enum([
+  "web3-launch-campaign",
+  "ad-experience-subscription",
+  "soul-bound-subscription",
+]);
+
+const addressModalFormSchema = z
+  .object({
+    paymentId: z.string().trim().min(1),
+    purpose: offlinePaymentPurposeZod,
+    addressStatus: z.enum(["unaddressed", "addressed"]),
+    campaignId: z.string().default(""),
+    adId: z.string().default(""),
+    reportFile: z.union([z.instanceof(File), z.null()]).optional(),
+  })
+  .superRefine((value, ctx) => {
+    const isAddressing = value.addressStatus === "addressed";
+    if (!isAddressing) return;
+
+    if (
+      value.purpose === "web3-launch-campaign" &&
+      value.campaignId.trim().length === 0
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["campaignId"],
+        message: "Campaign ID is required.",
+      });
+    }
+
+    if (
+      value.purpose === "ad-experience-subscription" &&
+      value.adId.trim().length === 0
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["adId"],
+        message: "Ad ID is required.",
+      });
+    }
+
+    if (value.purpose === "soul-bound-subscription") {
+      const file = value.reportFile;
+      if (!(file instanceof File)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["reportFile"],
+          message: "Report PDF is required.",
+        });
+        return;
+      }
+      const name = file.name.toLowerCase();
+      const mime = file.type.toLowerCase();
+      const isPdf = mime === "application/pdf" || name.endsWith(".pdf");
+      if (!isPdf) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["reportFile"],
+          message: "Only PDF files are allowed.",
+        });
+      }
+    }
+  });
+
+type AddressModalFormValues = z.infer<typeof addressModalFormSchema>;
+
+function getAddressModalDefaultValues(): AddressModalFormValues {
+  return {
+    paymentId: "",
+    purpose: "soul-bound-subscription",
+    addressStatus: "addressed",
+    campaignId: "",
+    adId: "",
+    reportFile: null,
+  };
+}
 
 const EmptyIcon = () => null;
 
@@ -183,6 +293,36 @@ function readString(v: unknown): string | null {
   if (typeof v !== "string") return null;
   const t = v.trim();
   return t.length > 0 ? t : null;
+}
+
+function getEntryAddressStatus(entry: PaymentEntry): AddressStatus {
+  const metadata = readRecord(entry.metadata);
+  const offline = readRecord(metadata?.offline);
+  const statusRaw = readString(offline?.addressStatus) ?? readString(entry.addressStatus);
+  if (statusRaw === "addressed" || statusRaw === "unaddressed") return statusRaw;
+  return null;
+}
+
+function getEntryExpiresAt(entry: PaymentEntry): string | null {
+  const metadata = readRecord(entry.metadata);
+  const offline = readRecord(metadata?.offline);
+  return readString(offline?.expiresAt) ?? readString(entry.expiresAt);
+}
+
+function getEntryCampaignId(entry: PaymentEntry): string | null {
+  const context = readRecord(entry.context);
+  return readString(context?.campaignId);
+}
+
+function getEntryAdId(entry: PaymentEntry): string | null {
+  const context = readRecord(entry.context);
+  return readString(context?.adId);
+}
+
+function getEntryReportLink(entry: PaymentEntry): string | null {
+  const metadata = readRecord(entry.metadata);
+  const soulbound = readRecord(metadata?.soulBoundSubscription);
+  return readString(soulbound?.reportLink) ?? readString(entry.reportLink);
 }
 
 function formatCountdown(diffMs: number) {
@@ -383,10 +523,15 @@ function PaymentCard({
     readString(contextProduct?.name) ??
     purposeLabel(entry.purpose);
 
-  const countdown = getExpiryCountdown(entry.expiresAt, nowMs);
+  const currentAddressStatus = getEntryAddressStatus(entry);
+  const expiresAt = getEntryExpiresAt(entry);
+  const linkedCampaignId = getEntryCampaignId(entry);
+  const linkedAdId = getEntryAdId(entry);
+  const reportLink = getEntryReportLink(entry);
+  const countdown = getExpiryCountdown(expiresAt, nowMs);
 
   const nextAddressStatus: AddressStatusValue =
-    entry.addressStatus === "addressed" ? "unaddressed" : "addressed";
+    currentAddressStatus === "addressed" ? "unaddressed" : "addressed";
 
   const actions = [
     {
@@ -436,7 +581,7 @@ function PaymentCard({
               <PurposePill purpose={entry.purpose} />
               <div className="flex items-center gap-2">
                 <StatusBadge status={entry.status} />
-                <AddressStatusBadge status={entry.addressStatus ?? null} />
+                <AddressStatusBadge status={currentAddressStatus} />
               </div>
             </div>
 
@@ -482,7 +627,24 @@ function PaymentCard({
           />
           <FieldRow
             label="Expires At"
-            value={entry.expiresAt ? isoToLocal(entry.expiresAt) : "-"}
+            value={expiresAt ? isoToLocal(expiresAt) : "-"}
+          />
+          <FieldRow label="Campaign ID" value={linkedCampaignId} mono />
+          <FieldRow label="Ad ID" value={linkedAdId} mono />
+          <FieldRow
+            label="Report Link"
+            value={
+              reportLink ? (
+                <a
+                  href={reportLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue underline hover:opacity-80"
+                >
+                  Open Report
+                </a>
+              ) : null
+            }
           />
 
           {countdown ? (
@@ -660,21 +822,37 @@ export default function OfflinePaymentLedgerCardsPage() {
 
   const total = q.data?.data?.total ?? 0;
   const entries = safeArr<PaymentEntry>(q.data?.data?.entries);
+  const { uploadPdf, loading: reportUploadLoading } = usePdfUpload();
+
+  const addressForm = useForm<AddressModalFormValues>({
+    resolver: zodResolver(addressModalFormSchema),
+    defaultValues: getAddressModalDefaultValues(),
+  });
 
   const addressMutation = useMutation({
     mutationFn: async ({
       paymentId,
       addressStatus,
+      campaignId,
+      adId,
+      reportLink,
     }: {
       paymentId: string;
       addressStatus: AddressStatusValue;
+      campaignId?: string;
+      adId?: string;
+      reportLink?: string;
     }) => {
       const route =
         endpoints.entities.assetLedger.updateOfflinePaymentAddressStatus(
           paymentId,
         );
       const url = `${BASE_URL}${route}`;
-      const response = await apiInstance.patch(url, { addressStatus });
+      const payload: Record<string, unknown> = { addressStatus };
+      if (campaignId) payload.campaignId = campaignId;
+      if (adId) payload.adId = adId;
+      if (reportLink) payload.reportLink = reportLink;
+      const response = await apiInstance.patch(url, payload);
       return response.data;
     },
     onSuccess: (_data, variables) => {
@@ -684,6 +862,7 @@ export default function OfflinePaymentLedgerCardsPage() {
           : "Marked as unaddressed",
       );
       setAddressModal(null);
+      addressForm.reset(getAddressModalDefaultValues());
       queryClient.invalidateQueries({
         queryKey: ["assetLedgerOfflinePayments"],
       });
@@ -711,11 +890,58 @@ export default function OfflinePaymentLedgerCardsPage() {
 
     setAddressModal({
       paymentId: entry._id,
+      purpose: entry.purpose,
       addressStatus,
       title: actionTitle,
       message: actionMessage,
+      existingReportLink: getEntryReportLink(entry),
+    });
+
+    addressForm.reset({
+      paymentId: entry._id,
+      purpose: entry.purpose,
+      addressStatus,
+      campaignId: getEntryCampaignId(entry) ?? "",
+      adId: getEntryAdId(entry) ?? "",
+      reportFile: null,
     });
   };
+
+  const submitAddressModal = addressForm.handleSubmit(async (values) => {
+    if (addressMutation.isPending || reportUploadLoading) return;
+
+    const isAddressing = values.addressStatus === "addressed";
+    let uploadedReportLink: string | undefined;
+
+    if (isAddressing && values.purpose === "soul-bound-subscription") {
+      const file = values.reportFile;
+      if (!(file instanceof File)) return;
+      try {
+        uploadedReportLink = await uploadPdf(file, true);
+      } catch (error) {
+        appToast.error(getErrorMessage(error, "Failed to upload report PDF"));
+        return;
+      }
+    }
+
+    addressMutation.mutate({
+      paymentId: values.paymentId,
+      addressStatus: values.addressStatus,
+      ...(isAddressing && values.purpose === "web3-launch-campaign"
+        ? { campaignId: values.campaignId.trim() }
+        : {}),
+      ...(isAddressing && values.purpose === "ad-experience-subscription"
+        ? { adId: values.adId.trim() }
+        : {}),
+      ...(isAddressing && values.purpose === "soul-bound-subscription"
+        ? { reportLink: uploadedReportLink }
+        : {}),
+    });
+  });
+
+  const isAddressActionPending = addressMutation.isPending || reportUploadLoading;
+  const selectMenuPortalTarget =
+    typeof window === "undefined" ? undefined : document.body;
 
   return (
     <main className="min-h-screen text-foreground">
@@ -815,16 +1041,13 @@ export default function OfflinePaymentLedgerCardsPage() {
         <CustomModal
           isOpen
           onClose={() => {
-            if (addressMutation.isPending) return;
+            if (isAddressActionPending) return;
             setAddressModal(null);
+            addressForm.reset(getAddressModalDefaultValues());
           }}
           title={addressModal.title}
           onSubmit={() => {
-            if (addressMutation.isPending) return;
-            addressMutation.mutate({
-              paymentId: addressModal.paymentId,
-              addressStatus: addressModal.addressStatus,
-            });
+            submitAddressModal();
           }}
           submitButtonText={
             addressModal.addressStatus === "addressed"
@@ -832,29 +1055,31 @@ export default function OfflinePaymentLedgerCardsPage() {
               : "Mark Unaddressed"
           }
           submitButtonProps={{
-            disabled: addressMutation.isPending,
+            disabled: isAddressActionPending,
           }}
           footer={
             <div className="flex justify-end gap-2">
               <Button
                 variant="outline"
-                onClick={() => setAddressModal(null)}
-                disabled={addressMutation.isPending}
+                onClick={() => {
+                  if (isAddressActionPending) return;
+                  setAddressModal(null);
+                  addressForm.reset(getAddressModalDefaultValues());
+                }}
+                disabled={isAddressActionPending}
               >
                 Cancel
               </Button>
               <Button
                 onClick={() => {
-                  if (addressMutation.isPending) return;
-                  addressMutation.mutate({
-                    paymentId: addressModal.paymentId,
-                    addressStatus: addressModal.addressStatus,
-                  });
+                  submitAddressModal();
                 }}
-                disabled={addressMutation.isPending}
+                disabled={isAddressActionPending}
               >
-                {addressMutation.isPending
-                  ? "Submitting..."
+                {isAddressActionPending
+                  ? reportUploadLoading
+                    ? "Uploading PDF..."
+                    : "Submitting..."
                   : addressModal.addressStatus === "addressed"
                     ? "Mark Addressed"
                     : "Mark Unaddressed"}
@@ -869,6 +1094,151 @@ export default function OfflinePaymentLedgerCardsPage() {
               <span className="font-mono">{addressModal.paymentId}</span>
             </div>
           </div>
+
+          {addressModal.addressStatus === "addressed" &&
+          addressModal.purpose === "web3-launch-campaign" ? (
+            <Form {...addressForm}>
+              <FormField
+                control={addressForm.control}
+                name="campaignId"
+                render={({ field }) => (
+                  <FormItem className="mt-3">
+                    <FormLabel className="text-xs font-semibold text-foreground">
+                      Campaign *
+                    </FormLabel>
+                    <FormControl>
+                      <CampaignSelect
+                        placeholder="Search and select campaign..."
+                        onChange={(option) => field.onChange(option?.value ?? "")}
+                        selectProps={{
+                          value: field.value
+                            ? {
+                                value: field.value,
+                                label: field.value,
+                              }
+                            : null,
+                          onBlur: field.onBlur,
+                          menuPortalTarget: selectMenuPortalTarget,
+                          menuPosition: "fixed",
+                        }}
+                      />
+                    </FormControl>
+                    {field.value ? (
+                      <p className="text-xs text-muted-foreground">
+                        Selected ID:{" "}
+                        <span className="font-mono text-foreground/80">
+                          {field.value}
+                        </span>
+                      </p>
+                    ) : null}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </Form>
+          ) : null}
+
+          {addressModal.addressStatus === "addressed" &&
+          addressModal.purpose === "ad-experience-subscription" ? (
+            <Form {...addressForm}>
+              <FormField
+                control={addressForm.control}
+                name="adId"
+                render={({ field }) => (
+                  <FormItem className="mt-3">
+                    <FormLabel className="text-xs font-semibold text-foreground">
+                      Ad *
+                    </FormLabel>
+                    <FormControl>
+                      <AdInfiniteSelect
+                        placeholder="Search and select ad..."
+                        onChange={(option) => field.onChange(option?.value ?? "")}
+                        selectProps={{
+                          value: field.value
+                            ? {
+                                value: field.value,
+                                label: field.value,
+                              }
+                            : null,
+                          onBlur: field.onBlur,
+                          menuPortalTarget: selectMenuPortalTarget,
+                          menuPosition: "fixed",
+                        }}
+                      />
+                    </FormControl>
+                    {field.value ? (
+                      <p className="text-xs text-muted-foreground">
+                        Selected ID:{" "}
+                        <span className="font-mono text-foreground/80">
+                          {field.value}
+                        </span>
+                      </p>
+                    ) : null}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </Form>
+          ) : null}
+
+          {addressModal.addressStatus === "addressed" &&
+          addressModal.purpose === "soul-bound-subscription" ? (
+            <Form {...addressForm}>
+              <FormField
+                control={addressForm.control}
+                name="reportFile"
+                render={({ field }) => (
+                  <FormItem className="mt-3">
+                    <FormLabel className="text-xs font-semibold text-foreground">
+                      Report PDF *
+                    </FormLabel>
+                    <FormControl>
+                      <div className="space-y-2">
+                        <FileUploadButton
+                          accept="application/pdf,.pdf"
+                          buttonProps={{
+                            disabled: isAddressActionPending,
+                            className: "h-9 rounded-full",
+                          }}
+                          onChange={(e) => {
+                            const selected = e.target.files?.[0] ?? null;
+                            field.onChange(selected);
+                          }}
+                        >
+                          {field.value instanceof File
+                            ? "Change PDF"
+                            : "Upload PDF"}
+                        </FileUploadButton>
+
+                        {field.value instanceof File ? (
+                          <p className="text-xs text-muted-foreground">
+                            Selected:{" "}
+                            <span className="font-medium text-foreground">
+                              {field.value.name}
+                            </span>
+                          </p>
+                        ) : addressModal.existingReportLink ? (
+                          <a
+                            href={addressModal.existingReportLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue underline"
+                          >
+                            Current report link
+                          </a>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">
+                            Upload a PDF report file.
+                          </p>
+                        )}
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </Form>
+          ) : null}
         </CustomModal>
       ) : null}
     </main>

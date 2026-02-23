@@ -15,7 +15,7 @@ type BaseOption<T = unknown> = {
 
 export type MultiInfiniteSelectProps<
   T,
-  F extends Record<string, unknown> = Record<string, unknown>
+  F extends Record<string, unknown> = Record<string, unknown>,
 > = {
   route: string;
   pageSize?: number;
@@ -39,7 +39,7 @@ export type MultiInfiniteSelectProps<
 
 export default function MultiInfiniteSelect<
   T,
-  F extends Record<string, unknown> = Record<string, unknown>
+  F extends Record<string, unknown> = Record<string, unknown>,
 >({
   route,
   pageSize = 50,
@@ -71,7 +71,7 @@ export default function MultiInfiniteSelect<
   const emptyFiltersRef = React.useRef({} as F);
   const filters = React.useMemo(
     () => (getFilters ? getFilters(effectiveSearch) : emptyFiltersRef.current),
-    [getFilters, effectiveSearch]
+    [getFilters, effectiveSearch],
   );
 
   // Only enable when "using" the select
@@ -101,7 +101,7 @@ export default function MultiInfiniteSelect<
       setInput("");
       setSearch("");
     },
-    [onChange]
+    [onChange],
   );
 
   const handleInputChange = React.useCallback(
@@ -109,7 +109,7 @@ export default function MultiInfiniteSelect<
       if (meta.action === "input-change") setInput(val);
       return val;
     },
-    []
+    [],
   );
 
   // Throttled infinite scroll
@@ -141,7 +141,7 @@ export default function MultiInfiniteSelect<
 
   // ---- Dark-friendly styles (works with shadcn tokens + falls back) ----
   const mergeStyles = (
-    base: NonNullable<typeof selectProps>["styles"]
+    base: NonNullable<typeof selectProps>["styles"],
   ): NonNullable<typeof selectProps>["styles"] => {
     const fg = "hsl(var(--foreground, 0 0% 100%))"; // white fallback
     const border = "hsl(var(--border, 240 5% 26%))";
@@ -150,7 +150,11 @@ export default function MultiInfiniteSelect<
     const bg = "hsl(var(--background, 240 10% 4%))";
 
     const darkStyles = {
-      menuPortal: (provided: any) => ({ ...provided, zIndex: 9999 }),
+      menuPortal: (base) => ({
+        ...base,
+        zIndex: 9999,
+        pointerEvents: "auto",
+      }),
       control: (provided: any) => ({
         ...provided,
         minHeight: 38,
