@@ -39,6 +39,9 @@ export const ASSETS = {
   X_K_MINI: "xKMini", // xCONTRACTOR
   X_SCOPE: "xScope", // xChart
   X_SLICE: "xSlice", // xCut
+  // new coins
+  X_JACK_MINI: "xJackMini", // xJackMini
+  X_TERM_MINI: "xTermMini", // xTermMini
 } as const;
 export type AssetType = (typeof ASSETS)[keyof typeof ASSETS];
 
@@ -62,6 +65,8 @@ const _assets = [
   ASSETS.X_K_MINI,
   ASSETS.X_SCOPE,
   ASSETS.X_SLICE,
+  ASSETS.X_JACK_MINI,
+  ASSETS.X_TERM_MINI,
 ] as const;
 export const coinAssets = [
   ASSETS.X_POLL,
@@ -83,6 +88,8 @@ export const coinAssets = [
   ASSETS.X_K_MINI,
   ASSETS.X_SCOPE,
   ASSETS.X_SLICE,
+  ASSETS.X_JACK_MINI,
+  ASSETS.X_TERM_MINI,
 ] as const;
 export const assetEnum = z.enum(_assets);
 export const sellableAssetEnum = z.enum([
@@ -303,7 +310,7 @@ export const assetSpecs: Record<
     name: "XSCOPE",
     symbol: "XSC",
     parent: "xChart",
-    parentSymbol: "xCHRT",
+    parentSymbol: "XCHRT",
     img: scope,
     canSell: null,
     chain: CHAINS.STRAIN,
@@ -313,8 +320,28 @@ export const assetSpecs: Record<
     name: "XSLICE",
     symbol: "XSL",
     parent: "xCut",
-    parentSymbol: "xCUT",
-    img: slice ,
+    parentSymbol: "XCUT",
+    img: slice,
+    canSell: null,
+    chain: CHAINS.STRAIN,
+  },
+  [ASSETS.X_JACK_MINI]: {
+    decimal: 6,
+    name: "XJACK_MINI",
+    symbol: "XJKM",
+    parent: "XJack",
+    parentSymbol: "XJK",
+    img: "/img/xJackMini.png", // change image here like others have
+    canSell: null,
+    chain: CHAINS.STRAIN,
+  },
+  [ASSETS.X_TERM_MINI]: {
+    decimal: 6,
+    name: "XTERM_MINI",
+    symbol: "XTRM",
+    parent: "xTerm",
+    parentSymbol: "XTERM",
+    img: "/img/xTermMini.png", // change image here like others have
     canSell: null,
     chain: CHAINS.STRAIN,
   },
