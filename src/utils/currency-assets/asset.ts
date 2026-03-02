@@ -18,6 +18,8 @@ import stanton from "@/assets/stanton.png";
 import k from "@/assets/k.png";
 import scope from "@/assets/chart.png";
 import slice from "@/assets/cut.png";
+import term from "@/assets/term.png";
+import jack from "@/assets/jack.png";
 
 export const ASSETS = {
   X_POLL: "xPoll", // xPoll
@@ -331,7 +333,7 @@ export const assetSpecs: Record<
     symbol: "XJKM",
     parent: "XJack",
     parentSymbol: "XJK",
-    img: "/img/xJackMini.png", // change image here like others have
+    img: jack,
     canSell: null,
     chain: CHAINS.STRAIN,
   },
@@ -341,7 +343,7 @@ export const assetSpecs: Record<
     symbol: "XTRM",
     parent: "xTerm",
     parentSymbol: "XTERM",
-    img: "/img/xTermMini.png", // change image here like others have
+    img: term,
     canSell: null,
     chain: CHAINS.STRAIN,
   },
