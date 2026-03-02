@@ -21,7 +21,12 @@ import {
 } from "lucide-react";
 import { plusPlans } from "@/utils/plans";
 
-type PaymentStatus = "created" | "processing" | "succeeded";
+type PaymentStatus =
+  | "created"
+  | "processing"
+  | "succeeded"
+  | "failed"
+  | "canceled";
 type PaymentPurpose = "purchase-campaign-plan" | "purchase-asset-token";
 
 type Avatar = { name?: string; imageUrl?: string };
@@ -39,10 +44,21 @@ type PaymentBreakdown = {
   netReceivedAmountMinor: number | null;
 };
 
+type PaymentProvider = {
+  family?: "fiat" | "crypto";
+  code?: string;
+  refs?: {
+    intentId?: string | null;
+    eventId?: string | null;
+    checkoutId?: string | null;
+    paymentReference?: string | null;
+  } | null;
+} | null;
+
 type PaymentEntry = {
   _id: string;
   externalAccountId?: ExternalAccount | null;
-  stripePaymentIntentId: string;
+  provider?: PaymentProvider;
   status: PaymentStatus;
   currency: string;
   amount: number; // ⚠️ you said it's like 1000, 1500 etc (Stripe minor)
@@ -119,6 +135,16 @@ function formatMoneyFromMinor(amountMinor: number, currency: string) {
   }).format(value);
 }
 
+function readString(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const trimmed = v.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function getEntryProviderIntentId(entry: PaymentEntry) {
+  return readString(entry.provider?.refs?.intentId) ?? "—";
+}
+
 function isoToLocal(iso: string) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
@@ -141,8 +167,9 @@ function getWindowPages(
 /** Payment label asked: Success/Failed (but you filter created/processing too) */
 function paymentStatusLabel(s: PaymentStatus) {
   if (s === "succeeded") return "Success";
-  if (s === "processing" || s === "created") return "Pending";
-  return "Failed";
+  if (s === "failed") return "Failed";
+  if (s === "canceled") return "Canceled";
+  return "Pending";
 }
 
 function monthsFromPlanId(planId: string | null) {
@@ -224,6 +251,10 @@ function StatusBadge({ status }: { status: PaymentStatus }) {
   const cls =
     status === "succeeded"
       ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+      : status === "failed"
+        ? "bg-rose-50 text-rose-700 border-rose-200"
+        : status === "canceled"
+          ? "bg-slate-100 text-slate-700 border-slate-200"
       : status === "processing"
         ? "bg-amber-50 text-amber-700 border-amber-200"
         : "bg-slate-50 text-slate-700 border-slate-200";
@@ -349,7 +380,7 @@ function PaymentCard({
               <div className="mt-0.5 text-[12px] text-muted-foreground">
                 Payment ID:{" "}
                 <span className="font-mono text-foreground/70">
-                  {entry.stripePaymentIntentId}
+                  {getEntryProviderIntentId(entry)}
                 </span>
               </div>
             </div>
@@ -408,7 +439,7 @@ function PaymentCard({
 
           <FieldRow
             label="Payment ID"
-            value={entry.stripePaymentIntentId}
+            value={getEntryProviderIntentId(entry)}
             mono
           />
 

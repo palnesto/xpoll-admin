@@ -84,10 +84,21 @@ type PaymentMetadata = {
   soulBoundSubscription?: SoulBoundMetadata | null;
 };
 
+type PaymentProvider = {
+  family?: "fiat" | "crypto";
+  code?: string;
+  refs?: {
+    intentId?: string | null;
+    eventId?: string | null;
+    checkoutId?: string | null;
+    paymentReference?: string | null;
+  } | null;
+} | null;
+
 type PaymentEntry = {
   _id: string;
   externalAccountId?: ExternalAccount | null;
-  stripePaymentIntentId: string;
+  provider?: PaymentProvider;
   status: PaymentStatus;
   currency: string;
   amount: number;
@@ -96,9 +107,6 @@ type PaymentEntry = {
   metadata?: PaymentMetadata | null;
   context?: unknown;
   invoiceUrl?: string | null;
-  reportLink?: string | null;
-  addressStatus?: AddressStatus;
-  expiresAt?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -298,7 +306,7 @@ function readString(v: unknown): string | null {
 function getEntryAddressStatus(entry: PaymentEntry): AddressStatus {
   const metadata = readRecord(entry.metadata);
   const offline = readRecord(metadata?.offline);
-  const statusRaw = readString(offline?.addressStatus) ?? readString(entry.addressStatus);
+  const statusRaw = readString(offline?.addressStatus);
   if (statusRaw === "addressed" || statusRaw === "unaddressed") return statusRaw;
   return null;
 }
@@ -306,7 +314,7 @@ function getEntryAddressStatus(entry: PaymentEntry): AddressStatus {
 function getEntryExpiresAt(entry: PaymentEntry): string | null {
   const metadata = readRecord(entry.metadata);
   const offline = readRecord(metadata?.offline);
-  return readString(offline?.expiresAt) ?? readString(entry.expiresAt);
+  return readString(offline?.expiresAt);
 }
 
 function getEntryCampaignId(entry: PaymentEntry): string | null {
@@ -322,7 +330,11 @@ function getEntryAdId(entry: PaymentEntry): string | null {
 function getEntryReportLink(entry: PaymentEntry): string | null {
   const metadata = readRecord(entry.metadata);
   const soulbound = readRecord(metadata?.soulBoundSubscription);
-  return readString(soulbound?.reportLink) ?? readString(entry.reportLink);
+  return readString(soulbound?.reportLink);
+}
+
+function getEntryProviderIntentId(entry: PaymentEntry): string {
+  return readString(entry.provider?.refs?.intentId) ?? "—";
 }
 
 function formatCountdown(diffMs: number) {
@@ -424,8 +436,10 @@ function StatusBadge({ status }: { status: PaymentStatus }) {
       ? "bg-emerald-50 text-emerald-700 border-emerald-200"
       : status === "processing"
         ? "bg-amber-50 text-amber-700 border-amber-200"
-        : status === "failed" || status === "canceled"
+        : status === "failed"
           ? "bg-red-50 text-red-700 border-red-200"
+          : status === "canceled"
+            ? "bg-slate-100 text-slate-700 border-slate-200"
           : "bg-slate-50 text-slate-700 border-slate-200";
 
   return (
@@ -589,7 +603,7 @@ function PaymentCard({
               Payment ID:
             </div>
             <div className="font-mono text-[12px] text-foreground/70 break-all">
-              {entry.stripePaymentIntentId}
+              {getEntryProviderIntentId(entry)}
             </div>
           </div>
         </div>
@@ -622,7 +636,7 @@ function PaymentCard({
           <FieldRow label="Payment Status" value={paymentStatusLabel(entry.status)} />
           <FieldRow
             label="Payment ID"
-            value={entry.stripePaymentIntentId}
+            value={getEntryProviderIntentId(entry)}
             mono
           />
           <FieldRow
