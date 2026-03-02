@@ -14,7 +14,7 @@ export const useApiMutation = <TData, TResponse>({
   onSuccess?: (data: TResponse) => void;
   onError?: (error: Error) => void;
 }) => {
-  return useMutation({
+  return useMutation<TResponse, Error, TData>({
     mutationFn: async (newData) => {
       if (method === "POST") {
         const response = await apiInstance.post(route, newData);

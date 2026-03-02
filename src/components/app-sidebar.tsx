@@ -1,5 +1,4 @@
-import * as React from "react";
-import {
+ import {
   Brain,
   Frame,
   GraduationCap,
@@ -7,8 +6,9 @@ import {
   PieChart,
   ReceiptText,
   User,
-  LayoutTemplate,
+  Combine,
   Megaphone,
+  LayoutTemplate,
 } from "lucide-react";
 import xOctopus from "@/assets/sidebar.png";
 import { NavMain } from "@/components/nav-main";
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import xpollSVG from "@/assets/xpoll-svg.svg";
 import { useLocation } from "react-router";
+import { useMemo } from "react";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { pathname } = useLocation();
@@ -37,6 +38,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     isAnalyticsTrials,
     isLLMQueries,
     isAllBlogs,
+    isCreateCampaign,
     isUsers,
     isReferralConfig,
     isAllPayments,
@@ -45,7 +47,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     isAdOwners,
     isIndustry,
     isAds,
-  } = React.useMemo(() => {
+  } =  useMemo(() => {
     // isOverallPollStats
     const isOverallPollStats = pathname === "/";
     // all ledgers
@@ -75,6 +77,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
     // All Blogs
     const isAllBlogs = pathname === "/blogs/all-blogs";
+
+    // Create Campaign
+    const isCreateCampaign = pathname === "/campaign/create";
 
     // Users management
     const isUsers = pathname === "/users";
@@ -247,6 +252,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             title: "Referral Config",
             url: "/referral-config",
             isActive: isReferralConfig,
+          },
+        ],
+      },
+      {
+        title: "Campaigns",
+        url: "#",
+        icon: Combine,
+        isActive: isCreateCampaign,
+        items: [
+          {
+            title: "Create Campaign",
+            url: "/campaign/create",
+            isActive: isCreateCampaign,
           },
         ],
       },

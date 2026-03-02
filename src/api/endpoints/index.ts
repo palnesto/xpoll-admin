@@ -66,7 +66,10 @@ export const endpoints = {
       advancedListing: "/internal/trial/advanced-listing",
     },
     campaigns: {
+      plans: "/common/campaigns/plans",
       advancedListing: "/internal/campaigns/advanced-listing",
+      create: "/internal/campaigns",
+      getById: (id: string) => `/internal/campaigns/${id}`,
     },
     actions: {
       mint: "/internal/actions/mint",
