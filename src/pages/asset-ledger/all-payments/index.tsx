@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import apiInstance, { BASE_URL } from "@/api/queryClient";
 import { endpoints } from "@/api/endpoints";
+import { getTxExplorerUrl } from "@/utils/txExplorer";
 
 import {
   Select,
@@ -15,6 +16,7 @@ import {
 import {
   ChevronLeft,
   ChevronRight,
+  ExternalLink,
   Filter,
   Loader2,
   Receipt,
@@ -62,9 +64,47 @@ type PaymentEntry = {
   status: PaymentStatus;
   currency: string;
   amount: number; // ⚠️ you said it's like 1000, 1500 etc (Stripe minor)
+  display?: {
+    rail?: "fiat" | "crypto";
+    fiat?: {
+      currency?: string | null;
+      amountMinor?: number | null;
+      amountReceivedMinor?: number | null;
+    } | null;
+    crypto?: {
+      currency?: string | null;
+      amountAtomic?: string | null;
+      tokenSymbol?: string | null;
+      tokenDecimals?: number | null;
+      txHash?: string | null;
+      amountMinorEquivalent?: number | null;
+    } | null;
+  } | null;
+  quote?: {
+    kind?: string | null;
+    pricing?: {
+      currency?: string | null;
+      amountMinor?: number | null;
+    } | null;
+    payload?: {
+      tokenSymbol?: string | null;
+      tokenDecimals?: number | null;
+      expectedAmountAtomic?: string | null;
+    } | null;
+  } | null;
+  settlement?: {
+    kind?: string | null;
+    payload?: {
+      txHash?: string | null;
+      tokenSymbol?: string | null;
+      tokenDecimals?: number | null;
+      amountAtomic?: string | null;
+      amountMinorEquivalent?: number | null;
+    } | null;
+  } | null;
   paymentBreakdown?: PaymentBreakdown | null;
   purpose: PaymentPurpose;
-  context?: any;
+  context?: unknown;
   invoiceUrl?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -114,7 +154,7 @@ function safeParseJSON<T>(v: string | null): T | null {
 /** -----------------------------
  *  Helpers
  *  ---------------------------- */
-function safeArr<T>(v: any): T[] {
+function safeArr<T>(v: unknown): T[] {
   return Array.isArray(v) ? (v as T[]) : [];
 }
 
@@ -135,10 +175,119 @@ function formatMoneyFromMinor(amountMinor: number, currency: string) {
   }).format(value);
 }
 
+function formatCryptoAmount(
+  amountAtomic: string,
+  decimals: number,
+  symbol: string,
+) {
+  const atomic = BigInt(amountAtomic);
+  const safeDecimals = Math.max(0, decimals);
+  const divisor = 10n ** BigInt(safeDecimals);
+  const whole = atomic / divisor;
+  const fraction = atomic % divisor;
+
+  if (fraction === 0n) {
+    return `${whole.toString()} ${symbol}`;
+  }
+
+  const paddedFraction = fraction
+    .toString()
+    .padStart(safeDecimals, "0")
+    .replace(/0+$/, "");
+
+  return `${whole.toString()}.${paddedFraction} ${symbol}`;
+}
+
 function readString(v: unknown): string | null {
   if (typeof v !== "string") return null;
   const trimmed = v.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function getDisplayRail(entry: PaymentEntry): "fiat" | "crypto" {
+  if (
+    entry.display?.rail === "crypto" ||
+    entry.quote?.kind === "crypto" ||
+    entry.settlement?.kind === "crypto" ||
+    entry.provider?.family === "crypto" ||
+    entry.provider?.code === "evm"
+  ) {
+    return "crypto";
+  }
+  return "fiat";
+}
+
+function getCryptoDisplay(entry: PaymentEntry) {
+  return (
+    entry.display?.crypto ?? {
+      currency:
+        readString(entry.settlement?.payload?.tokenSymbol) ??
+        readString(entry.quote?.payload?.tokenSymbol) ??
+        readString(entry.quote?.pricing?.currency),
+      amountAtomic:
+        readString(entry.settlement?.payload?.amountAtomic) ??
+        readString(entry.quote?.payload?.expectedAmountAtomic),
+      tokenSymbol:
+        readString(entry.settlement?.payload?.tokenSymbol) ??
+        readString(entry.quote?.payload?.tokenSymbol),
+      tokenDecimals:
+        typeof entry.settlement?.payload?.tokenDecimals === "number"
+          ? entry.settlement.payload.tokenDecimals
+          : typeof entry.quote?.payload?.tokenDecimals === "number"
+            ? entry.quote.payload.tokenDecimals
+            : null,
+      txHash: readString(entry.settlement?.payload?.txHash),
+      amountMinorEquivalent:
+        typeof entry.settlement?.payload?.amountMinorEquivalent === "number"
+          ? entry.settlement.payload.amountMinorEquivalent
+          : null,
+    }
+  );
+}
+
+function getEntryDisplayAmount(entry: PaymentEntry): string {
+  if (getDisplayRail(entry) === "crypto") {
+    const crypto = getCryptoDisplay(entry);
+    if (
+      crypto.amountAtomic &&
+      typeof crypto.tokenDecimals === "number" &&
+      crypto.currency
+    ) {
+      return formatCryptoAmount(
+        crypto.amountAtomic,
+        crypto.tokenDecimals,
+        crypto.currency,
+      );
+    }
+  }
+
+  const fiatCurrency =
+    readString(entry.display?.fiat?.currency) ?? readString(entry.currency) ?? "USD";
+  const fiatAmountMinor =
+    typeof entry.display?.fiat?.amountMinor === "number"
+      ? entry.display.fiat.amountMinor
+      : entry.amount;
+  return formatMoneyFromMinor(fiatAmountMinor, fiatCurrency);
+}
+
+function getEntryUsdEquivalentMinor(entry: PaymentEntry): number {
+  if (getDisplayRail(entry) === "crypto") {
+    const crypto = getCryptoDisplay(entry);
+    if (typeof crypto.amountMinorEquivalent === "number") {
+      return crypto.amountMinorEquivalent;
+    }
+    return 0;
+  }
+
+  if (typeof entry.display?.fiat?.amountMinor === "number") {
+    return entry.display.fiat.amountMinor;
+  }
+  return entry.amount || 0;
+}
+
+function getEntryTxHash(entry: PaymentEntry): string | null {
+  if (getDisplayRail(entry) !== "crypto") return null;
+  return readString(entry.display?.crypto?.txHash) ?? readString(entry.settlement?.payload?.txHash);
 }
 
 function getEntryProviderIntentId(entry: PaymentEntry) {
@@ -343,6 +492,7 @@ function PaymentCard({
     (campaignId ? campaignTotalsById[campaignId] : 0) ||
     (campaignName ? campaignTotalsByName[campaignName] : 0) ||
     0;
+  const txHash = getEntryTxHash(entry);
 
   return (
     <div
@@ -398,7 +548,7 @@ function PaymentCard({
               Amount
             </div>
             <div className="mt-1 text-lg font-bold text-foreground">
-              {formatMoneyFromMinor(entry.amount, entry.currency)}
+              {getEntryDisplayAmount(entry)}
             </div>
           </div>
 
@@ -425,11 +575,8 @@ function PaymentCard({
           ) : null}
 
           <FieldRow
-            label="Total Payment done"
-            value={formatMoneyFromMinor(
-              totalForThisCampaignMinor,
-              entry.currency,
-            )}
+            label="Total Payment done (USD eq.)"
+            value={formatMoneyFromMinor(totalForThisCampaignMinor, "USD")}
           />
 
           <FieldRow
@@ -444,6 +591,22 @@ function PaymentCard({
           />
 
           <FieldRow label="Campaign ID" value={campaignId ?? "—"} mono />
+          <FieldRow
+            label="Txn"
+            value={
+              txHash ? (
+                <a
+                  href={getTxExplorerUrl(txHash)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-blue underline hover:opacity-80"
+                >
+                  {txHash}
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              ) : null
+            }
+          />
         </div>
 
         <div className="mt-4 flex items-center justify-between">
@@ -609,9 +772,9 @@ export default function PaymentLedgerCardsPage() {
           : null;
 
       if (campaignId)
-        byId[campaignId] = (byId[campaignId] ?? 0) + (e.amount || 0);
+        byId[campaignId] = (byId[campaignId] ?? 0) + getEntryUsdEquivalentMinor(e);
       if (campaignName)
-        byName[campaignName] = (byName[campaignName] ?? 0) + (e.amount || 0);
+        byName[campaignName] = (byName[campaignName] ?? 0) + getEntryUsdEquivalentMinor(e);
     }
 
     return { campaignTotalsById: byId, campaignTotalsByName: byName };
@@ -630,7 +793,9 @@ export default function PaymentLedgerCardsPage() {
 
           <Select
             value={statusFilter}
-            onValueChange={(v) => setStatusFilter(v as any)}
+            onValueChange={(v) =>
+              setStatusFilter(v as "all" | PaymentStatus)
+            }
           >
             <SelectTrigger className="h-10 w-[170px] rounded-full border-border bg-background">
               <SelectValue placeholder="Status" />
@@ -646,7 +811,9 @@ export default function PaymentLedgerCardsPage() {
           {/* PURPOSE */}
           <Select
             value={purposeFilter}
-            onValueChange={(v) => setPurposeFilter(v as any)}
+            onValueChange={(v) =>
+              setPurposeFilter(v as "all" | PaymentPurpose)
+            }
           >
             <SelectTrigger className="h-10 w-[210px] rounded-full border-border bg-background">
               <SelectValue placeholder="Payment purpose" />
