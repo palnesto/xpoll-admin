@@ -6,6 +6,11 @@ export const endpoints = {
     totalSupply: "/common/assets/total-supply",
   },
   adminMe: "/internal/auth/me",
+  buyConfigManagement: {
+    list: "/internal/buy-config-management",
+    update: (entityType: "asset" | "campaignPlan" | "offlineProduct", entityId: string) =>
+      `/internal/buy-config-management/${entityType}/${encodeURIComponent(entityId)}`,
+  },
   users: {
     all: "/internal/external-users/all",
     details: (userId: string) => `/internal/users/details/${userId}`,
