@@ -21,9 +21,9 @@ import {
 } from "@/components/ui/sidebar";
 import xpollSVG from "@/assets/xpoll-svg.svg";
 import { useLocation } from "react-router";
-import { useMemo } from "react";
+import { ComponentProps, useMemo } from "react";
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({ ...props }:  ComponentProps<typeof Sidebar>) {
   const { pathname } = useLocation();
   const {
     isOverallPollStats,
@@ -38,6 +38,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     isAnalyticsTrials,
     isLLMQueries,
     isAllBlogs,
+    isAllCampaigns,
     isCreateCampaign,
     isUsers,
     isReferralConfig,
@@ -78,7 +79,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     // All Blogs
     const isAllBlogs = pathname === "/blogs/all-blogs";
 
-    // Create Campaign
+    
+    const isAllCampaigns = pathname === "/campaign";
     const isCreateCampaign = pathname === "/campaign/create";
 
     // Users management
@@ -111,6 +113,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       isAllBlogs,
       isAllPayments,
       isAllOfflinePayments,
+      isAllCampaigns,
+      isCreateCampaign,
       isAd,
       isAdOwners,
       isIndustry,
@@ -259,8 +263,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Campaigns",
         url: "#",
         icon: Combine,
-        isActive: isCreateCampaign,
+        isActive: isAllCampaigns || isCreateCampaign,
         items: [
+          {
+            title: "All Campaigns",
+            url: "/campaign",
+            isActive: isCreateCampaign,
+          },
           {
             title: "Create Campaign",
             url: "/campaign/create",
