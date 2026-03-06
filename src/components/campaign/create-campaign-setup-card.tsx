@@ -54,7 +54,7 @@ export function CreateCampaignSetupCard({
           </div>
         </CardHeader>
         <CardContent className="pt-6 space-y-6">
-          <div className="space-y-2 [&_.my-dropdown__single-value]:!text-white [&_.my-dropdown__value-container]:!text-white">
+          <div className="space-y-2 [&_.my-dropdown__single-value]:!text-white [&_.my-dropdown__value-container]:!text-white [&_.my-dropdown__input]:!text-white">
             <label className="flex items-center gap-2 text-sm font-medium">
               <User className="h-4 w-4 text-muted-foreground" />
               Select User
