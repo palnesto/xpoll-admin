@@ -48,7 +48,8 @@ export function AppSidebar({ ...props }:  ComponentProps<typeof Sidebar>) {
     isAdOwners,
     isIndustry,
     isAds,
-  } =  useMemo(() => {
+    isBuyConfigManagement,
+  } = useMemo(() => {
     // isOverallPollStats
     const isOverallPollStats = pathname === "/";
     // all ledgers
@@ -89,6 +90,7 @@ export function AppSidebar({ ...props }:  ComponentProps<typeof Sidebar>) {
     const isAllPayments = pathname === "/asset-ledger/all-payments";
     const isAllOfflinePayments =
       pathname === "/asset-ledger/all-offline-payments";
+    const isBuyConfigManagement = pathname.startsWith("/buy-config-management");
 
     // Ads management
     const isAdOwners = pathname.startsWith("/ad/ad-owners");
@@ -119,6 +121,7 @@ export function AppSidebar({ ...props }:  ComponentProps<typeof Sidebar>) {
       isAdOwners,
       isIndustry,
       isAds,
+      isBuyConfigManagement,
     };
   }, [pathname]);
 
@@ -199,7 +202,11 @@ export function AppSidebar({ ...props }:  ComponentProps<typeof Sidebar>) {
         url: "#",
         icon: GraduationCap,
         isActive:
-          isAllLedgers || isSystemReport || isAllPayments || isAllOfflinePayments,
+          isAllLedgers ||
+          isSystemReport ||
+          isAllPayments ||
+          isAllOfflinePayments ||
+          isBuyConfigManagement,
         items: [
           {
             title: "All Ledgers",
@@ -225,6 +232,11 @@ export function AppSidebar({ ...props }:  ComponentProps<typeof Sidebar>) {
             title: "All Offline Payments",
             url: "/asset-ledger/all-offline-payments",
             isActive: isAllOfflinePayments,
+          },
+          {
+            title: "Buy Config Management",
+            url: "/buy-config-management",
+            isActive: isBuyConfigManagement,
           },
         ],
       },
