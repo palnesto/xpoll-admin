@@ -1,5 +1,4 @@
-import * as React from "react";
-import {
+ import {
   Brain,
   Frame,
   GraduationCap,
@@ -7,8 +6,9 @@ import {
   PieChart,
   ReceiptText,
   User,
-  LayoutTemplate,
+  Combine,
   Megaphone,
+  LayoutTemplate,
 } from "lucide-react";
 import xOctopus from "@/assets/sidebar.png";
 import { NavMain } from "@/components/nav-main";
@@ -21,8 +21,9 @@ import {
 } from "@/components/ui/sidebar";
 import xpollSVG from "@/assets/xpoll-svg.svg";
 import { useLocation } from "react-router";
+import { ComponentProps, useMemo } from "react";
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({ ...props }:  ComponentProps<typeof Sidebar>) {
   const { pathname } = useLocation();
   const {
     isOverallPollStats,
@@ -37,6 +38,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     isAnalyticsTrials,
     isLLMQueries,
     isAllBlogs,
+    isAllCampaigns,
+    isCreateCampaign,
     isUsers,
     isReferralConfig,
     isAllPayments,
@@ -45,7 +48,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     isAdOwners,
     isIndustry,
     isAds,
-  } = React.useMemo(() => {
+    isBuyConfigManagement,
+  } = useMemo(() => {
     // isOverallPollStats
     const isOverallPollStats = pathname === "/";
     // all ledgers
@@ -76,12 +80,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     // All Blogs
     const isAllBlogs = pathname === "/blogs/all-blogs";
 
+    
+    const isAllCampaigns = pathname === "/campaign";
+    const isCreateCampaign = pathname === "/campaign/create";
+
     // Users management
     const isUsers = pathname === "/users";
     const isReferralConfig = pathname === "/referral-config";
     const isAllPayments = pathname === "/asset-ledger/all-payments";
     const isAllOfflinePayments =
       pathname === "/asset-ledger/all-offline-payments";
+    const isBuyConfigManagement = pathname.startsWith("/buy-config-management");
 
     // Ads management
     const isAdOwners = pathname.startsWith("/ad/ad-owners");
@@ -106,10 +115,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       isAllBlogs,
       isAllPayments,
       isAllOfflinePayments,
+      isAllCampaigns,
+      isCreateCampaign,
       isAd,
       isAdOwners,
       isIndustry,
       isAds,
+      isBuyConfigManagement,
     };
   }, [pathname]);
 
@@ -190,7 +202,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         url: "#",
         icon: GraduationCap,
         isActive:
-          isAllLedgers || isSystemReport || isAllPayments || isAllOfflinePayments,
+          isAllLedgers ||
+          isSystemReport ||
+          isAllPayments ||
+          isAllOfflinePayments ||
+          isBuyConfigManagement,
         items: [
           {
             title: "All Ledgers",
@@ -216,6 +232,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             title: "All Offline Payments",
             url: "/asset-ledger/all-offline-payments",
             isActive: isAllOfflinePayments,
+          },
+          {
+            title: "Buy Config Management",
+            url: "/buy-config-management",
+            isActive: isBuyConfigManagement,
           },
         ],
       },
@@ -247,6 +268,24 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             title: "Referral Config",
             url: "/referral-config",
             isActive: isReferralConfig,
+          },
+        ],
+      },
+      {
+        title: "Campaigns",
+        url: "#",
+        icon: Combine,
+        isActive: isAllCampaigns || isCreateCampaign,
+        items: [
+          {
+            title: "All Campaigns",
+            url: "/campaign",
+            isActive: isCreateCampaign,
+          },
+          {
+            title: "Create Campaign",
+            url: "/campaign/create",
+            isActive: isCreateCampaign,
           },
         ],
       },

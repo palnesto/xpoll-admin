@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import apiInstance, { BASE_URL, queryClient } from "@/api/queryClient";
 import { endpoints } from "@/api/endpoints";
+import { getTxExplorerUrl } from "@/utils/txExplorer";
 import { appToast } from "@/utils/toast";
 import { ThreeDotMenu } from "@/components/commons/three-dot-menu";
 import { CustomModal } from "@/components/modals/custom-modal";
@@ -35,6 +36,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
+  ExternalLink,
   Filter,
   Loader2,
   Receipt,
@@ -84,21 +86,67 @@ type PaymentMetadata = {
   soulBoundSubscription?: SoulBoundMetadata | null;
 };
 
+type PaymentProvider = {
+  family?: "fiat" | "crypto";
+  code?: string;
+  refs?: {
+    intentId?: string | null;
+    eventId?: string | null;
+    checkoutId?: string | null;
+    paymentReference?: string | null;
+  } | null;
+} | null;
+
 type PaymentEntry = {
   _id: string;
   externalAccountId?: ExternalAccount | null;
-  stripePaymentIntentId: string;
+  provider?: PaymentProvider;
   status: PaymentStatus;
   currency: string;
   amount: number;
+  display?: {
+    rail?: "fiat" | "crypto";
+    fiat?: {
+      currency?: string | null;
+      amountMinor?: number | null;
+      amountReceivedMinor?: number | null;
+    } | null;
+    crypto?: {
+      currency?: string | null;
+      amountAtomic?: string | null;
+      tokenSymbol?: string | null;
+      tokenDecimals?: number | null;
+      txHash?: string | null;
+      amountMinorEquivalent?: number | null;
+    } | null;
+  } | null;
+  quote?: {
+    kind?: string | null;
+    pricing?: {
+      currency?: string | null;
+      amountMinor?: number | null;
+    } | null;
+    payload?: {
+      tokenSymbol?: string | null;
+      tokenDecimals?: number | null;
+      expectedAmountAtomic?: string | null;
+    } | null;
+  } | null;
+  settlement?: {
+    kind?: string | null;
+    payload?: {
+      txHash?: string | null;
+      tokenSymbol?: string | null;
+      tokenDecimals?: number | null;
+      amountAtomic?: string | null;
+      amountMinorEquivalent?: number | null;
+    } | null;
+  } | null;
   paymentBreakdown?: PaymentBreakdown | null;
   purpose: OfflinePaymentPurpose;
   metadata?: PaymentMetadata | null;
   context?: unknown;
   invoiceUrl?: string | null;
-  reportLink?: string | null;
-  addressStatus?: AddressStatus;
-  expiresAt?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -251,6 +299,29 @@ function formatMoneyFromMinor(amountMinor: number, currency: string) {
   }).format(value);
 }
 
+function formatCryptoAmount(
+  amountAtomic: string,
+  decimals: number,
+  symbol: string,
+) {
+  const atomic = BigInt(amountAtomic);
+  const safeDecimals = Math.max(0, decimals);
+  const divisor = 10n ** BigInt(safeDecimals);
+  const whole = atomic / divisor;
+  const fraction = atomic % divisor;
+
+  if (fraction === 0n) {
+    return `${whole.toString()} ${symbol}`;
+  }
+
+  const paddedFraction = fraction
+    .toString()
+    .padStart(safeDecimals, "0")
+    .replace(/0+$/, "");
+
+  return `${whole.toString()}.${paddedFraction} ${symbol}`;
+}
+
 function isoToLocal(iso: string) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
@@ -295,10 +366,81 @@ function readString(v: unknown): string | null {
   return t.length > 0 ? t : null;
 }
 
+function getDisplayRail(entry: PaymentEntry): "fiat" | "crypto" {
+  if (
+    entry.display?.rail === "crypto" ||
+    entry.quote?.kind === "crypto" ||
+    entry.settlement?.kind === "crypto" ||
+    entry.provider?.family === "crypto" ||
+    entry.provider?.code === "evm"
+  ) {
+    return "crypto";
+  }
+  return "fiat";
+}
+
+function getCryptoDisplay(entry: PaymentEntry) {
+  return (
+    entry.display?.crypto ?? {
+      currency:
+        readString(entry.settlement?.payload?.tokenSymbol) ??
+        readString(entry.quote?.payload?.tokenSymbol) ??
+        readString(entry.quote?.pricing?.currency),
+      amountAtomic:
+        readString(entry.settlement?.payload?.amountAtomic) ??
+        readString(entry.quote?.payload?.expectedAmountAtomic),
+      tokenSymbol:
+        readString(entry.settlement?.payload?.tokenSymbol) ??
+        readString(entry.quote?.payload?.tokenSymbol),
+      tokenDecimals:
+        typeof entry.settlement?.payload?.tokenDecimals === "number"
+          ? entry.settlement.payload.tokenDecimals
+          : typeof entry.quote?.payload?.tokenDecimals === "number"
+            ? entry.quote.payload.tokenDecimals
+            : null,
+      txHash: readString(entry.settlement?.payload?.txHash),
+      amountMinorEquivalent:
+        typeof entry.settlement?.payload?.amountMinorEquivalent === "number"
+          ? entry.settlement.payload.amountMinorEquivalent
+          : null,
+    }
+  );
+}
+
+function getEntryDisplayAmount(entry: PaymentEntry): string {
+  if (getDisplayRail(entry) === "crypto") {
+    const crypto = getCryptoDisplay(entry);
+    if (
+      crypto.amountAtomic &&
+      typeof crypto.tokenDecimals === "number" &&
+      crypto.currency
+    ) {
+      return formatCryptoAmount(
+        crypto.amountAtomic,
+        crypto.tokenDecimals,
+        crypto.currency,
+      );
+    }
+  }
+
+  const fiatCurrency =
+    readString(entry.display?.fiat?.currency) ?? readString(entry.currency) ?? "USD";
+  const fiatAmountMinor =
+    typeof entry.display?.fiat?.amountMinor === "number"
+      ? entry.display.fiat.amountMinor
+      : entry.amount;
+  return formatMoneyFromMinor(fiatAmountMinor, fiatCurrency);
+}
+
+function getEntryTxHash(entry: PaymentEntry): string | null {
+  if (getDisplayRail(entry) !== "crypto") return null;
+  return readString(entry.display?.crypto?.txHash) ?? readString(entry.settlement?.payload?.txHash);
+}
+
 function getEntryAddressStatus(entry: PaymentEntry): AddressStatus {
   const metadata = readRecord(entry.metadata);
   const offline = readRecord(metadata?.offline);
-  const statusRaw = readString(offline?.addressStatus) ?? readString(entry.addressStatus);
+  const statusRaw = readString(offline?.addressStatus);
   if (statusRaw === "addressed" || statusRaw === "unaddressed") return statusRaw;
   return null;
 }
@@ -306,7 +448,7 @@ function getEntryAddressStatus(entry: PaymentEntry): AddressStatus {
 function getEntryExpiresAt(entry: PaymentEntry): string | null {
   const metadata = readRecord(entry.metadata);
   const offline = readRecord(metadata?.offline);
-  return readString(offline?.expiresAt) ?? readString(entry.expiresAt);
+  return readString(offline?.expiresAt);
 }
 
 function getEntryCampaignId(entry: PaymentEntry): string | null {
@@ -322,7 +464,11 @@ function getEntryAdId(entry: PaymentEntry): string | null {
 function getEntryReportLink(entry: PaymentEntry): string | null {
   const metadata = readRecord(entry.metadata);
   const soulbound = readRecord(metadata?.soulBoundSubscription);
-  return readString(soulbound?.reportLink) ?? readString(entry.reportLink);
+  return readString(soulbound?.reportLink);
+}
+
+function getEntryProviderIntentId(entry: PaymentEntry): string {
+  return readString(entry.provider?.refs?.intentId) ?? "—";
 }
 
 function formatCountdown(diffMs: number) {
@@ -424,8 +570,10 @@ function StatusBadge({ status }: { status: PaymentStatus }) {
       ? "bg-emerald-50 text-emerald-700 border-emerald-200"
       : status === "processing"
         ? "bg-amber-50 text-amber-700 border-amber-200"
-        : status === "failed" || status === "canceled"
+        : status === "failed"
           ? "bg-red-50 text-red-700 border-red-200"
+          : status === "canceled"
+            ? "bg-slate-100 text-slate-700 border-slate-200"
           : "bg-slate-50 text-slate-700 border-slate-200";
 
   return (
@@ -532,6 +680,7 @@ function PaymentCard({
 
   const nextAddressStatus: AddressStatusValue =
     currentAddressStatus === "addressed" ? "unaddressed" : "addressed";
+  const txHash = getEntryTxHash(entry);
 
   const actions = [
     {
@@ -589,7 +738,7 @@ function PaymentCard({
               Payment ID:
             </div>
             <div className="font-mono text-[12px] text-foreground/70 break-all">
-              {entry.stripePaymentIntentId}
+              {getEntryProviderIntentId(entry)}
             </div>
           </div>
         </div>
@@ -600,7 +749,7 @@ function PaymentCard({
               Amount
             </div>
             <div className="mt-1 text-lg font-bold text-foreground">
-              {formatMoneyFromMinor(entry.amount, entry.currency)}
+              {getEntryDisplayAmount(entry)}
             </div>
           </div>
 
@@ -622,7 +771,7 @@ function PaymentCard({
           <FieldRow label="Payment Status" value={paymentStatusLabel(entry.status)} />
           <FieldRow
             label="Payment ID"
-            value={entry.stripePaymentIntentId}
+            value={getEntryProviderIntentId(entry)}
             mono
           />
           <FieldRow
@@ -631,6 +780,22 @@ function PaymentCard({
           />
           <FieldRow label="Campaign ID" value={linkedCampaignId} mono />
           <FieldRow label="Ad ID" value={linkedAdId} mono />
+          <FieldRow
+            label="Txn"
+            value={
+              txHash ? (
+                <a
+                  href={getTxExplorerUrl(txHash)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-blue underline hover:opacity-80"
+                >
+                  {txHash}
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              ) : null
+            }
+          />
           <FieldRow
             label="Report Link"
             value={

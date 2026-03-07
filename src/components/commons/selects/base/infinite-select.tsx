@@ -86,7 +86,10 @@ export default function InfiniteSelect<
   }, [data, mapItemToOption]);
 
   const handleChange = React.useCallback(
-    (v: SingleValue<BaseOption<T>>) => onChange?.(v ?? null),
+    (v: SingleValue<BaseOption<T>>) => {
+      setInput(""); // Clear input so SingleValue shows when menu closes
+      onChange?.(v ?? null);
+    },
     [onChange],
   );
 
@@ -152,7 +155,10 @@ export default function InfiniteSelect<
         return "No options";
       }}
       onMenuOpen={() => setIsOpen(true)}
-      onMenuClose={() => setIsOpen(false)}
+      onMenuClose={() => {
+        setIsOpen(false);
+        setInput(""); // Clear input when menu closes so SingleValue is visible
+      }}
       menuPortalTarget={selectProps?.menuPortalTarget}
       menuShouldScrollIntoView={false}
       components={{ MenuList, ...(selectProps?.components || {}) }}
