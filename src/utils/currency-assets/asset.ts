@@ -20,6 +20,8 @@ import scope from "@/assets/chart.png";
 import slice from "@/assets/cut.png";
 import term from "@/assets/term.png";
 import jack from "@/assets/jack.png";
+import three from "@/assets/three.png";
+import mrt from "@/assets/t.png";
 
 export const ASSETS = {
   X_POLL: "xPoll", // xPoll
@@ -359,7 +361,7 @@ export const assetSpecs: Record<
     symbol: "X3LM",
     parent: "xThreeLetter",
     parentSymbol: "X3L",
-    img: "/img/xThreeLetterMini.png",
+    img: three,
     canSell: null,
     chain: CHAINS.STRAIN,
   },
@@ -369,7 +371,7 @@ export const assetSpecs: Record<
     symbol: "XMRTM",
     parent: "xMr.T",
     parentSymbol: "XMRT",
-    img: "/img/xMRTMini.png",
+    img: mrt,
     canSell: null,
     chain: CHAINS.STRAIN,
   },
