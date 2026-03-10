@@ -33,7 +33,7 @@ export function useApiInfiniteQuery<
       [string, F?] // queryKey type
     >,
     "queryKey" | "queryFn" | "getNextPageParam" | "initialPageParam"
-  >
+  >,
 ) {
   return useInfiniteQuery({
     queryKey: [route, filters] as const,

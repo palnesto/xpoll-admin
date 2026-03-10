@@ -12,6 +12,9 @@ type SelectPropsFor<T> = InfiniteSelectProps<T>["selectProps"];
 
 export type ExternalAccountListItem = {
   _id: string;
+  externalAccountId?: string;
+  email?: string | null;
+  googleEmail?: string | null;
   username?: string;
   name?: string;
   title?: string;
@@ -149,15 +152,21 @@ export function ExternalAccountSelect({
 
         return {
           username: term,
-          email: term,
+      googleEmail: term,
           q: term,
         };
       }}
-      mapItemToOption={(item) => ({
-        value: item._id,
-        label: item.username ?? item.label ?? item.title ?? item.name ?? item._id,
-        data: item,
-      })}
+      mapItemToOption={(item) => {
+        const email = item.email || item.googleEmail || "";
+        const baseName =
+          item.username ?? item.label ?? item.title ?? item.name ?? "unknown";
+        const label = email ? `${baseName} • ${email}` : baseName;
+        return {
+          value: item.externalAccountId || item._id,
+          label,
+          data: item,
+        };
+      }}
       onChange={(opt) =>
         onChange?.(opt as ListingOption<ExternalAccountListItem> | null)
       }
