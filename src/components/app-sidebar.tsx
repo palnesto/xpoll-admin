@@ -1,4 +1,4 @@
- import {
+import {
   Brain,
   Frame,
   GraduationCap,
@@ -11,6 +11,7 @@
   LayoutTemplate,
 } from "lucide-react";
 import xOctopus from "@/assets/sidebar.png";
+import inkd from "@/assets/inkd.png";
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
 import {
@@ -20,11 +21,16 @@ import {
   SidebarHeader,
 } from "@/components/ui/sidebar";
 import xpollSVG from "@/assets/xpoll-svg.svg";
-import { useLocation } from "react-router";
-import { ComponentProps, useMemo } from "react";
+import { useLocation, useNavigate } from "react-router";
+import { ComponentProps, useMemo, useRef, useState } from "react";
 
-export function AppSidebar({ ...props }:  ComponentProps<typeof Sidebar>) {
+export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+
+  const [showInkVideo, setShowInkVideo] = useState(false);
+  const hasNavigatedRef = useRef(false);
+
   const {
     isOverallPollStats,
     isAllLedgers,
@@ -80,7 +86,6 @@ export function AppSidebar({ ...props }:  ComponentProps<typeof Sidebar>) {
     // All Blogs
     const isAllBlogs = pathname === "/blogs/all-blogs";
 
-    
     const isAllCampaigns = pathname === "/campaign";
     const isCreateCampaign = pathname === "/campaign/create";
 
@@ -124,6 +129,33 @@ export function AppSidebar({ ...props }:  ComponentProps<typeof Sidebar>) {
       isBuyConfigManagement,
     };
   }, [pathname]);
+
+  const handleInkClick = () => {
+    hasNavigatedRef.current = false;
+    setShowInkVideo(true);
+  };
+
+  const handleInkVideoTimeUpdate = (
+    e: React.SyntheticEvent<HTMLVideoElement, Event>
+  ) => {
+    const video = e.currentTarget;
+
+    if (
+      !hasNavigatedRef.current &&
+      video.duration &&
+      video.currentTime >= video.duration - 0.15
+    ) {
+      hasNavigatedRef.current = true;
+      navigate("/inkd");
+    }
+  };
+
+  const handleInkVideoEnd = () => {
+    if (!hasNavigatedRef.current) {
+      hasNavigatedRef.current = true;
+      navigate("/inkd");
+    }
+  };
 
   const data = {
     user: {
@@ -331,26 +363,48 @@ export function AppSidebar({ ...props }:  ComponentProps<typeof Sidebar>) {
       },
     ],
   };
+
   return (
-    <Sidebar collapsible="icon" {...props}>
-      <img
-        src={xOctopus}
-        alt="Octopus Tactical"
-        className="absolute bottom-0 left-5 h-60 xl:h-80 object-contain mix-blend-screen opacity-10"
-      />
-      <SidebarHeader>
-        <div className="flex px-4 pt-4 py-3 gap-2 items-center">
-          <div className="h-12 aspect-3/4">
-            <img src={xpollSVG} className="h-full w-full object-contain" />
-          </div>
+    <>
+      {showInkVideo && (
+        <div className="fixed inset-0 z-[9999] bg-black">
+          <video
+            src="https://prod-storage.xpoll.io/xpoll-blob-dump-user/ink.mp4"
+            autoPlay
+            muted
+            playsInline
+            onTimeUpdate={handleInkVideoTimeUpdate}
+            onEnded={handleInkVideoEnd}
+            className="h-full w-full object-cover"
+          />
         </div>
-      </SidebarHeader>
-      <SidebarContent>
-        <NavMain items={data.navMain} />
-      </SidebarContent>
-      <SidebarFooter>
-        <NavUser user={data.user} />
-      </SidebarFooter>
-    </Sidebar>
+      )}
+      <Sidebar collapsible="icon" {...props}>
+      <img
+  src={xOctopus}
+  alt="Octopus Tactical"
+  className="pointer-events-none absolute bottom-0 left-5 z-0 h-60 xl:h-80 object-contain mix-blend-screen opacity-10"
+/>
+        <SidebarHeader>
+          <div className="flex px-4 pt-4 py-3 gap-2 items-center">
+            <div className="h-12 aspect-3/4">
+              <img src={xpollSVG} className="h-full w-full object-contain" />
+            </div>
+          </div>
+        </SidebarHeader>
+        <SidebarContent className="relative z-10">
+          <NavMain items={data.navMain} />
+          <figure
+            className="h-12 w-fit pl-4 cursor-pointer"
+            onClick={handleInkClick}
+          >
+            <img src={inkd} className="w-full h-full object-contain" />
+          </figure>
+        </SidebarContent>
+        <SidebarFooter>
+          <NavUser user={data.user} />
+        </SidebarFooter>
+      </Sidebar>
+    </>
   );
 }

@@ -11,14 +11,27 @@ export function App() {
   const appRoutes = useRoutes(routes);
 
   const publicPaths = useMemo(() => ["/login", "/test"], []);
-  const isPublic = publicPaths.includes(location.pathname);
+  const noLayoutPaths = useMemo(
+    () => [
+      "/inkd",
+    ],
+    [],
+  );
+
+  const pathname = location.pathname;
+  const isPublic = publicPaths.includes(pathname);
+  const isNoLayoutPrivate = noLayoutPaths.includes(pathname);
 
   return (
     <div>
       <Suspense fallback={<FullScreenLoader />}>
-        {isPublic ? (
+        {isPublic ? ( 
           appRoutes
+        ) : isNoLayoutPrivate ? (
+          // Private pages without sidebar/layout
+          <PrivateRoute>{appRoutes}</PrivateRoute>
         ) : (
+          // Default: private pages wrapped with sidebar layout
           <PrivateRoute>
             <DefaultLayout>{appRoutes}</DefaultLayout>
           </PrivateRoute>

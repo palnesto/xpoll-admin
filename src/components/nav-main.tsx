@@ -33,8 +33,7 @@ type Item = {
 };
 export function NavMain({ items }: { items: Item[] }) {
   return (
-    <SidebarGroup>
-      <SidebarGroupLabel>Contents</SidebarGroupLabel>
+    <SidebarGroup> 
       <SidebarMenu className="">
         {items.map((item) => (
           <NavItem key={item.title} item={item} />
