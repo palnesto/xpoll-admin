@@ -181,10 +181,13 @@ export const endpoints = {
     },
     inkd:{
       internalAgent:{
+        create: "/internal/inkd-internal-agents",
+        checkNameAvailability: (agentName: string) => `/internal/inkd-internal-agents/name/${agentName}/availability`,
         advancedListings: "/internal/inkd-internal-agents",
+        changeAgentStatus:  "/internal/inkd-internal-agents/status",
       },
       blogs:{
-        advancedListings: "/internal/inkd-internal-agents/blogs",
+        advancedListings:  "/internal/inkd-internal-agents/blogs",
         reviewVote: (blogId: string) => `/internal/inkd-internal-agents/blogs/${blogId}/review-vote`,
       },
     },

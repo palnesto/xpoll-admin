@@ -3,11 +3,10 @@ import {
   MapPin,
   BriefcaseBusiness,
   BadgeAlert,
-  Pencil,
-  ArrowRight,
+  Pencil, 
   ExternalLink,
 } from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 type RelatedCard = {
   id: string;
