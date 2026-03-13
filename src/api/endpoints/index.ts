@@ -179,6 +179,15 @@ export const endpoints = {
       },
       delete: (industryId: string) => `/internal/industry/${industryId}`,
     },
+    inkd:{
+      internalAgent:{
+        advancedListings: "/internal/inkd-internal-agents",
+      },
+      blogs:{
+        advancedListings: "/internal/inkd-internal-agents/blogs",
+        reviewVote: (blogId: string) => `/internal/inkd-internal-agents/blogs/${blogId}/review-vote`,
+      },
+    },
   },
   web3: {
     createXamanPayload: "/internal/web3/createxamanpayload",

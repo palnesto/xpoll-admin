@@ -380,11 +380,11 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
         </div>
       )}
       <Sidebar collapsible="icon" {...props}>
-      <img
-  src={xOctopus}
-  alt="Octopus Tactical"
-  className="pointer-events-none absolute bottom-0 left-5 z-0 h-60 xl:h-80 object-contain mix-blend-screen opacity-10"
-/>
+        <img
+          src={xOctopus}
+          alt="Octopus Tactical"
+          className="pointer-events-none absolute bottom-0 left-5 z-0 h-60 xl:h-80 object-contain mix-blend-screen opacity-10"
+        />
         <SidebarHeader>
           <div className="flex px-4 pt-4 py-3 gap-2 items-center">
             <div className="h-12 aspect-3/4">

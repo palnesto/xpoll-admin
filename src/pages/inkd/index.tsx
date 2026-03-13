@@ -1,17 +1,43 @@
-import { useEffect, useRef, useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, Bot, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router";
 import xpollSVG from "@/assets/xpoll-svg.svg";
 import bg from "@/assets/inkdbg.mp4";
-import ink from "@/assets/ink.png"
-import { SignalCard } from "@/components/inkd/list-card";
+import ink from "@/assets/ink.png";
+import { AgentCard } from "@/components/inkd/agent-card";
+import type { InkdInternalAgentEntry } from "@/components/inkd/agent-card";
 import { inkdSignals } from "@/utils/mock-inkd";
+import { useApiQuery } from "@/hooks/useApiQuery";
+import { endpoints } from "@/api/endpoints";
+import ListingPagination from "@/components/commons/listing-pagination";
+
+const BASE_URL = endpoints.entities.inkd.internalAgent.advancedListings;
+const PAGE_SIZE = 20;
 
 export default function Inkd() {
     const navigate = useNavigate();
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+    const [page, setPage] = useState(1);
     const bgVideoRef = useRef<HTMLVideoElement | null>(null);
     const heroVideoRef = useRef<HTMLVideoElement | null>(null);
+
+    const urlWithQuery = useMemo(
+        () => `${BASE_URL}?page=${page}&pageSize=${PAGE_SIZE}`,
+        [page]
+    );
+    const { data, isLoading } = useApiQuery(urlWithQuery, {
+        queryKey: ["inkd-internal-agents-advanced", urlWithQuery],
+    } as any);
+    const payload = data?.data?.data ?? {};
+    const entries: InkdInternalAgentEntry[] = Array.isArray(payload.entries)
+        ? payload.entries
+        : [];
+    const meta = payload.meta ?? {};
+    const totalAgents = typeof meta.total === "number" ? meta.total : entries.length;
+    const totalPages = typeof meta.totalPages === "number" && meta.totalPages > 0
+        ? meta.totalPages
+        : Math.max(1, Math.ceil((totalAgents || 1) / PAGE_SIZE));
+    const currentPage = typeof meta.page === "number" && meta.page > 0 ? meta.page : page;
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -159,15 +185,70 @@ export default function Inkd() {
                                     SHOAL
                                 </h2>
                                 <p className="mt-2 text-sm tracking-[0.2em] text-[#8c8c8c]">
-                                    6 coins deployed
+                                    {totalAgents} agent{totalAgents !== 1 ? "s" : ""} deployed
                                 </p>
                             </div>
 
                             <div className="mt-12 grid w-full grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
-                                {inkdSignals.map((signal) => (
-                                    <SignalCard key={signal.id} signal={signal} />
-                                ))}
+                                {isLoading ? (
+                                    <p className="col-span-full text-center text-neutral-500">Loading agents…</p>
+                                ) : entries.length === 0 ? (
+                                    <div className="col-span-full flex flex-col items-center justify-center py-16 px-4 text-center inkd-empty-state">
+                                        <style>{`
+                                            @keyframes inkd-fade-in-up {
+                                                from { opacity: 0; transform: translateY(20px); }
+                                                to { opacity: 1; transform: translateY(0); }
+                                            }
+                                            @keyframes inkd-float {
+                                                0%, 100% { transform: translateY(0); }
+                                                50% { transform: translateY(-8px); }
+                                            }
+                                            @keyframes inkd-glow {
+                                                0%, 100% { opacity: 0.6; }
+                                                50% { opacity: 1; }
+                                            }
+                                            .inkd-empty-state {
+                                                animation: inkd-fade-in-up 0.6s ease-out both;
+                                            }
+                                            .inkd-empty-state .inkd-float-icon {
+                                                animation: inkd-float 2.5s ease-in-out infinite;
+                                            }
+                                            .inkd-empty-state .inkd-glow-dot {
+                                                animation: inkd-glow 2s ease-in-out infinite;
+                                            }
+                                        `}</style>
+                                        <div className="relative mb-6">
+                                            <div className="inkd-float-icon rounded-3xl bg-gradient-to-br from-primary/10 to-primary/5 p-6 ring-1 ring-primary/10">
+                                                <Bot className="size-16 text-primary/80" strokeWidth={1.25} />
+                                            </div>
+                                            <Sparkles className="inkd-glow-dot absolute -right-2 -top-1 size-8 text-primary/70" strokeWidth={1.5} />
+                                            <Sparkles className="inkd-glow-dot absolute -bottom-1 -left-2 size-6 text-primary/50" strokeWidth={1.5} style={{ animationDelay: "0.5s" }} />
+                                        </div>
+                                        <h3 className="text-xl font-semibold tracking-tight text-foreground">No agents yet</h3>
+                                        <p className="mt-2 max-w-sm text-sm text-muted-foreground">
+                                            Your shoal is empty. Add your first Signal AI to start generating content.
+                                        </p>
+                                        <button
+                                            type="button"
+                                            className="mt-6 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow-md transition hover:bg-primary/90 hover:shadow-lg"
+                                        >
+                                            + Add new Signal AI
+                                        </button>
+                                    </div>
+                                ) : (
+                                    entries?.map((agent) => (
+                                        <AgentCard key={agent._id} agent={agent} />
+                                    ))
+                                )}
                             </div>
+
+                            <ListingPagination
+                                page={currentPage}
+                                totalPages={totalPages}
+                                onPageChange={setPage}
+                                variant="primary"
+                                className="sticky bottom-0 left-0 mt-10 flex justify-center bg-background py-4 shadow-md w-fit mx-auto rounded-2xl"
+                            />
                         </div>
                     </div>
                 </div>

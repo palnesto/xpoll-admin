@@ -8,10 +8,30 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 
+/**
+ * Reusable pagination for paginated APIs.
+ * Use wherever you have page/totalPages and need Previous / page numbers / Next.
+ *
+ * @example
+ * const [page, setPage] = useState(1);
+ * const totalPages = meta?.totalPages ?? Math.ceil((meta?.total ?? 0) / pageSize);
+ * <ListingPagination
+ *   page={currentPage}
+ *   totalPages={totalPages}
+ *   onPageChange={setPage}
+ *   variant="primary"
+ *   className="sticky bottom-0 left-0 mt-10 ..."
+ * />
+ */
 type ListingPaginationProps = {
   page: number;
   totalPages: number;
   onPageChange: (nextPage: number) => void;
+
+  /**
+   * Optional: "primary" uses theme primary color for buttons; "default" uses standard button variants
+   */
+  variant?: "default" | "primary";
 
   /**
    * Optional: keeps UI consistent but allows mild tuning per page
@@ -54,10 +74,14 @@ function buildPageTokens(params: {
   return tokens;
 }
 
+const primaryButtonClass = "bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground";
+const primaryActiveClass = "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground";
+
 export default function ListingPagination({
   page,
   totalPages,
   onPageChange,
+  variant = "default",
   maxPagesToShow = 9,
   windowSize = 2,
   className,
@@ -74,6 +98,7 @@ export default function ListingPagination({
 
   const canPrev = safePage > 1;
   const canNext = safePage < safeTotalPages;
+  const isPrimary = variant === "primary";
 
   if (safeTotalPages <= 1) return null;
 
@@ -85,12 +110,18 @@ export default function ListingPagination({
       }
     >
       <Pagination>
-        <PaginationContent>
+        <PaginationContent className={isPrimary ? "flex-wrap gap-1" : undefined}>
           <PaginationItem>
             <PaginationPrevious
               href="#"
               aria-disabled={!canPrev}
-              className={!canPrev ? "pointer-events-none opacity-50" : ""}
+              className={
+                !canPrev
+                  ? "pointer-events-none opacity-50"
+                  : isPrimary
+                    ? primaryButtonClass
+                    : ""
+              }
               onClick={(e) => {
                 e.preventDefault();
                 if (canPrev) onPageChange(safePage - 1);
@@ -108,6 +139,13 @@ export default function ListingPagination({
                 <PaginationLink
                   href="#"
                   isActive={t === safePage}
+                  className={
+                    isPrimary
+                      ? t === safePage
+                        ? primaryActiveClass
+                        : primaryButtonClass
+                      : undefined
+                  }
                   onClick={(e) => {
                     e.preventDefault();
                     if (t !== safePage) onPageChange(t);
@@ -123,7 +161,13 @@ export default function ListingPagination({
             <PaginationNext
               href="#"
               aria-disabled={!canNext}
-              className={!canNext ? "pointer-events-none opacity-50" : ""}
+              className={
+                !canNext
+                  ? "pointer-events-none opacity-50"
+                  : isPrimary
+                    ? primaryButtonClass
+                    : ""
+              }
               onClick={(e) => {
                 e.preventDefault();
                 if (canNext) onPageChange(safePage + 1);
