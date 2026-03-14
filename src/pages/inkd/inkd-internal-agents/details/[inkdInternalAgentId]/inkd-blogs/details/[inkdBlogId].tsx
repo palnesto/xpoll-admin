@@ -219,7 +219,9 @@ export default function InkdBlogDetails() {
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigate(`/trials/${trial._id}`);
+                            navigate(`/trials/${trial._id}`, {
+                              state: { isNavigationEditing: true },
+                            });
                           }}
                           className="flex h-6 w-6 items-center justify-center rounded-full bg-[#ececec] text-[#666] hover:bg-[#e0e0e0]"
                           aria-label="Edit trial"
