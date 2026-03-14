@@ -89,7 +89,11 @@ export default function Inkd() {
                                         />
                                     </section>
 
-                                    <button className="rounded-full bg-white px-[26px] py-[10px] text-[20px] font-normal text-black">
+                                    <button
+                                        type="button"
+                                        onClick={() => navigate("/inkd/create?tab=foundational-info")}
+                                        className="rounded-full bg-white px-[26px] py-[10px] text-[20px] font-normal text-black"
+                                    >
                                         + Add new Signal AI
                                     </button>
                                 </header>

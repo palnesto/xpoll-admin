@@ -189,6 +189,7 @@ export const endpoints = {
       blogs:{
         advancedListings:  "/internal/inkd-internal-agents/blogs",
         reviewVote: (blogId: string) => `/internal/inkd-internal-agents/blogs/${blogId}/review-vote`,
+        updateSequence: (blogId: string) => `/internal/inkd-internal-agents/blogs/${blogId}/trials/sequence`,
       },
     },
   },

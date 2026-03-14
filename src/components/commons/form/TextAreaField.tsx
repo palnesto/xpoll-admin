@@ -17,6 +17,7 @@ type Props<T extends FieldValues> = {
   showError?: boolean;
   showCounter?: boolean;
   className?: string;
+  inputClassName?: string;
 };
 
 export function TextAreaField<T extends FieldValues>({
@@ -30,6 +31,7 @@ export function TextAreaField<T extends FieldValues>({
   showError,
   showCounter,
   className,
+  inputClassName,
 }: Props<T>) {
   const { control, setValue, getValues, formState } = form;
 
@@ -85,10 +87,10 @@ export function TextAreaField<T extends FieldValues>({
                   field.onChange(raw);
                 }}
                 className={cn(
-                  "w-full min-h-[120px] rounded-2xl border px-3 py-2 text-base font-light tracking-wide bg-transparent outline-none focus:ring-2",
+                  "w-full min-h-[120px] rounded-2xl border px-3 py-2 text-base font-light tracking-wide bg-transparent focus:ring-2",
                   err
                     ? "border-red-500 focus:ring-red-200"
-                    : "border-border focus:ring-muted",
+                    : inputClassName ?? "border-border focus:ring-muted",
                 )}
               />
 

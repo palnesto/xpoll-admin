@@ -13,7 +13,7 @@ export function App() {
   const publicPaths = useMemo(() => ["/login", "/test"], []);
 
   // only this page should stay fullscreen without the left chat workspace layout
-  const noLayoutPaths = useMemo(() => ["/inkd"], []);
+  const noLayoutPaths = useMemo(() => ["/inkd","/inkd/create"], []);
 
   // all INKD sub-pages that should use the shared left chat layout
   const inkdWorkspacePrefixes = useMemo(

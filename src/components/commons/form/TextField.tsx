@@ -16,6 +16,7 @@ type Props<T extends FieldValues> = {
   showError?: boolean;
   showCounter?: boolean;
   className?: string;
+  inputClassName?: string;
 };
 
 export function TextField<T extends FieldValues>({
@@ -28,6 +29,7 @@ export function TextField<T extends FieldValues>({
   showError,
   showCounter,
   className,
+  inputClassName,
 }: Props<T>) {
   const { control, setValue, getValues, formState } = form;
 
@@ -83,10 +85,10 @@ export function TextField<T extends FieldValues>({
                   field.onChange(raw);
                 }}
                 className={cn(
-                  "w-full h-11 rounded-2xl border px-3 text-base font-light tracking-wide bg-transparent outline-none focus:ring-2",
+                  "w-full h-11 rounded-2xl border px-3 text-base font-light tracking-wide bg-transparent focus:ring-2",
                   err
                     ? "border-red-500 focus:ring-red-200"
-                    : "border-border focus:ring-muted",
+                    : inputClassName ?? "border-border focus:ring-muted",
                 )}
               />
 

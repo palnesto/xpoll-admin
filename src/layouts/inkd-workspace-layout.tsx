@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { ArrowLeft, Search, PanelRight, List, Sparkles } from "lucide-react";
+import { ArrowLeft, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 type Props = {

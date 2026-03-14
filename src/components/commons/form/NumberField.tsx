@@ -16,6 +16,7 @@ type Props<T extends FieldValues> = {
   decimalScale?: number;
   showError?: boolean;
   className?: string;
+  inputClassName?: string;
 };
 
 function isValidNumericInput(raw: string, decimalScale: number) {
@@ -40,6 +41,7 @@ export function NumberField<T extends FieldValues>({
   decimalScale = 0,
   showError,
   className,
+  inputClassName,
 }: Props<T>) {
   const { control, setValue, getValues, formState } = form;
   const meta = getZodFieldMeta(schema, String(name));
@@ -145,10 +147,10 @@ export function NumberField<T extends FieldValues>({
                 if (Number.isFinite(n)) field.onChange(n);
               }}
               className={cn(
-                "w-full h-11 rounded-2xl border px-3 text-base font-light tracking-wide bg-transparent outline-none focus:ring-2",
+                "w-full h-11 rounded-2xl border px-3 text-base font-light tracking-wide bg-transparent focus:ring-2",
                 err
                   ? "border-red-500 focus:ring-red-200"
-                  : "border-border focus:ring-muted",
+                  : inputClassName ?? "border-border focus:ring-muted",
               )}
             />
 
