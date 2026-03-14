@@ -55,7 +55,7 @@ export const TipTap = ({
           "[&_ol]:list-decimal [&_ul]:list-disc",
           "min-h-[150px] rounded-b-md p-3",
           "focus:outline-none",
-          "bg-background",
+          "bg-transparent text-[#111]",
           "[&>*:first-child]:mt-0",
           "[&>*:last-child]:mb-0"
         ),
@@ -74,7 +74,7 @@ export const TipTap = ({
   }, [description, editor]);
 
   return (
-    <div className="flex flex-col min-h-[250px] rounded-md border border-input bg-background">
+    <div className="flex flex-col min-h-[250px] rounded-md border border-input bg-transparent">
       <Toolbar editor={editor} />
       <EditorContent editor={editor} />
     </div>

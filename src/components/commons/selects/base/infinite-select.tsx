@@ -170,31 +170,30 @@ export default function InfiniteSelect<
         }),
         control: (base, state) => ({
           ...base,
-          backgroundColor: "transparent",
+          backgroundColor: "#ffffff",
           boxShadow: "none",
           borderColor: state.isFocused ? "" : "",
         }),
         input: (base) => ({
           ...base,
-          color: "#fff",
+          color: "#111",
         }),
         option: (provided, state) => ({
           ...provided,
-          color: "black",
+          color: "#111",
           backgroundColor: state.isFocused
-            ? "#e6e6e6" // focused option
+            ? "#e6e6e6"
             : state.isSelected
-              ? "#e6e6e6" // selected option
+              ? "#e6e6e6"
               : "white",
         }),
-
         singleValue: (provided) => ({
           ...provided,
-          color: "#fff", // ✅ typed text stays black
+          color: "#111",
         }),
         multiValueLabel: (provided) => ({
           ...provided,
-          color: "black",
+          color: "#111",
         }),
       }}
       {...selectProps}

@@ -425,7 +425,7 @@ function VotePills({
         type="button"
         disabled={isPending}
         onClick={(e) => handleVote(e, "upvote")}
-        className={`flex h-[28px] w-[58px] items-center justify-center rounded-full transition ${
+        className={`flex h-[28px] w-[58px] items-center justify-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-70 ${
           reviewVote === "upvote"
             ? "bg-[#7078e6] text-white"
             : "bg-[#dedede] text-[#555]"
@@ -438,7 +438,7 @@ function VotePills({
         type="button"
         disabled={isPending}
         onClick={(e) => handleVote(e, "downvote")}
-        className={`flex h-[28px] w-[58px] items-center justify-center rounded-full transition ${
+        className={`flex h-[28px] w-[58px] items-center justify-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-70 ${
           reviewVote === "downvote"
             ? "bg-[#ff5a36] text-white"
             : "bg-[#dedede] text-[#555]"

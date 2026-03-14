@@ -292,8 +292,8 @@ export function ConfigureAgentFoundationModal({
                         className={cn(
                           "flex h-10 w-10 items-center justify-center rounded-lg transition",
                           isActive
-                            ? "bg-white text-[#111]"
-                            : "text-[#9ca3af] hover:bg-white/10 hover:text-white",
+                            ? "bg-[#E8E8EC] text-[#111]"
+                            : "text-[#9ca3af] hover:bg-[#E8E8EC] hover:text-[#111]",
                         )}
                       >
                         <Icon className="h-5 w-5" />
