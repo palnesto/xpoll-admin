@@ -15,7 +15,7 @@ import { endpoints } from "@/api/endpoints";
 import ListingPagination from "@/components/commons/listing-pagination";
 import { amount, unwrapString } from "@/utils/currency-assets/base";
 import { assetSpecs, type AssetType } from "@/utils/currency-assets/asset";
-import inkPlaceholder from "@/assets/inkd.png";
+import inkPlaceholder from "@/assets/fallback.png";
 
 const BASE_URL = endpoints.entities.inkd.blogs.advancedListings;
 const PAGE_SIZE = 20;
@@ -162,7 +162,7 @@ export default function InkdInternalAgentDetailsPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[1000px] px-4 pb-8 pt-3">
+    <div className="mx-auto w-full max-w-[1000px] 2xl:px-4 pb-8 pt-3">
       {/* Top controls */}
       <div className="mb-5 flex items-center justify-between gap-4">
         <div className="relative w-full max-w-[545px]">
@@ -425,7 +425,7 @@ function VotePills({
         type="button"
         disabled={isPending}
         onClick={(e) => handleVote(e, "upvote")}
-        className={`flex h-[28px] w-[58px] items-center justify-center rounded-full transition ${
+        className={`flex h-[28px] w-[58px] items-center justify-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-70 ${
           reviewVote === "upvote"
             ? "bg-[#7078e6] text-white"
             : "bg-[#dedede] text-[#555]"
@@ -438,7 +438,7 @@ function VotePills({
         type="button"
         disabled={isPending}
         onClick={(e) => handleVote(e, "downvote")}
-        className={`flex h-[28px] w-[58px] items-center justify-center rounded-full transition ${
+        className={`flex h-[28px] w-[58px] items-center justify-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-70 ${
           reviewVote === "downvote"
             ? "bg-[#ff5a36] text-white"
             : "bg-[#dedede] text-[#555]"

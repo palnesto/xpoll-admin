@@ -1,9 +1,8 @@
 import { ReactNode, useMemo, useState } from "react";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ConfigureAgentFoundationModal } from "@/components/inkd/configure-agent-foundation-modal";
-
-/** Match /inkd/inkd-internal-agents/details/:id so we can enable Configure button on agent details page. */
+import { ConfigureAgentFoundationModal } from "@/components/modals/configure-agent-foundation-modal";
+ 
 const AGENT_DETAILS_PATH = "/inkd/inkd-internal-agents/details/";
 
 type Props = {
