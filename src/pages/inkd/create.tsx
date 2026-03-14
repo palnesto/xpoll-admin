@@ -27,18 +27,20 @@ import {
   writePersistedForm,
   clearPersistedForm,
 } from "@/stores/inkdAgentCreate.persistence";
+import { CreateAgentTabs } from "@/components/inkd/create-agent-tabs";
+import { CreateAgentFooter } from "@/components/inkd/create-agent-footer";
 import {
-  CreateAgentTabs,
-  CreateAgentFooter,
   FoundationalInfoStep,
-  BrandLanguageStep,
-  SettingsStep,
-  PriorityScrapingStep,
-  RewardDistributionStep,
   type NameStatus,
+} from "@/components/inkd/foundational-info-step";
+import { BrandLanguageStep } from "@/components/inkd/brand-language-step";
+import {
+  SettingsStep,
   type GeoOption,
   type IndustryOption,
-} from "@/components/inkd";
+} from "@/components/inkd/settings-step";
+import { PriorityScrapingStep } from "@/components/inkd/priority-scraping-step";
+import { RewardDistributionStep } from "@/components/inkd/reward-distribution-step";
 
 export default function CreateInkdInternalAgent() {
   const navigate = useNavigate();
@@ -231,7 +233,7 @@ export default function CreateInkdInternalAgent() {
 
     const created = data?.data;
     if (created?.internalAgentId) {
-      navigate(`/inkd/inkd-internal-agents/details/${created.internalAgentId}`);
+      navigate("/inkd");
     }
   };
 

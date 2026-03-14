@@ -79,7 +79,7 @@ export function PriorityScrapingStep({
 
   return (
     <div className="space-y-4">
-      <Label className="text-xs font-semibold text-[#6c6c76]">
+      <Label className="text-xs font-semibold text-[#5E6366]">
         Paste URL to parse…
       </Label>
 

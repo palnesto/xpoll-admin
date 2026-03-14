@@ -51,8 +51,8 @@ export function CreateAgentTabs({
               onStepClick(step.id);
             }}
             className={cn(
-              "flex items-center gap-2 rounded-full py-2 text-[11px] font-semibold tracking-[0.18em] uppercase transition",
-              isActive ? "px-6 text-[#111]" : "px-4 text-[#9a9aab]",
+              "flex items-center gap-2 rounded-full py-2 text-[11px] font-semibold tracking-[0.18em] uppercase transition text-[#5E6366]",
+              isActive ? "px-6" : "px-4",
             )}
           >
             <Icon className="h-4 w-4 shrink-0" />

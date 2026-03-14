@@ -16,6 +16,7 @@ type Props<T extends FieldValues> = {
   decimalScale?: number;
   showError?: boolean;
   className?: string;
+  labelClassName?: string;
   inputClassName?: string;
 };
 
@@ -41,6 +42,7 @@ export function NumberField<T extends FieldValues>({
   decimalScale = 0,
   showError,
   className,
+  labelClassName,
   inputClassName,
 }: Props<T>) {
   const { control, setValue, getValues, formState } = form;
@@ -76,7 +78,7 @@ export function NumberField<T extends FieldValues>({
   return (
     <div className={cn("space-y-2", className)}>
       {label ? (
-        <label className="text-sm font-normal tracking-wide">
+        <label className={cn("text-sm font-normal tracking-wide text-[#5E6366]", labelClassName)}>
           {label}
           {isRequired ? <span className="ml-1 text-red-600">*</span> : null}
         </label>

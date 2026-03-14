@@ -13,29 +13,44 @@ type FormValues = import("@/schema/inkd-agent-create.schema").InkdAgentCreateFor
 type Props = {
   form: UseFormReturn<FormValues>;
   nameStatus: NameStatus;
+  /** When set, show name as read-only (edit mode; name not sent in PATCH) */
+  editMode?: { name: string };
 };
 
-export function FoundationalInfoStep({ form, nameStatus }: Props) {
+export function FoundationalInfoStep({ form, nameStatus, editMode }: Props) {
   return (
     <div className="space-y-8">
-      <TextField<FormValues>
-        form={form}
-        schema={inkdAgentCreateFormSchema}
-        name="name"
-        label="Name of AI Signal"
-        placeholder="Sample Name"
-        showCounter
-        showError
-        inputClassName={INPUT_CLASS}
-      />
-      <div className="text-xs text-[#8c8c99]">
-        {nameStatus === "checking" && "Checking name availability…"}
-        {nameStatus === "available" && "Name is available."}
-        {nameStatus === "unavailable" &&
-          "Name is already in use. Choose another."}
-        {nameStatus === "error" &&
-          "Could not verify name. Please try again."}
-      </div>
+      {editMode ? (
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-[#5E6366]">
+            Name of AI Signal
+          </label>
+          <div className="rounded-md border border-[#DDE2E5] bg-[#f8f9fa] px-3 py-2 text-[#111]">
+            {editMode.name}
+          </div>
+        </div>
+      ) : (
+        <>
+          <TextField<FormValues>
+            form={form}
+            schema={inkdAgentCreateFormSchema}
+            name="name"
+            label="Name of AI Signal"
+            placeholder="Sample Name"
+            showCounter
+            showError
+            inputClassName={INPUT_CLASS}
+          />
+          <div className="text-xs text-[#8c8c99]">
+            {nameStatus === "checking" && "Checking name availability…"}
+            {nameStatus === "available" && "Name is available."}
+            {nameStatus === "unavailable" &&
+              "Name is already in use. Choose another."}
+            {nameStatus === "error" &&
+              "Could not verify name. Please try again."}
+          </div>
+        </>
+      )}
 
       <TextAreaField<FormValues>
         form={form}

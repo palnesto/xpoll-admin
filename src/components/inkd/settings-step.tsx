@@ -77,7 +77,7 @@ export function SettingsStep({
 
       <div className="col-span-3 grid grid-cols-3 gap-6">
         <div className="space-y-1">
-          <Label className="text-xs font-semibold text-[#6c6c76]">
+          <Label className="text-xs font-semibold text-[#5E6366]">
             Country
           </Label>
           <CountrySelect
@@ -87,7 +87,7 @@ export function SettingsStep({
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs font-semibold text-[#6c6c76]">
+          <Label className="text-xs font-semibold text-[#5E6366]">
             State
           </Label>
           <StateSelect
@@ -97,7 +97,7 @@ export function SettingsStep({
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs font-semibold text-[#6c6c76]">
+          <Label className="text-xs font-semibold text-[#5E6366]">
             City
           </Label>
           <CitySelect
@@ -108,7 +108,7 @@ export function SettingsStep({
         </div>
 
         <div className="col-span-3 space-y-1">
-          <Label className="text-xs font-semibold text-[#6c6c76]">
+          <Label className="text-xs font-semibold text-[#5E6366]">
             Targeted Industries
           </Label>
           <IndustryInfiniteSelect

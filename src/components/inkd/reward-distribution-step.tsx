@@ -34,7 +34,7 @@ export function RewardDistributionStep({
   return (
     <section className="space-y-2">
       <div className="flex items-center justify-between">
-        <div className="text-[#7A7A7A]">Trail Rewards</div>
+        <div className="text-[#5E6366]">Trail Rewards</div>
         <button
           type="button"
           onClick={() =>

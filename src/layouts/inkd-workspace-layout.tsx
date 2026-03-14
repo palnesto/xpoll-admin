@@ -1,6 +1,10 @@
-import { ReactNode } from "react";
+import { ReactNode, useMemo, useState } from "react";
 import { ArrowLeft, Sparkles } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { ConfigureAgentFoundationModal } from "@/components/inkd/configure-agent-foundation-modal";
+
+/** Match /inkd/inkd-internal-agents/details/:id so we can enable Configure button on agent details page. */
+const AGENT_DETAILS_PATH = "/inkd/inkd-internal-agents/details/";
 
 type Props = {
   children: ReactNode;
@@ -8,6 +12,14 @@ type Props = {
 
 export function InkdWorkspaceLayout({ children }: Props) {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const inkdInternalAgentId = useMemo(() => {
+    if (!pathname.startsWith(AGENT_DETAILS_PATH)) return null;
+    const rest = pathname.slice(AGENT_DETAILS_PATH.length);
+    const segment = rest.split("/")[0];
+    return segment && segment.length > 0 ? segment : null;
+  }, [pathname]);
+  const [configureModalOpen, setConfigureModalOpen] = useState(false);
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#f3f3f5]">
@@ -36,7 +48,12 @@ export function InkdWorkspaceLayout({ children }: Props) {
               </h1>
             </div>
 
-            <button className="flex items-center gap-2 rounded-full bg-[#5b4df7] px-4 py-2 text-xs xl:text-sm text-white shadow-sm">
+            <button
+              type="button"
+              onClick={() => inkdInternalAgentId && setConfigureModalOpen(true)}
+              disabled={!inkdInternalAgentId}
+              className="flex items-center gap-2 rounded-full bg-[#5b4df7] px-4 py-2 text-xs xl:text-sm text-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <Sparkles size={14} />
               Configure AI Foundation
             </button>
@@ -72,6 +89,12 @@ export function InkdWorkspaceLayout({ children }: Props) {
       <main className="min-w-0 flex-1 overflow-y-auto p-4">
         {children}
       </main>
+
+      <ConfigureAgentFoundationModal
+        agentId={inkdInternalAgentId ?? null}
+        open={configureModalOpen}
+        onOpenChange={setConfigureModalOpen}
+      />
     </div>
   );
 }
