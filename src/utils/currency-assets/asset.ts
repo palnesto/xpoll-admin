@@ -22,6 +22,7 @@ import term from "@/assets/term.png";
 import jack from "@/assets/jack.png";
 import three from "@/assets/three.png";
 import mrt from "@/assets/t.png";
+import tin from "@/assets/tin.png";
 
 export const ASSETS = {
   X_POLL: "xPoll", // xPoll
@@ -384,7 +385,7 @@ export const assetSpecs: Record<
     symbol: "XTAXM",
     parent: "xTinman",
     parentSymbol: "XTAX",
-    img: "/img/xTaxMini.png",
+    img: tin,
     canSell: null,
     chain: CHAINS.STRAIN,
   },
