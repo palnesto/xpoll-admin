@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import type { InkdAgentCreateFormValues } from "@/schema/inkd-agent-create.schema";
-import { INKD_CREATE_INPUT_CLASS } from "./constants";
+
+const INPUT_CLASS =
+  "border-[#DDE2E5] focus:border-[#E8EAED] focus:ring-1 focus:ring-[#E8EAED] focus-visible:outline-none text-[#111] placeholder:text-[#9a9aab]";
 
 function normalizeUrl(s: string): string {
   const t = s.trim();
@@ -95,7 +97,7 @@ export function PriorityScrapingStep({
               handleAddLink();
             }
           }}
-          className={cn("flex-1", INKD_CREATE_INPUT_CLASS)}
+          className={cn("flex-1", INPUT_CLASS)}
         />
         <Button
           type="button"

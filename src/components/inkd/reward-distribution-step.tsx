@@ -3,9 +3,11 @@ import { Controller } from "react-hook-form";
 import { Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
-import { INKD_CREATE_INPUT_CLASS } from "./constants";
 import { coinAssets, assetSpecs, type AssetType } from "@/utils/currency-assets/asset";
 import type { InkdAgentCreateFormValues } from "@/schema/inkd-agent-create.schema";
+
+const INPUT_CLASS =
+  "border-[#DDE2E5] focus:border-[#E8EAED] focus:ring-1 focus:ring-[#E8EAED] focus-visible:outline-none text-[#111] placeholder:text-[#9a9aab]";
 
 type RewardItem = {
   assetId: string;
@@ -70,7 +72,7 @@ export function RewardDistributionStep({
                     <select
                       className={cn(
                         "rounded border bg-white px-2 py-1 text-sm font-medium text-[#2B2B2B]",
-                        INKD_CREATE_INPUT_CLASS,
+                        INPUT_CLASS,
                       )}
                       {...form.register(`rewards.${index}.assetId` as const)}
                     >
@@ -103,7 +105,7 @@ export function RewardDistributionStep({
                       placeholder="0"
                       className={cn(
                         "h-8 w-20 border-0 border-b border-[#DDE2E5] bg-transparent p-0 text-xl font-medium text-[#111] tabular-nums shadow-none focus-visible:ring-0",
-                        INKD_CREATE_INPUT_CLASS,
+                        INPUT_CLASS,
                       )}
                       {...form.register(
                         `rewards.${index}.amount` as const,
@@ -121,7 +123,7 @@ export function RewardDistributionStep({
                       placeholder="0"
                       className={cn(
                         "h-8 w-20 border-0 border-b border-[#DDE2E5] bg-transparent p-0 text-xl font-semibold text-[#111] tabular-nums shadow-none focus-visible:ring-0",
-                        INKD_CREATE_INPUT_CLASS,
+                        INPUT_CLASS,
                       )}
                       {...form.register(
                         `rewards.${index}.rewardAmountCap` as const,

@@ -2,7 +2,9 @@ import type { UseFormReturn } from "react-hook-form";
 import { TextField } from "@/components/commons/form/TextField";
 import { TextAreaField } from "@/components/commons/form/TextAreaField";
 import { inkdAgentCreateFormSchema } from "@/schema/inkd-agent-create.schema";
-import { INKD_CREATE_INPUT_CLASS } from "./constants";
+
+const INPUT_CLASS =
+  "border-[#DDE2E5] focus:border-[#E8EAED] focus:ring-1 focus:ring-[#E8EAED] focus-visible:outline-none text-[#111] placeholder:text-[#9a9aab]";
 
 export type NameStatus = "idle" | "checking" | "available" | "unavailable" | "error";
 
@@ -24,7 +26,7 @@ export function FoundationalInfoStep({ form, nameStatus }: Props) {
         placeholder="Sample Name"
         showCounter
         showError
-        inputClassName={INKD_CREATE_INPUT_CLASS}
+        inputClassName={INPUT_CLASS}
       />
       <div className="text-xs text-[#8c8c99]">
         {nameStatus === "checking" && "Checking name availability…"}
@@ -43,7 +45,7 @@ export function FoundationalInfoStep({ form, nameStatus }: Props) {
         rows={10}
         showCounter
         showError
-        inputClassName={INKD_CREATE_INPUT_CLASS}
+        inputClassName={INPUT_CLASS}
       />
     </div>
   );

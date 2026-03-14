@@ -23,6 +23,11 @@ import {
   type InkdAgentRewardInput,
 } from "@/stores/inkdAgentCreate.store";
 import {
+  readPersistedForm,
+  writePersistedForm,
+  clearPersistedForm,
+} from "@/stores/inkdAgentCreate.persistence";
+import {
   CreateAgentTabs,
   CreateAgentFooter,
   FoundationalInfoStep,
@@ -30,13 +35,10 @@ import {
   SettingsStep,
   PriorityScrapingStep,
   RewardDistributionStep,
-  readPersistedForm,
-  writePersistedForm,
-  clearPersistedForm,
   type NameStatus,
   type GeoOption,
   type IndustryOption,
-} from "./create/index";
+} from "@/components/inkd";
 
 export default function CreateInkdInternalAgent() {
   const navigate = useNavigate();

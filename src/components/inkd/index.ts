@@ -7,9 +7,3 @@ export { SettingsStep } from "./settings-step";
 export type { GeoOption, IndustryOption } from "./settings-step";
 export { PriorityScrapingStep } from "./priority-scraping-step";
 export { RewardDistributionStep } from "./reward-distribution-step";
-export {
-  getStoreKey,
-  readPersistedForm,
-  writePersistedForm,
-  clearPersistedForm,
-} from "./persistence";

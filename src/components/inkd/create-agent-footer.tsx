@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { INKD_CREATE_STEPS, type InkdCreateStepId } from "@/schema/inkd-agent-create.schema";
+import { INKD_CREATE_STEPS } from "@/schema/inkd-agent-create.schema";
 
 type Props = {
   stepIndex: number;
