@@ -48,6 +48,7 @@ export const ASSETS = {
   X_TERM_MINI: "xTermMini", // xTermMini
   X_THREE_LETTER_MINI: "xThreeLetterMini", // xThreeLetterMini
   X_MR_T_MINI: "xMRTMini", // xMRTMini
+  X_TAX_MINI: "xTaxMini", // xTaxMini
 } as const;
 export type AssetType = (typeof ASSETS)[keyof typeof ASSETS];
 
@@ -75,6 +76,7 @@ const _assets = [
   ASSETS.X_TERM_MINI,
   ASSETS.X_THREE_LETTER_MINI,
   ASSETS.X_MR_T_MINI,
+  ASSETS.X_TAX_MINI,
 ] as const;
 export const coinAssets = [
   ASSETS.X_POLL,
@@ -100,6 +102,7 @@ export const coinAssets = [
   ASSETS.X_TERM_MINI,
   ASSETS.X_THREE_LETTER_MINI,
   ASSETS.X_MR_T_MINI,
+  ASSETS.X_TAX_MINI,
 ] as const;
 export const assetEnum = z.enum(_assets);
 export const sellableAssetEnum = z.enum([
@@ -372,6 +375,16 @@ export const assetSpecs: Record<
     parent: "xMr.T",
     parentSymbol: "XMRT",
     img: mrt,
+    canSell: null,
+    chain: CHAINS.STRAIN,
+  },
+  [ASSETS.X_TAX_MINI]: {
+    decimal: 6,
+    name: "X_TAX_MINI",
+    symbol: "XTAXM",
+    parent: "xTinman",
+    parentSymbol: "XTAX",
+    img: "/img/xTaxMini.png",
     canSell: null,
     chain: CHAINS.STRAIN,
   },
