@@ -184,6 +184,8 @@ export const endpoints = {
         create: "/internal/inkd-internal-agents",
         checkNameAvailability: (agentName: string) => `/internal/inkd-internal-agents/name/${agentName}/availability`,
         advancedListings: "/internal/inkd-internal-agents",
+        taskLogsAdvanced: "/internal/inkd-internal-agents/task-logs",
+        manualRun: (inkdInternalAgentId: string) => `/internal/inkd-internal-agents/${inkdInternalAgentId}/manual-run`,
         getById: (inkdInternalAgentId: string) => `/internal/inkd-internal-agents/${inkdInternalAgentId}`,
         update: (inkdInternalAgentId: string) => `/internal/inkd-internal-agents/${inkdInternalAgentId}`,
         changeAgentStatus:  "/internal/inkd-internal-agents/status",

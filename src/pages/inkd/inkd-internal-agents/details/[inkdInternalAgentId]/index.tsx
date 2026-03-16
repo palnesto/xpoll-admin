@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   Search,
   LayoutGrid,
@@ -13,10 +13,22 @@ import { useApiQuery } from "@/hooks/useApiQuery";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { endpoints } from "@/api/endpoints";
 import ListingPagination from "@/components/commons/listing-pagination";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { AgentLogsSection } from "@/components/inkd/agent-logs-section";
 import { amount, unwrapString } from "@/utils/currency-assets/base";
 import { assetSpecs, type AssetType } from "@/utils/currency-assets/asset";
 import inkPlaceholder from "@/assets/fallback.png";
 import inkd from "@/assets/ink.png";
+import { queryClient } from "@/api/queryClient";
 
 const BASE_URL = endpoints.entities.inkd.blogs.advancedListings;
 const PAGE_SIZE = 20;
@@ -102,6 +114,8 @@ export default function InkdInternalAgentDetailsPage() {
   const [view, setView] = useState<ViewMode>("cards");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [manualLaunchOpen, setManualLaunchOpen] = useState(false);
+  const lastLaunchAttemptAtRef = useRef(0);
 
   const listQueryKey = useMemo(
     () => ["inkd-blogs-advanced", inkdInternalAgentId, page, query],
@@ -137,6 +151,34 @@ export default function InkdInternalAgentDetailsPage() {
       : Math.max(1, Math.ceil((meta.total || 1) / PAGE_SIZE));
   const currentPage =
     typeof meta.page === "number" && meta.page > 0 ? meta.page : page;
+
+  const handleCompletedLogDetected = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: listQueryKey });
+  }, [queryClient, listQueryKey]);
+
+  const { mutate: launchManualRun, isPending: isManualLaunchPending } =
+    useApiMutation<Record<string, never>, unknown>({
+      route: endpoints.entities.inkd.internalAgent.manualRun(
+        inkdInternalAgentId ?? "",
+      ),
+      method: "POST",
+      onSuccess: () => {
+        setManualLaunchOpen(false);
+        queryClient.invalidateQueries({
+          queryKey: ["inkd-agent-logs", inkdInternalAgentId],
+        });
+      },
+    });
+
+  const handleConfirmManualLaunch = useCallback(() => {
+    if (!inkdInternalAgentId || isManualLaunchPending) return;
+
+    const now = Date.now();
+    if (now - lastLaunchAttemptAtRef.current < 800) return;
+    lastLaunchAttemptAtRef.current = now;
+
+    launchManualRun({});
+  }, [inkdInternalAgentId, isManualLaunchPending, launchManualRun]);
 
   const goToBlog = (blogId: string) => {
     navigate(
@@ -184,32 +226,48 @@ export default function InkdInternalAgentDetailsPage() {
           </div>
         </div>
 
-        <div className="flex h-[48px] items-center rounded-full bg-[#eef0f2] p-[4px] shadow-[0_1px_0_rgba(255,255,255,0.8)_inset]">
+        <div className="ml-auto flex items-center gap-3">
           <button
             type="button"
-            onClick={() => setView("cards")}
-            className={`flex h-[40px] w-[52px] items-center justify-center rounded-full transition ${
-              view === "cards"
-                ? "bg-white text-[#6b63f6] shadow-[0_2px_10px_rgba(0,0,0,0.05)]"
-                : "text-[#8f8f98]"
-            }`}
+            onClick={() => setManualLaunchOpen(true)}
+            disabled={!inkdInternalAgentId}
+            className="inline-flex h-[42px] shrink-0 items-center rounded-full bg-[#6b63f6] px-4 text-[12px] font-medium text-white shadow-[0_10px_25px_rgba(107,99,246,0.22)] transition hover:bg-[#5d55ef] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <LayoutGrid size={17} strokeWidth={2} />
+            Manual Launch
           </button>
 
-          <button
-            type="button"
-            onClick={() => setView("rows")}
-            className={`flex h-[40px] w-[52px] items-center justify-center rounded-full transition ${
-              view === "rows"
-                ? "bg-white text-[#6b63f6] shadow-[0_2px_10px_rgba(0,0,0,0.05)]"
-                : "text-[#8f8f98]"
-            }`}
-          >
-            <List size={17} strokeWidth={2} />
-          </button>
+          <div className="flex h-[48px] items-center rounded-full bg-[#eef0f2] p-[4px] shadow-[0_1px_0_rgba(255,255,255,0.8)_inset]">
+            <button
+              type="button"
+              onClick={() => setView("cards")}
+              className={`flex h-[40px] w-[52px] items-center justify-center rounded-full transition ${
+                view === "cards"
+                  ? "bg-white text-[#6b63f6] shadow-[0_2px_10px_rgba(0,0,0,0.05)]"
+                  : "text-[#8f8f98]"
+              }`}
+            >
+              <LayoutGrid size={17} strokeWidth={2} />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setView("rows")}
+              className={`flex h-[40px] w-[52px] items-center justify-center rounded-full transition ${
+                view === "rows"
+                  ? "bg-white text-[#6b63f6] shadow-[0_2px_10px_rgba(0,0,0,0.05)]"
+                  : "text-[#8f8f98]"
+              }`}
+            >
+              <List size={17} strokeWidth={2} />
+            </button>
+          </div>
         </div>
       </div>
+
+      <AgentLogsSection
+        inkdInternalAgentId={inkdInternalAgentId}
+        onCompletedLogDetected={handleCompletedLogDetected}
+      />
 
       {isLoading ? (
         <p className="py-20 text-center text-neutral-400">Loading blogs…</p>
@@ -385,6 +443,45 @@ export default function InkdInternalAgentDetailsPage() {
           className="sticky bottom-0 left-0 mt-10 flex w-fit mx-auto justify-center rounded-2xl bg-background py-4 shadow-md"
         />
       )}
+
+      <AlertDialog
+        open={manualLaunchOpen}
+        onOpenChange={(nextOpen) => {
+          if (isManualLaunchPending) return;
+          setManualLaunchOpen(nextOpen);
+        }}
+      >
+        <AlertDialogContent className="max-w-[420px] rounded-[24px] border border-[#ececf4] bg-white p-6">
+          <AlertDialogHeader className="space-y-2 text-left">
+            <AlertDialogTitle className="text-[20px] font-semibold text-[#1e1e22]">
+              Launch manual run?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-[13px] leading-6 text-[#6a6a75]">
+              Are you sure you want to launch this agent manually?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter className="mt-2 flex-row justify-end gap-3 space-x-0">
+            <AlertDialogCancel
+              disabled={isManualLaunchPending}
+              className="mt-0 h-[42px] rounded-full border border-[#e4e5ec] bg-white px-5 text-[13px] text-[#4b4b56] shadow-none hover:bg-[#f5f6fa] hover:text-[#1f2430]"
+            >
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              disabled={isManualLaunchPending}
+              onClick={(event) => {
+                event.preventDefault();
+                handleConfirmManualLaunch();
+              }}
+              className="h-[42px] rounded-full bg-[#6b63f6] px-5 text-[13px] text-white hover:bg-[#5d55ef] disabled:pointer-events-none disabled:opacity-60"
+            >
+              {isManualLaunchPending ? "Launching..." : "Launch"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -411,10 +508,7 @@ function VotePills({
     },
   });
 
-  const handleVote = (
-    e: React.MouseEvent,
-    vote: "upvote" | "downvote",
-  ) => {
+  const handleVote = (e: React.MouseEvent, vote: "upvote" | "downvote") => {
     e.stopPropagation();
     if (isPending) return;
     castVote({ reviewVote: reviewVote === vote ? null : vote });
