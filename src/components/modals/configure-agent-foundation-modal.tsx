@@ -320,6 +320,8 @@ export function ConfigureAgentFoundationModal({
     }
   };
 
+  const handleSaveChanges = handleSubmit(onSubmit);
+
   if (!agentId) return null;
 
   return (
@@ -379,7 +381,6 @@ export function ConfigureAgentFoundationModal({
               </div>
             ) : (
               <form
-                onSubmit={handleSubmit(onSubmit)}
                 className="flex flex-1 flex-col px-6 py-6"
                 noValidate
               >
@@ -427,7 +428,10 @@ export function ConfigureAgentFoundationModal({
                 <div className="mt-6 flex justify-end border-t border-[#E6E7EB] pt-4">
                   {isLastStep ? (
                     <Button
-                      type="submit"
+                      type="button"
+                      onClick={() => {
+                        void handleSaveChanges();
+                      }}
                       disabled={!canGoNext || isSubmitting}
                       className="rounded-full bg-[#6b63f6] px-10 text-white hover:bg-[#574ee8] disabled:opacity-70"
                     >
