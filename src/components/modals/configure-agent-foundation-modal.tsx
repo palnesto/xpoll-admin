@@ -22,6 +22,7 @@ import {
   type InkdCreateStepId,
 } from "@/schema/inkd-agent-create.schema";
 import type { InkdAgentApiDetail } from "@/schema/inkd-agent-edit.schema";
+import { localTimeToUtcHHMM, utcHHMMToLocalHHMM } from "@/utils/time";
 import {
   getEditCacheForAgent,
   setEditCache,
@@ -58,7 +59,14 @@ const STEP_ICONS: Record<InkdCreateStepId, LucideIcon> = {
   rewards: Cog,
 };
 
-function mapApiToFormValues(d: InkdAgentApiDetail): InkdAgentCreateFormValues & { countryOpts: GeoOption[]; stateOpts: GeoOption[]; cityOpts: GeoOption[]; industryOpts: IndustryOption[] } {
+function mapApiToFormValues(
+  d: InkdAgentApiDetail,
+): InkdAgentCreateFormValues & {
+  countryOpts: GeoOption[];
+  stateOpts: GeoOption[];
+  cityOpts: GeoOption[];
+  industryOpts: IndustryOption[];
+} {
   const geo = d.targetGeo ?? { countries: [], states: [], cities: [] };
   return {
     name: d.name ?? "",
@@ -67,11 +75,22 @@ function mapApiToFormValues(d: InkdAgentApiDetail): InkdAgentCreateFormValues & 
     maxBlogDescriptionLength: d.maxBlogDescriptionLength ?? 500,
     maxLinkedTrial: d.maxLinkedTrial ?? 10,
     maxLinkedPoll: d.maxLinkedPoll ?? 10,
-    prioritySources: Array.isArray(d.prioritySources) && d.prioritySources.length > 0
-      ? d.prioritySources.slice(0, 5)
-      : [""],
+    prioritySources:
+      Array.isArray(d.prioritySources) && d.prioritySources.length > 0
+        ? d.prioritySources.slice(0, 5)
+        : [""],
     fallbackImageUrl: d.fallbackImageUrl?.trim() ?? "",
-    rewards: (d.rewards?.length ? d.rewards : [{ assetId: coinAssets[0], amount: "", rewardAmountCap: "", rewardType: "max" as const }]).map((r) => ({
+    rewards: (d.rewards?.length
+      ? d.rewards
+      : [
+          {
+            assetId: coinAssets[0],
+            amount: "",
+            rewardAmountCap: "",
+            rewardType: "max" as const,
+          },
+        ]
+    ).map((r) => ({
       assetId: r.assetId,
       amount: r.amount ?? "",
       rewardAmountCap: r.rewardAmountCap ?? "",
@@ -80,7 +99,14 @@ function mapApiToFormValues(d: InkdAgentApiDetail): InkdAgentCreateFormValues & 
     countryOpts: (geo.countries ?? []).map((c) => ({ value: c, label: c })),
     stateOpts: (geo.states ?? []).map((s) => ({ value: s, label: s })),
     cityOpts: (geo.cities ?? []).map((c) => ({ value: c, label: c })),
-    industryOpts: (d.linkedIndustries ?? []).map((i) => ({ value: i._id, label: i.name })),
+    industryOpts: (d.linkedIndustries ?? []).map((i) => ({
+      value: i._id,
+      label: i.name,
+    })),
+    scheduleRules: (d.scheduleRules ?? []).map((r) => ({
+      weekdays: r.weekdays ?? [],
+      timeUtc: utcHHMMToLocalHHMM(r.timeUtc ?? ""),
+    })),
   };
 }
 
@@ -103,17 +129,28 @@ export function ConfigureAgentFoundationModal({
   const [cityOpts, setCityOpts] = useState<GeoOption[]>([]);
   const [industryOpts, setIndustryOpts] = useState<IndustryOption[]>([]);
 
-  const defaultValues = useMemo((): InkdAgentCreateFormValues => ({
-    name: "",
-    foundationalInformation: "",
-    brandLanguage: "",
-    maxBlogDescriptionLength: 500,
-    maxLinkedTrial: 10,
-    maxLinkedPoll: 10,
-    prioritySources: [""],
-    fallbackImageUrl: "",
-    rewards: [{ assetId: coinAssets[0], amount: "", rewardAmountCap: "", rewardType: "max" }],
-  }), []);
+  const defaultValues = useMemo(
+    (): InkdAgentCreateFormValues => ({
+      name: "",
+      foundationalInformation: "",
+      brandLanguage: "",
+      maxBlogDescriptionLength: 500,
+      maxLinkedTrial: 10,
+      maxLinkedPoll: 10,
+      prioritySources: [""],
+      fallbackImageUrl: "",
+      rewards: [
+        {
+          assetId: coinAssets[0],
+          amount: "",
+          rewardAmountCap: "",
+          rewardType: "max",
+        },
+      ],
+      scheduleRules: [],
+    }),
+    [],
+  );
 
   const form = useForm<InkdAgentCreateFormValues>({
     mode: "onChange",
@@ -121,9 +158,17 @@ export function ConfigureAgentFoundationModal({
     defaultValues,
   });
 
-  const { control, handleSubmit, reset, formState: { errors, isSubmitting } } = form;
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = form;
 
-  const prioritySourcesFieldArray = useFieldArray({ control, name: "prioritySources" });
+  const prioritySourcesFieldArray = useFieldArray({
+    control,
+    name: "prioritySources" as any,
+  });
   const priorityFields = prioritySourcesFieldArray.fields as unknown as Array<{ id: string }>;
   const append = prioritySourcesFieldArray.append as unknown as (value: string) => void;
   const { remove, move } = prioritySourcesFieldArray;
@@ -153,6 +198,7 @@ export function ConfigureAgentFoundationModal({
         prioritySources: mapped.prioritySources,
         fallbackImageUrl: mapped.fallbackImageUrl,
         rewards: mapped.rewards,
+        scheduleRules: mapped.scheduleRules,
       });
       setCountryOpts(mapped.countryOpts);
       setStateOpts(mapped.stateOpts);
@@ -186,6 +232,7 @@ export function ConfigureAgentFoundationModal({
       prioritySources: mapped.prioritySources,
       fallbackImageUrl: mapped.fallbackImageUrl,
       rewards: mapped.rewards,
+      scheduleRules: mapped.scheduleRules,
     });
     setCountryOpts(mapped.countryOpts);
     setStateOpts(mapped.stateOpts);
@@ -211,7 +258,8 @@ export function ConfigureAgentFoundationModal({
       return !!(
         errors.maxBlogDescriptionLength ||
         errors.maxLinkedTrial ||
-        errors.maxLinkedPoll
+        errors.maxLinkedPoll ||
+        errors.scheduleRules
       );
     if (step === "priority") return !!errors.prioritySources;
     if (step === "rewards") return !!errors.rewards;
@@ -254,6 +302,12 @@ export function ConfigureAgentFoundationModal({
         rewardAmountCap: r.rewardAmountCap,
         rewardType: r.rewardType,
       })),
+      scheduleRules: (values.scheduleRules ?? [])
+        .map((r) => ({
+          weekdays: (r.weekdays ?? []).map((d) => d.trim()).filter(Boolean),
+          timeUtc: localTimeToUtcHHMM(r.timeUtc),
+        }))
+        .filter((r) => r.weekdays.length && r.timeUtc),
     };
     try {
       const route = endpoints.entities.inkd.internalAgent.update(agentId);
@@ -270,12 +324,7 @@ export function ConfigureAgentFoundationModal({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent
-        className="max-h-[90vh] w-[95vw] max-w-4xl overflow-hidden bg-transparent p-0"
-        onPointerDownOutside={(e) => e.preventDefault()}
-        onInteractOutside={(e) => e.preventDefault()}
-        onEscapeKeyDown={(e) => e.preventDefault()}
-      >
+        <AlertDialogContent className="max-h-[90vh] w-[95vw] max-w-4xl overflow-hidden bg-transparent p-0">
         <div className="flex h-[85vh] min-h-[500px] space-x-2">
           {/* Left vertical tabs */}
           <TooltipProvider delayDuration={200}>

@@ -1,4 +1,10 @@
 /** Shape of GET /internal/inkd-internal-agents/:id response data */
+export type InkdAgentScheduleRule = {
+  _id?: string;
+  weekdays: import("@/constants/inkd").InkdInternalAgentWeekday[];
+  timeUtc: string;
+};
+
 export type InkdAgentApiDetail = {
   _id: string;
   internalAgentId: string;
@@ -26,6 +32,7 @@ export type InkdAgentApiDetail = {
     rewardAmountCap: string;
     rewardType: "min" | "max";
   }[];
+  scheduleRules?: InkdAgentScheduleRule[];
 };
 
 /** PATCH body shape for update agent */
@@ -51,5 +58,9 @@ export type InkdAgentPatchBody = {
     amount: string;
     rewardAmountCap: string;
     rewardType: "min" | "max";
+  }[];
+  scheduleRules?: {
+    weekdays: import("@/constants/inkd").InkdInternalAgentWeekday[];
+    timeUtc: string;
   }[];
 };

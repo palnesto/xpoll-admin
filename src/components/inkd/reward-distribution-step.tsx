@@ -29,12 +29,20 @@ export function RewardDistributionStep({
   appendReward,
   removeReward,
 }: Props) {
-  const { control, watch, formState: { errors } } = form;
+  const {
+    control,
+    watch,
+    formState: { errors },
+  } = form;
+
+  const rewards = watch("rewards") as RewardItem[];
 
   return (
     <section className="space-y-2">
       <div className="flex items-center justify-between">
-        <div className="text-[#5E6366]">Trail Rewards</div>
+        <div className="text-[13px] font-semibold text-[#20212A]">
+          Trail rewards
+        </div>
         <button
           type="button"
           onClick={() =>
@@ -51,36 +59,45 @@ export function RewardDistributionStep({
         </button>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-4 rounded-2xl bg-[#F5F5F7] p-4">
         {rewardFields.length ? (
           rewardFields.map((field, index) => {
             const assetId = watch(`rewards.${index}.assetId`) as AssetType;
             const spec = assetId && assetSpecs[assetId as AssetType];
 
+            const selectedForOthers = new Set(
+              rewards
+                ?.map((r, i) => (i === index ? null : r.assetId))
+                .filter(Boolean),
+            );
+
             return (
               <div
                 key={field.id}
-                className="rounded-lg border border-black/20 bg-white px-3 py-3"
+                className="rounded-2xl border border-[#E2E4EA] bg-white px-4 py-4 shadow-sm"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     {spec?.img ? (
                       <img src={spec.img} alt="" className="h-5 w-5" />
                     ) : (
-                      <div className="h-5 w-5 rounded-full bg-gray-200" />
+                      <div className="h-6 w-6 rounded-full bg-gray-200" />
                     )}
                     <select
                       className={cn(
-                        "rounded border bg-white px-2 py-1 text-sm font-medium text-[#2B2B2B]",
+                        "h-9 rounded-full border border-[#DDE2E5] bg-white px-3 text-[13px] font-medium text-[#111]",
                         INPUT_CLASS,
                       )}
                       {...form.register(`rewards.${index}.assetId` as const)}
                     >
-                      {coinAssets.map((a) => (
-                        <option key={a} value={a}>
-                          {assetSpecs[a].parent}
-                        </option>
-                      ))}
+                      {coinAssets.map((a) => {
+                        const disabled = selectedForOthers.has(a);
+                        return (
+                          <option key={a} value={a} disabled={disabled}>
+                            {assetSpecs[a].parent}
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
 
@@ -97,7 +114,7 @@ export function RewardDistributionStep({
                   </div>
                 </div>
 
-                <div className="mt-2 flex flex-wrap items-center gap-4 text-[12px] text-[#5E6366]">
+                <div className="mt-4 flex flex-wrap items-center gap-6 text-[12px] text-[#5E6366]">
                   <div className="flex items-baseline gap-2">
                     <Input
                       type="text"
@@ -111,7 +128,9 @@ export function RewardDistributionStep({
                         `rewards.${index}.amount` as const,
                       )}
                     />
-                    <span className="text-[#7A7A7A]">Amount Per Person</span>
+                    <span className="text-[#7A7A7A]">
+                      Amount per user
+                    </span>
                   </div>
 
                   <div className="h-7 w-px bg-black/20" />
@@ -129,7 +148,9 @@ export function RewardDistributionStep({
                         `rewards.${index}.rewardAmountCap` as const,
                       )}
                     />
-                    <span className="text-[#7A7A7A]">Reward Amount Cap</span>
+                    <span className="text-[#7A7A7A]">
+                      Total tokens to distribute
+                    </span>
                   </div>
 
                   <div className="h-6 w-px bg-black/20" />

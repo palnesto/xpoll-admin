@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { INKD_INTERNAL_AGENT_WEEKDAYS } from "@/constants/inkd";
 
 /** URL tab param values for /inkd/create?tab=... */
 export const INKD_CREATE_TAB_PARAMS = [
@@ -72,6 +73,31 @@ const rewardItemSchema = z
     }
   });
 
+const scheduleRuleSchema = z.object({
+  weekdays: z
+    .array(z.enum(INKD_INTERNAL_AGENT_WEEKDAYS))
+    .min(1, "Select at least one day"),
+  timeUtc: z
+    .string()
+    .regex(/^\d{2}:\d{2}$/, "Use HH:MM (24h)")
+    .superRefine((val, ctx) => {
+      const [hh, mm] = val.split(":").map((v) => Number(v));
+      if (
+        Number.isNaN(hh) ||
+        Number.isNaN(mm) ||
+        hh < 0 ||
+        hh > 23 ||
+        mm < 0 ||
+        mm > 59
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Enter a valid time (00:00–23:59)",
+        });
+      }
+    }),
+});
+
 export const inkdAgentCreateFormSchema = z
   .object({
     name: z.string().min(3, "Name must be at least 3 characters").max(64),
@@ -132,6 +158,11 @@ export const inkdAgentCreateFormSchema = z
       .max(2048)
       .optional()
       .or(z.literal("")),
+    scheduleRules: z
+      .array(scheduleRuleSchema)
+      .max(3, "Max 3 schedule rules")
+      .optional()
+      .default([]),
     rewards: z
       .array(rewardItemSchema)
       .min(1, "Add at least one reward")

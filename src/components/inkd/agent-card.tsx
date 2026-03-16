@@ -61,11 +61,17 @@ export function AgentCard({ agent }: Props) {
     <div
       role="button"
       tabIndex={0}
-      onClick={() => navigate(`/inkd/inkd-internal-agents/details/${agent._id}`)}
+      onClick={() =>
+        navigate(`/inkd/inkd-internal-agents/details/${agent._id}`, {
+          state: { agentName: agent.name },
+        })
+      }
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          navigate(`/inkd/inkd-internal-agents/details/${agent._id}`);
+          navigate(`/inkd/inkd-internal-agents/details/${agent._id}`, {
+            state: { agentName: agent.name },
+          });
         }
       }}
       className="rounded-[24px] bg-[#e8ebf2] p-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] transition-transform duration-200 hover:-translate-y-0.5 cursor-pointer"

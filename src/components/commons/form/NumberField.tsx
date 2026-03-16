@@ -126,16 +126,16 @@ export function NumberField<T extends FieldValues>({
               onChange={(e) => {
                 const raw = e.target.value;
 
+                // Always reflect what the user types, even if invalid
+                setText(raw);
+
                 if (raw === "") {
-                  setText("");
                   if (meta.optional) field.onChange(undefined);
                   else field.onChange(0);
                   return;
                 }
 
                 if (!isValidNumericInput(raw, decimalScale)) return;
-
-                setText(raw);
 
                 if (
                   raw === "-" ||

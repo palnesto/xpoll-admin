@@ -11,7 +11,7 @@ type Props = {
 
 export function InkdWorkspaceLayout({ children }: Props) {
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const { pathname, state } = useLocation() as { pathname: string; state?: { agentName?: string } };
   const inkdInternalAgentId = useMemo(() => {
     if (!pathname.startsWith(AGENT_DETAILS_PATH)) return null;
     const rest = pathname.slice(AGENT_DETAILS_PATH.length);
@@ -19,6 +19,9 @@ export function InkdWorkspaceLayout({ children }: Props) {
     return segment && segment.length > 0 ? segment : null;
   }, [pathname]);
   const [configureModalOpen, setConfigureModalOpen] = useState(false);
+
+  const agentName =
+    (state && typeof state.agentName === "string" && state.agentName.trim()) || "Signal AI";
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#f3f3f5]">
@@ -33,17 +36,17 @@ export function InkdWorkspaceLayout({ children }: Props) {
               >
                 <ArrowLeft size={18} />
               </button>
-
+{/* 
               <div className="h-7 w-7 overflow-hidden rounded-full bg-neutral-300">
                 <img
                   src="https://placehold.co/100x100"
                   alt="agent"
                   className="h-full w-full object-cover"
                 />
-              </div>
+              </div> */}
 
-              <h1 className="text-[18px] font-medium text-[#202020]">
-                The Chart
+              <h1 className="text-[18px] font-medium text-[#202020] truncate max-w-[220px]">
+                {agentName}
               </h1>
             </div>
 

@@ -16,6 +16,7 @@ import ListingPagination from "@/components/commons/listing-pagination";
 import { amount, unwrapString } from "@/utils/currency-assets/base";
 import { assetSpecs, type AssetType } from "@/utils/currency-assets/asset";
 import inkPlaceholder from "@/assets/fallback.png";
+import inkd from "@/assets/ink.png";
 
 const BASE_URL = endpoints.entities.inkd.blogs.advancedListings;
 const PAGE_SIZE = 20;
@@ -167,7 +168,7 @@ export default function InkdInternalAgentDetailsPage() {
       <div className="mb-5 flex items-center justify-between gap-4">
         <div className="relative w-full max-w-[545px]">
           <div className="flex h-[54px] items-center rounded-[28px] bg-white px-4 shadow-[0_1px_0_rgba(255,255,255,0.75)_inset]">
-            <Search size={15} className="mr-3 text-[#b8b8c2]" />
+            <img src={inkd} alt="search" className="mr-3 h-5 text-[#6C63E5]" />
             <input
               value={query}
               onChange={(e) => {

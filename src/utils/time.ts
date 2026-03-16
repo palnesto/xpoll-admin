@@ -15,8 +15,8 @@ export function localISOtoUTC(localISO: string, zone: string): string {
 }
 
 /** Convert UTC ISO string → Day.js in the user’s zone */
-export function utcToAdmin(utcISO: string, adminZone: string) {
-  return dayjs.utc(utcISO).tz(adminZone); // Day.js instance in local zone
+export function utcToAdmin(utcISO: string, zone: string) {
+  return dayjs.utc(utcISO).tz(zone); // Day.js instance in local zone
 }
 
 // FOR USAGE
@@ -27,4 +27,23 @@ export function utcToAdminFormatted(utcISO: string) {
   return utcToAdmin(utcISO, adminZone).format(
     __FRONTEND_STANDARAD_DATE_FORMAT__
   );
+}
+
+/** Convert local HH:MM (admin zone) → UTC HH:MM */
+export function localTimeToUtcHHMM(localHHMM: string): string {
+  const clean = String(localHHMM ?? "").trim();
+  if (!clean) return "";
+  const today = dayjs().format("YYYY-MM-DD");
+  const localISO = `${today}T${clean}:00`;
+  const utcISO = localAdminISOtoUTC(localISO);
+  return dayjs.utc(utcISO).format("HH:mm");
+}
+
+/** Convert UTC HH:MM → local HH:MM (admin zone) */
+export function utcHHMMToLocalHHMM(utcHHMM: string): string {
+  const clean = String(utcHHMM ?? "").trim();
+  if (!clean) return "";
+  const today = dayjs().format("YYYY-MM-DD");
+  const utcISO = `${today}T${clean}:00Z`;
+  return utcToAdmin(utcISO, adminZone).format("HH:mm");
 }

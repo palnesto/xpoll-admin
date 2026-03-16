@@ -33,7 +33,7 @@ export function CreateAgentTabs({
   onStepClick,
 }: Props) {
   return (
-    <div className="mb-10 flex justify-center gap-3 rounded-full p-4">
+    <div className="mb-10 flex justify-center gap-7 rounded-full p-4">
       {INKD_CREATE_STEPS.map((step, idx) => {
         const isActive = activeStepId === step.id;
         const isClickable = idx <= stepIndex;
@@ -51,11 +51,12 @@ export function CreateAgentTabs({
               onStepClick(step.id);
             }}
             className={cn(
-              "flex items-center gap-2 rounded-full py-2 text-[11px] font-semibold tracking-[0.18em] uppercase transition text-[#5E6366]",
-              isActive ? "px-6" : "px-4",
+              "flex items-center gap-2 rounded-full py-2 font-semibold tracking-[0.18em] uppercase transition",
+              isActive ? "px-6 text-[#5E6366]" : "px-4 text-[#999]",
+              isClickable ? "cursor-pointer" : "cursor-not-allowed",
             )}
           >
-            <Icon className="h-4 w-4 shrink-0" />
+            <Icon className="h-6 w-6 shrink-0" />
             {isActive ? <span>{step.label}</span> : null}
           </a>
         );

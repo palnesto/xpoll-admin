@@ -41,6 +41,7 @@ import {
 } from "@/components/inkd/settings-step";
 import { PriorityScrapingStep } from "@/components/inkd/priority-scraping-step";
 import { RewardDistributionStep } from "@/components/inkd/reward-distribution-step";
+import { localTimeToUtcHHMM } from "@/utils/time";
 
 export default function CreateInkdInternalAgent() {
   const navigate = useNavigate();
@@ -183,7 +184,10 @@ export default function CreateInkdInternalAgent() {
     if (step === "foundational") return !!(errs.name || errs.foundationalInformation);
     if (step === "brand") return !!errs.brandLanguage;
     if (step === "settings") return !!(
-      errs.maxBlogDescriptionLength || errs.maxLinkedTrial || errs.maxLinkedPoll
+      errs.maxBlogDescriptionLength ||
+      errs.maxLinkedTrial ||
+      errs.maxLinkedPoll ||
+      errs.scheduleRules
     );
     if (step === "priority") return !!errs.prioritySources;
     if (step === "rewards") return !!errs.rewards;
@@ -220,6 +224,12 @@ export default function CreateInkdInternalAgent() {
         rewardAmountCap: r.rewardAmountCap,
         rewardType: r.rewardType,
       })),
+      scheduleRules: (values.scheduleRules ?? [])
+        .map((r) => ({
+          weekdays: (r.weekdays ?? []).map((d) => d.trim()).filter(Boolean),
+          timeUtc: localTimeToUtcHHMM(r.timeUtc),
+        }))
+        .filter((r) => r.weekdays.length && r.timeUtc),
     };
 
     const { data } = await apiInstance.post(
@@ -260,11 +270,9 @@ export default function CreateInkdInternalAgent() {
   return (
     <div className="min-h-screen bg-[#F8F9FA] px-10 py-8">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-6 border-b border-[#E6E7EB] pb-4">
-          <div className="text-sm font-medium tracking-[0.25em] text-[#999]">
-            CREATING SIGNAL AI :
-          </div>
-        </div>
+        <h1 className="mb-6 border-b border-[#E6E7EB] pb-4 text-sm font-medium tracking-[0.25em] text-[#999]"> 
+            CREATING SIGNAL AI : 
+        </h1>
 
         <CreateAgentTabs
           activeStepId={activeStepId}
@@ -315,15 +323,6 @@ export default function CreateInkdInternalAgent() {
           canGoNext={canGoNext}
           onBack={goBack}
           onNext={goNext}
-          validationError={
-            activeStepId === "foundational" &&
-            nameStatus !== "available" &&
-            (nameStatus === "unavailable" ||
-              nameStatus === "error" ||
-              !(name?.trim() ?? ""))
-              ? "Add name to continue"
-              : undefined
-          }
         />
       </div>
     </div>

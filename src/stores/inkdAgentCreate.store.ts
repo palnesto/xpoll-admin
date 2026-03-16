@@ -17,6 +17,10 @@ export type InkdAgentCreateFormData = {
   prioritySources: string[];
   fallbackImageUrl: string;
   rewards: InkdAgentRewardInput[];
+  scheduleRules: {
+    weekdays: string[];
+    timeUtc: string;
+  }[];
 };
 
 export const DEFAULT_INKD_AGENT_CREATE_DATA: InkdAgentCreateFormData = {
@@ -29,6 +33,7 @@ export const DEFAULT_INKD_AGENT_CREATE_DATA: InkdAgentCreateFormData = {
   prioritySources: [],
   fallbackImageUrl: "",
   rewards: [],
+  scheduleRules: [],
 };
 
 type StoreState = {
