@@ -41,7 +41,7 @@ import {
 } from "@/components/inkd/settings-step";
 import { PriorityScrapingStep } from "@/components/inkd/priority-scraping-step";
 import { RewardDistributionStep } from "@/components/inkd/reward-distribution-step";
-import { localTimeToUtcHHMM } from "@/utils/time";
+import { localScheduleRuleToUtc } from "@/utils/time";
 
 export default function CreateInkdInternalAgent() {
   const navigate = useNavigate();
@@ -225,10 +225,12 @@ export default function CreateInkdInternalAgent() {
         rewardType: r.rewardType,
       })),
       scheduleRules: (values.scheduleRules ?? [])
-        .map((r) => ({
-          weekdays: (r.weekdays ?? []).map((d) => d.trim()).filter(Boolean),
-          timeUtc: localTimeToUtcHHMM(r.timeUtc),
-        }))
+        .map((r) =>
+          localScheduleRuleToUtc({
+            weekdays: (r.weekdays ?? []).map((d) => d.trim()).filter(Boolean) as any,
+            timeUtc: r.timeUtc,
+          }),
+        )
         .filter((r) => r.weekdays.length && r.timeUtc),
     };
 

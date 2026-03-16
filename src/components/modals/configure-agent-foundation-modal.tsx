@@ -22,7 +22,7 @@ import {
   type InkdCreateStepId,
 } from "@/schema/inkd-agent-create.schema";
 import type { InkdAgentApiDetail } from "@/schema/inkd-agent-edit.schema";
-import { localTimeToUtcHHMM, utcHHMMToLocalHHMM } from "@/utils/time";
+import { localScheduleRuleToUtc, utcScheduleRuleToLocal } from "@/utils/time";
 import {
   getEditCacheForAgent,
   setEditCache,
@@ -103,10 +103,12 @@ function mapApiToFormValues(
       value: i._id,
       label: i.name,
     })),
-    scheduleRules: (d.scheduleRules ?? []).map((r) => ({
-      weekdays: r.weekdays ?? [],
-      timeUtc: utcHHMMToLocalHHMM(r.timeUtc ?? ""),
-    })),
+    scheduleRules: (d.scheduleRules ?? []).map((r) =>
+      utcScheduleRuleToLocal({
+        weekdays: r.weekdays ?? [],
+        timeUtc: r.timeUtc ?? "",
+      }),
+    ),
   };
 }
 
@@ -303,10 +305,12 @@ export function ConfigureAgentFoundationModal({
         rewardType: r.rewardType,
       })),
       scheduleRules: (values.scheduleRules ?? [])
-        .map((r) => ({
-          weekdays: (r.weekdays ?? []).map((d) => d.trim()).filter(Boolean),
-          timeUtc: localTimeToUtcHHMM(r.timeUtc),
-        }))
+        .map((r) =>
+          localScheduleRuleToUtc({
+            weekdays: (r.weekdays ?? []).map((d) => d.trim()).filter(Boolean) as any,
+            timeUtc: r.timeUtc,
+          }),
+        )
         .filter((r) => r.weekdays.length && r.timeUtc),
     };
     try {

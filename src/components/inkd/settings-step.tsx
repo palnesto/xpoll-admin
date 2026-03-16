@@ -13,6 +13,7 @@ import { inkdAgentCreateFormSchema } from "@/schema/inkd-agent-create.schema";
 import type { z } from "zod";
 import { INKD_INTERNAL_AGENT_WEEKDAYS } from "@/constants/inkd";
 import { cn } from "@/lib/utils";
+import { adminZone } from "@/utils/time";
 
 const INPUT_CLASS =
   "border-[#DDE2E5] focus:border-[#E8EAED] focus:ring-1 focus:ring-[#E8EAED] focus-visible:outline-none text-[#111] placeholder:text-[#9a9aab]";
@@ -195,7 +196,7 @@ export function SettingsStep({
                 Schedule blog posts
               </Label>
               <p className="mt-1 text-[11px] text-[#7a7a87]">
-                Choose days and a time (UTC) for auto-generated blogs. Max 3 schedules.
+                Choose days and a time in your local timezone ({adminZone}) for auto-generated blogs. Max 3 schedules.
               </p>
             </div>
             <Button
@@ -236,7 +237,7 @@ export function SettingsStep({
                         <span>
                           {index + 1}. {days}
                         </span>
-                        <span className="font-medium">{time} UTC</span>
+                        <span className="font-medium">{time} {adminZone}</span>
                       </div>
                     );
                   },
