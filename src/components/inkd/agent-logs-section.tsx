@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { endpoints } from "@/api/endpoints";
 import { cn } from "@/lib/utils";
+import { utcToAdminTimeWithZone } from "@/utils/time";
 
 const PAGE_SIZE = 10;
 const LAST_N_MINUTES = 5;
@@ -39,16 +40,10 @@ type Props = {
   onCompletedLogDetected?: () => void;
 };
 
-function formatUtcTime(value: string | null | undefined) {
+function formatScheduledTime(value: string | null | undefined) {
   if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-    timeZone: "UTC",
-  });
+  const formatted = utcToAdminTimeWithZone(value);
+  return formatted || null;
 }
 
 function trimText(value: string, maxLength = 140) {
@@ -58,12 +53,12 @@ function trimText(value: string, maxLength = 140) {
 }
 
 function buildLogDescription(entry: InkDTaskLogEntry) {
-  const scheduledTime = formatUtcTime(entry.scheduledForUtc);
+  const scheduledTime = formatScheduledTime(entry.scheduledForUtc);
   const sourcePrefix =
     entry.triggerSource === "manual"
       ? "Manual run"
       : scheduledTime
-        ? `Scheduled for ${scheduledTime} UTC`
+        ? `Scheduled for ${scheduledTime}`
         : "Scheduled run";
 
   const createdInkDArtifacts = entry.metadata?.success?.data?.createdInkDArtifacts;

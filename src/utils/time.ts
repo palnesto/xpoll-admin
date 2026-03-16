@@ -29,6 +29,12 @@ export function utcToAdminFormatted(utcISO: string) {
   );
 }
 
+export function utcToAdminTimeWithZone(utcISO: string) {
+  const localDateTime = utcToAdmin(utcISO, adminZone);
+  if (!localDateTime.isValid()) return "";
+  return `${localDateTime.format("h:mm A")} ${adminZone}`;
+}
+
 /** Convert local HH:MM (admin zone) → UTC HH:MM */
 export function localTimeToUtcHHMM(localHHMM: string): string {
   const clean = String(localHHMM ?? "").trim();
