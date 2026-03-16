@@ -231,7 +231,7 @@ export default function InkdInternalAgentDetailsPage() {
             type="button"
             onClick={() => setManualLaunchOpen(true)}
             disabled={!inkdInternalAgentId}
-            className="inline-flex h-[42px] shrink-0 items-center rounded-full bg-[#6b63f6] px-4 text-[12px] font-medium text-white shadow-[0_10px_25px_rgba(107,99,246,0.22)] transition hover:bg-[#5d55ef] disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-[42px] shrink-0 items-center rounded-full bg-[#5b4df7] px-4 text-[12px] font-medium text-white shadow-[0_10px_25px_rgba(107,99,246,0.22)] transition hover:bg-[#5d55ef] disabled:cursor-not-allowed disabled:opacity-60"
           >
             Manual Launch
           </button>

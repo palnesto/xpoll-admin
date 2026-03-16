@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { endpoints } from "@/api/endpoints";
 import { cn } from "@/lib/utils";
@@ -6,6 +6,8 @@ import { utcToAdminTimeWithZone } from "@/utils/time";
 
 const PAGE_SIZE = 10;
 const LAST_N_MINUTES = 5;
+const ENTER_TRANSITION_DURATION_MS = 420;
+const EXIT_TRANSITION_DURATION_MS = 320;
 
 type TaskLogState = "queued" | "running" | "completed" | "failed" | "cancelled";
 type TaskLogTriggerSource = "manual" | "scheduled";
@@ -152,6 +154,10 @@ export function AgentLogsSection({
   onCompletedLogDetected,
 }: Props) {
   const previousStatesRef = useRef<Map<string, TaskLogState>>(new Map());
+  const hideTimeoutRef = useRef<number | null>(null);
+  const [displayedEntries, setDisplayedEntries] = useState<InkDTaskLogEntry[]>([]);
+  const [shouldRender, setShouldRender] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
 
   const route = useMemo(() => {
     if (!inkdInternalAgentId) return null;
@@ -197,12 +203,59 @@ export function AgentLogsSection({
     }
   }, [entries, onCompletedLogDetected]);
 
-  if (!hasEntries) {
+  useEffect(() => {
+    return () => {
+      if (hideTimeoutRef.current !== null) {
+        window.clearTimeout(hideTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (hasEntries) {
+      if (hideTimeoutRef.current !== null) {
+        window.clearTimeout(hideTimeoutRef.current);
+        hideTimeoutRef.current = null;
+      }
+
+      setDisplayedEntries(entries);
+
+      if (!shouldRender) {
+        setShouldRender(true);
+        window.setTimeout(() => {
+          setIsVisible(true);
+        }, 10);
+      } else {
+        setIsVisible(true);
+      }
+
+      return;
+    }
+
+    if (!shouldRender) return;
+
+    setIsVisible(false);
+    hideTimeoutRef.current = window.setTimeout(() => {
+      setShouldRender(false);
+      setDisplayedEntries([]);
+      hideTimeoutRef.current = null;
+    }, EXIT_TRANSITION_DURATION_MS);
+  }, [entries, hasEntries, shouldRender]);
+
+  if (!shouldRender) {
     return null;
   }
 
   return (
-    <section className="mb-6">
+    <section
+      className={cn(
+        "mb-6 transition-all duration-200 ease-out",
+        isVisible ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0",
+      )}
+      style={{
+        transitionDuration: `${isVisible ? ENTER_TRANSITION_DURATION_MS : EXIT_TRANSITION_DURATION_MS}ms`,
+      }}
+    >
       <div className="rounded-[22px] bg-[linear-gradient(90deg,#38c8f3_0%,#4b8ef6_55%,#6a51f5_100%)] p-[4px] shadow-[0_18px_50px_rgba(90,103,245,0.14)]">
         <div className="px-4 pb-3 pt-2 text-white">
           <h2 className="text-[22px] font-normal leading-none tracking-[-0.03em]">
@@ -211,7 +264,7 @@ export function AgentLogsSection({
         </div>
 
         <div className="rounded-[18px] bg-white px-4 py-3">
-          {isLoading && entries.length === 0 ? (
+          {isLoading && displayedEntries.length === 0 ? (
             <div className="space-y-2">
               {Array.from({ length: 3 }).map((_, index) => (
                 <div
@@ -225,7 +278,7 @@ export function AgentLogsSection({
             </div>
           ) : (
             <div className="space-y-2">
-              {entries.map((entry) => (
+              {displayedEntries.map((entry) => (
                 <div
                   key={entry._id}
                   className={cn(
