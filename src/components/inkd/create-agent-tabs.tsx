@@ -52,7 +52,7 @@ export function CreateAgentTabs({
             }}
             className={cn(
               "flex items-center gap-2 rounded-full py-2 font-semibold tracking-[0.18em] uppercase transition",
-              isActive ? "px-6 text-[#5E6366]" : "px-4 text-[#999]",
+              isActive ? "px-6 text-black" : "px-4 text-[#999]",
               isClickable ? "cursor-pointer" : "cursor-not-allowed",
             )}
           >

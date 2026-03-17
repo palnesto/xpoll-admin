@@ -26,7 +26,7 @@ export function InkdWorkspaceLayout({ children }: Props) {
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#f3f3f5]">
       {/* Left chat panel */}
-      <aside className="flex h-full w-[400px] xl:w-[500px] max-w-[500px] flex-col border-r border-[#e6e7eb] bg-white pt-2">
+      <aside className="flex h-full w-[400px] xl:w-[500px] max-w-[500px] flex-col border-r-2 border-[#5649FF1A] bg-white pt-2">
         {/* top */} 
           <div className="flex items-center justify-between rounded-[20px] bg-[#eef0f3] px-2 py-3 mx-2">
             <div className="flex items-center gap-1">

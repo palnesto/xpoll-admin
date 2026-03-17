@@ -39,10 +39,7 @@ export function RewardDistributionStep({
 
   return (
     <section className="space-y-2">
-      <div className="flex items-center justify-between">
-        <div className="text-[13px] font-semibold text-[#20212A]">
-          Trail rewards
-        </div>
+      <div className="flex items-end justify-end">
         <button
           type="button"
           onClick={() => {
@@ -126,7 +123,7 @@ export function RewardDistributionStep({
                       inputMode="numeric"
                       placeholder="0"
                       className={cn(
-                        "h-8 w-20 border-0 border-b border-[#DDE2E5] bg-transparent p-0 text-xl font-medium text-[#111] tabular-nums shadow-none focus-visible:ring-0",
+                        "h-8 w-16 border-0 border-b border-[#DDE2E5] bg-transparent p-0 text-xl font-medium text-[#111] tabular-nums shadow-none focus-visible:ring-0",
                         INPUT_CLASS,
                       )}
                       {...form.register(
@@ -146,7 +143,7 @@ export function RewardDistributionStep({
                       inputMode="numeric"
                       placeholder="0"
                       className={cn(
-                        "h-8 w-20 border-0 border-b border-[#DDE2E5] bg-transparent p-0 text-xl font-semibold text-[#111] tabular-nums shadow-none focus-visible:ring-0",
+                        "h-8 w-16 border-0 border-b border-[#DDE2E5] bg-transparent p-0 text-xl font-semibold text-[#111] tabular-nums shadow-none focus-visible:ring-0",
                         INPUT_CLASS,
                       )}
                       {...form.register(
@@ -176,8 +173,8 @@ export function RewardDistributionStep({
                             className={cn(
                               "rounded px-2 py-0.5 text-xs font-medium",
                               field.value === "max"
-                                ? "bg-[#1d1d22] text-white"
-                                : "bg-[#f3f3f6] text-[#5d5d66] hover:bg-[#e8e8ec]",
+                                ? "bg-[#5649FF] text-white hover:bg-[#5649FF90]"
+                                : "bg-[#5649FF] text-white hover:bg-[#5649FF90]",
                             )}
                           >
                             Max

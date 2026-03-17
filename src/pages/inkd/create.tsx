@@ -42,6 +42,7 @@ import {
 import { PriorityScrapingStep } from "@/components/inkd/priority-scraping-step";
 import { RewardDistributionStep } from "@/components/inkd/reward-distribution-step";
 import { localScheduleRuleToUtc } from "@/utils/time";
+import { ArrowLeft } from "lucide-react";
 
 export default function CreateInkdInternalAgent() {
   const navigate = useNavigate();
@@ -212,10 +213,10 @@ export default function CreateInkdInternalAgent() {
       targetGeo:
         countryOpts.length || stateOpts.length || cityOpts.length
           ? {
-              countries: countryOpts.map((c) => c.value).filter(Boolean),
-              states: stateOpts.map((s) => s.value).filter(Boolean),
-              cities: cityOpts.map((c) => c.value).filter(Boolean),
-            }
+            countries: countryOpts.map((c) => c.value).filter(Boolean),
+            states: stateOpts.map((s) => s.value).filter(Boolean),
+            cities: cityOpts.map((c) => c.value).filter(Boolean),
+          }
           : null,
       fallbackImageUrl: values.fallbackImageUrl?.trim() || undefined,
       rewards: values.rewards.map((r) => ({
@@ -270,18 +271,22 @@ export default function CreateInkdInternalAgent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] px-10 py-8"> 
-        <h1 className="mb-6 border-b border-[#E6E7EB] pb-4 text-sm font-medium tracking-[0.25em] text-[#999]"> 
-            CREATING SIGNAL AI : 
+    <div className="flex h-screen flex-col overflow-hidden bg-[#F8F9FA]">
+      <header className="shrink-0 flex items-center gap-2 border-b border-[#E6E7EB] py-5 pl-4 mb-4">
+        <ArrowLeft className="h-7 w-10 cursor-pointer rounded-full border-b-2 border-black/20 bg-black/10 p-1 text-black/50" onClick={() => navigate("/inkd")} />
+        <h1 className="text-xl font-medium text-black">
+          CREATING SIGNAL AI :
         </h1>
+      </header>
 
-        <CreateAgentTabs
-          activeStepId={activeStepId}
-          stepIndex={stepIndex}
-          onStepClick={handleTabClick}
-        />
+      <CreateAgentTabs
+        activeStepId={activeStepId}
+        stepIndex={stepIndex}
+        onStepClick={handleTabClick}
+      />
 
-        <form className="space-y-10 mx-auto max-w-5xl" noValidate>
+      <div className="min-h-0 flex-1 overflow-y-auto py-4">
+        <form className="mx-auto max-w-2xl space-y-10 3xl:max-w-3xl px-4" noValidate>
           {activeStepId === "foundational" && (
             <FoundationalInfoStep form={form} nameStatus={nameStatus} />
           )}
@@ -317,7 +322,9 @@ export default function CreateInkdInternalAgent() {
             />
           )}
         </form>
+      </div>
 
+      <div className="shrink-0 border-t border-[#E6E7EB] bg-[#F8F9FA] px-4 pb-5">
         <CreateAgentFooter
           stepIndex={stepIndex}
           isSubmitting={isSubmitting}
@@ -325,6 +332,7 @@ export default function CreateInkdInternalAgent() {
           onBack={goBack}
           onNext={goNext}
         />
-      </div> 
+      </div>
+    </div>
   );
 }

@@ -364,9 +364,9 @@ export function ConfigureAgentFoundationModal({
           </TooltipProvider>
 
           {/* Right content */}
-          <div className="flex min-w-0 flex-1 flex-col overflow-y-auto bg-[#F0F4F9] rounded-2xl">
-            <AlertDialogHeader className="flex-row items-center justify-between border-b border-[#E6E7EB] px-6 py-4">
-              <AlertDialogTitle className="text-lg font-semibold text-[#202020]">
+          <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#F0F4F9] rounded-2xl">
+            <AlertDialogHeader className="shrink-0 flex-row items-center justify-between border-b border-[#E6E7EB] px-6 py-4">
+              <AlertDialogTitle className="text-lg font-semibold text-[#202020] uppercase">
                 {currentStepLabel.replace(/\s/g, " ")}
               </AlertDialogTitle>
               <button
@@ -385,51 +385,53 @@ export function ConfigureAgentFoundationModal({
               </div>
             ) : (
               <form
-                className="flex flex-1 flex-col px-6 py-6"
+                className="flex min-h-0 flex-1 flex-col"
                 noValidate
               >
-                <div className="flex-1">
-                  {activeStepId === "foundational" && (
-                    <FoundationalInfoStep
-                      form={form}
-                      nameStatus="available"
-                      editMode={apiData ? { name: apiData.name } : undefined}
-                    />
-                  )}
-                  {activeStepId === "brand" && <BrandLanguageStep form={form} />}
-                  {activeStepId === "settings" && (
-                    <SettingsStep
-                      form={form}
-                      countryOpts={countryOpts}
-                      setCountryOpts={setCountryOpts}
-                      stateOpts={stateOpts}
-                      setStateOpts={setStateOpts}
-                      cityOpts={cityOpts}
-                      setCityOpts={setCityOpts}
-                      industryOpts={industryOpts}
-                      setIndustryOpts={setIndustryOpts}
-                    />
-                  )}
-                  {activeStepId === "priority" && (
-                    <PriorityScrapingStep
-                      form={form}
-                      priorityFields={priorityFields}
-                      append={append}
-                      remove={remove}
-                      move={move}
-                    />
-                  )}
-                  {activeStepId === "rewards" && (
-                    <RewardDistributionStep
-                      form={form}
-                      rewardFields={rewardFields}
-                      appendReward={appendReward}
-                      removeReward={removeReward}
-                    />
-                  )}
+                <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+                  <div className="mx-auto w-full max-w-3xl">
+                    {activeStepId === "foundational" && (
+                      <FoundationalInfoStep
+                        form={form}
+                        nameStatus="available"
+                        editMode={apiData ? { name: apiData.name } : undefined}
+                      />
+                    )}
+                    {activeStepId === "brand" && <BrandLanguageStep form={form} />}
+                    {activeStepId === "settings" && (
+                      <SettingsStep
+                        form={form}
+                        countryOpts={countryOpts}
+                        setCountryOpts={setCountryOpts}
+                        stateOpts={stateOpts}
+                        setStateOpts={setStateOpts}
+                        cityOpts={cityOpts}
+                        setCityOpts={setCityOpts}
+                        industryOpts={industryOpts}
+                        setIndustryOpts={setIndustryOpts}
+                      />
+                    )}
+                    {activeStepId === "priority" && (
+                      <PriorityScrapingStep
+                        form={form}
+                        priorityFields={priorityFields}
+                        append={append}
+                        remove={remove}
+                        move={move}
+                      />
+                    )}
+                    {activeStepId === "rewards" && (
+                      <RewardDistributionStep
+                        form={form}
+                        rewardFields={rewardFields}
+                        appendReward={appendReward}
+                        removeReward={removeReward}
+                      />
+                    )}
+                  </div>
                 </div>
 
-                <div className="mt-6 flex justify-end border-t border-[#E6E7EB] pt-4">
+                <div className="shrink-0 flex justify-end border-t border-[#E6E7EB] bg-[#F0F4F9] px-6 pt-4 pb-5">
                   {isLastStep ? (
                     <Button
                       type="button"

@@ -37,11 +37,11 @@ export const STEP_ID_TO_TAB_PARAM: Record<InkdCreateStepId, InkdCreateTabParam> 
 };
 
 export const INKD_CREATE_STEPS: { id: InkdCreateStepId; label: string }[] = [
-  { id: "foundational", label: "FOUNDATIONAL INFO" },
-  { id: "brand", label: "BRAND LANGUAGE" },
-  { id: "settings", label: "SETTINGS" },
-  { id: "priority", label: "PRIORITY SCRAPING" },
-  { id: "rewards", label: "REWARD DISTRIBUTION" },
+  { id: "foundational", label: "Foundational Info" },
+  { id: "brand", label: "Brand Language" },
+  { id: "settings", label: "Settings" },
+  { id: "priority", label: "Priority Scraping" },
+  { id: "rewards", label: "Reward Distribution" },
 ];
 
 const rewardItemSchema = z

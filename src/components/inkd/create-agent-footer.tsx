@@ -22,7 +22,7 @@ export function CreateAgentFooter({
   const isLastStep = stepIndex === INKD_CREATE_STEPS.length - 1;
 
   return (
-    <div className="mt-10 flex items-center justify-between mx-auto max-w-6xl">
+    <div className="mt-7 flex items-center justify-between mx-auto max-w-2xl">
       <div className="flex items-center gap-4">
         {validationError ? (
           <span className="text-xs text-[#f35]">{validationError}</span>
