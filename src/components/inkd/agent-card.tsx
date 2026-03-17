@@ -54,6 +54,7 @@ export function AgentCard({ agent }: Props) {
 
   const status = (agent.status?.toLowerCase() === "idle" ? "idle" : "active") as InkdAgentStatus;
   const nextStatus: InkdAgentStatus = status === "active" ? "idle" : "active";
+  const willSkipNextSchedule = status === "idle" && !!nextScheduleLabel;
 
   const handleToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -153,6 +154,11 @@ export function AgentCard({ agent }: Props) {
         >
           {nextScheduleLabel || "No schedule set"}
         </div>
+        {willSkipNextSchedule ? (
+          <div className="mt-1 text-[11px] text-white/75">
+            Will be skipped while agent is idle
+          </div>
+        ) : null}
       </div>
     </div>
   );
