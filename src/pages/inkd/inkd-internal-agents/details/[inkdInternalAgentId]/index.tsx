@@ -58,6 +58,10 @@ type BlogEntry = {
 };
 
 type ViewMode = "cards" | "rows";
+type AgentDetail = {
+  _id: string;
+  status?: string | null;
+};
 
 const INKD_AGENT_DETAILS_VIEW_KEY = "inkd-agent-details-blog-view";
 
@@ -168,8 +172,17 @@ export default function InkdInternalAgentDetailsPage() {
     queryKey: listQueryKey,
     enabled: !!inkdInternalAgentId,
   } as any);
+  const agentRoute = inkdInternalAgentId
+    ? endpoints.entities.inkd.internalAgent.getById(inkdInternalAgentId)
+    : "";
+  const { data: agentData } = useApiQuery(agentRoute, {
+    queryKey: ["inkd-internal-agent", inkdInternalAgentId],
+    enabled: !!inkdInternalAgentId,
+  } as any);
 
   const payload = data?.data?.data ?? {};
+  const agent = (agentData?.data?.data ?? null) as AgentDetail | null;
+  const isAgentActive = String(agent?.status ?? "").toLowerCase() === "active";
   const entries: BlogEntry[] = Array.isArray(payload.entries)
     ? payload.entries
     : [];
@@ -253,15 +266,17 @@ export default function InkdInternalAgentDetailsPage() {
         </div>
 
         <div className="flex items-center gap-3 mr-7">
-          <button
-            type="button"
-            onClick={() => setManualLaunchOpen(true)}
-            disabled={!inkdInternalAgentId}
-            className="inline-flex h-[42px] shrink-0 items-center rounded-full bg-[#5b4df7] px-4 text-[12px] font-medium text-white shadow-[0_10px_25px_rgba(107,99,246,0.22)] transition hover:bg-[#5d55ef] disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            Manual Launch
-          </button>
-
+          {isAgentActive ? (
+            <button
+              type="button"
+              onClick={() => setManualLaunchOpen(true)}
+              disabled={!inkdInternalAgentId}
+              className="inline-flex h-[42px] shrink-0 items-center rounded-full bg-[#5b4df7] px-4 text-[12px] font-medium text-white shadow-[0_10px_25px_rgba(107,99,246,0.22)] transition hover:bg-[#5d55ef] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Manual Launch
+            </button>
+          ) : null}
+          
           <div className="flex h-[48px] items-center rounded-full bg-[#eef0f2] p-[4px] shadow-[0_1px_0_rgba(255,255,255,0.8)_inset]">
             <button
               type="button"
