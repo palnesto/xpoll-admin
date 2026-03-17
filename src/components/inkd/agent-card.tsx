@@ -78,8 +78,10 @@ export function AgentCard({ agent }: Props) {
           });
         }
       }}
-      className={`rounded-[24px] bg-[#e8ebf2] p-4 space-y-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_10px_rgba(0,0,0,0.1)] cursor-pointer ${
-        status === "idle" ? "opacity-65 saturate-[0.72]" : ""
+      className={`rounded-[24px] bg-[#e8ebf2] p-4 space-y-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] transition-transform duration-200 cursor-pointer ${
+        status === "idle"
+          ? "opacity-65 saturate-[0.72]"
+          : "hover:-translate-y-0.5 hover:shadow-[0_4px_10px_rgba(0,0,0,0.1)]"
       }`}
     >
       <div className="flex items-center justify-between gap-2">
@@ -135,10 +137,13 @@ export function AgentCard({ agent }: Props) {
         }`}
       >
         <div
-          className={`text-[11px] font-semibold tracking-[0.04em] ${
+          className={`flex items-center justify-center gap-2 text-[11px] font-semibold tracking-[0.04em] ${
             nextScheduleLabel ? "text-white/72" : "text-[#8e95a5]"
           }`}
         >
+          {nextScheduleLabel ? (
+            <span className="inline-flex h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-white" />
+          ) : null}
           Next scheduled at
         </div>
         <div
