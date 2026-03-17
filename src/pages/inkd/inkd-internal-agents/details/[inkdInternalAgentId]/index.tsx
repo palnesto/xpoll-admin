@@ -27,7 +27,7 @@ import { AgentLogsSection } from "@/components/inkd/agent-logs-section";
 import { amount, unwrapString } from "@/utils/currency-assets/base";
 import { assetSpecs, type AssetType } from "@/utils/currency-assets/asset";
 import inkPlaceholder from "@/assets/fallback.png";
-import inkd from "@/assets/ink.png";
+import inkd from "@/assets/ink.svg";
 import { queryClient } from "@/api/queryClient";
 
 const BASE_URL = endpoints.entities.inkd.blogs.advancedListings;
@@ -89,7 +89,7 @@ function RewardChips({ legs }: { legs: RewardLeg[] }) {
         const spec = assetSpecs[leg.assetId as AssetType];
         const converted = baseToParentDisplay(leg.assetId as AssetType, leg.rewardAmountCap);
         return (
-          <span key={leg.assetId} className="inline-flex items-center gap-1.5">
+          <span key={leg.assetId} className="inline-flex items-center gap-1.5 bg-[#F2F3F5] rounded-sm px-2 py-1">
             {spec?.img ? (
               <img
                 src={spec.img}
@@ -211,8 +211,7 @@ export default function InkdInternalAgentDetailsPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[1000px] 2xl:px-4 pb-8 pt-3">
-      {/* Top controls */}
+    <div className="w-full 2xl:px-7 pb-8 pt-3"> 
       <div className="mb-5 flex items-center justify-between gap-4">
         <div className="relative w-full max-w-[545px]">
           <div className="flex h-[54px] items-center rounded-[28px] bg-white px-4 shadow-[0_1px_0_rgba(255,255,255,0.75)_inset]">
@@ -226,8 +225,8 @@ export default function InkdInternalAgentDetailsPage() {
               placeholder="Search the chart"
               className="h-full flex-1 bg-transparent text-[14px] font-normal text-[#353535] outline-none placeholder:text-[#b8b8c2]"
             />
-            <div className="flex h-[34px] w-[58px] items-center justify-center rounded-full bg-[#efefef]">
-              <Search size={13} className="text-[#d0d0d0]" />
+            <div className="flex h-[34px] w-[58px] items-center justify-center rounded-full bg-[#e1e1e1]">
+              <Search size={13} className="text-[#5649FF]" />
             </div>
           </div>
         </div>
@@ -289,35 +288,26 @@ export default function InkdInternalAgentDetailsPage() {
             return (
               <div
                 key={blog._id}
-                className="overflow-hidden rounded-[22px] bg-[#f8f8f8] p-[8px] text-left shadow-[0_1px_0_rgba(255,255,255,0.8)_inset]"
-              >
-                <div className="overflow-hidden rounded-[18px]">
-                  <div className="relative h-[142px] w-full overflow-hidden rounded-[18px]">
+                onClick={() => goToBlog(blog._id)}
+                className="overflow-hidden rounded-[22px] bg-white p-[8px] text-left shadow-[0_1px_0_rgba(255,255,255,0.8)_inset] cursor-pointer"
+              > 
+                  <div className="relative h-[200px] w-full overflow-hidden rounded-[18px]">
                     <img
                       src={media}
                       alt={blog.title}
                       className="h-full w-full object-cover"
                     />
-
-                    <button
-                      type="button"
-                      onClick={() => goToBlog(blog._id)}
-                      className="absolute right-[8px] top-[8px] flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[rgba(42,42,42,0.55)] text-white backdrop-blur-md"
-                    >
-                      <NotebookPen size={14} />
-                    </button>
-                  </div>
                 </div>
 
                 <div className="px-[8px] pb-[4px] pt-[12px]">
-                  <h3 className="line-clamp-2 min-h-[58px] text-[16px] font-normal leading-[1.35] tracking-[-0.02em] text-[#1b1b1d]">
+                  <h3 className="line-clamp-2 min-h-[58px] text-[16px] font-normal leading-[1.35] tracking-[-0.02em] text-black">
                     {blog.title}
                   </h3>
 
                   {legs.length > 0 && (
-                    <div className="mt-[12px] rounded-[12px] bg-[#f1f1f1] px-[10px] py-[9px]">
-                      <div className="mb-[6px] text-[10px] font-semibold uppercase tracking-[0.12em] text-[#575757]">
-                        Rewards
+                    <div className="mt-[7px] rounded-[12px] bg-[#F8F9FA] px-[10px] py-[9px]">
+                      <div className="mb-[6px] text-[10px] font-semibold uppercase text-black">
+                      🎁 Rewards
                       </div>
                       <RewardChips legs={legs} />
                     </div>

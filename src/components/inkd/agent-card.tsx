@@ -1,6 +1,5 @@
 import { useNavigate } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { NotebookPen } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { endpoints } from "@/api/endpoints";
@@ -74,16 +73,16 @@ export function AgentCard({ agent }: Props) {
           });
         }
       }}
-      className="rounded-[24px] bg-[#e8ebf2] p-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] transition-transform duration-200 hover:-translate-y-0.5 cursor-pointer"
+      className="rounded-[24px] bg-[#e8ebf2] p-4 space-y-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_10px_rgba(0,0,0,0.1)] cursor-pointer"
     >
-      <div className="mb-4 flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2">
         <h3 className="text-[32px] leading-none text-black min-w-0 flex-1 truncate">{agent.name}</h3>
         <div className="flex items-center gap-2 shrink-0" onClick={handleToggle} role="group" aria-label="Agent status">
           <span
-            className={`rounded-full px-3 py-1 text-xs capitalize shrink-0 ${
+            className={`rounded-full px-3 py-1 text-xs capitalize shrink-0 border-b  ${
               status === "active"
-                ? "bg-[#e3f6e7] text-[#3b9b56]"
-                : "bg-[#ececed] text-[#8a8a94]"
+                ? "bg-[#e3f6e7] text-[#3b9b56] border-b-[#3b9b56]"
+                : "bg-[#ececed] text-[#8a8a94] border-b-[#8a8a94]"
             }`}
           >
             {agent.status}
@@ -101,23 +100,22 @@ export function AgentCard({ agent }: Props) {
               if (!isChangingStatus) changeStatus({ inkDInternalAgentId: agent._id, status: nextStatus });
             }}
           />
-        </div>
-        <NotebookPen className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+        </div> 
       </div>
 
-      <div className="rounded-[18px] bg-white/70 p-4">
-        <div className="text-[10px] uppercase tracking-[0.15em] text-neutral-400">
+      <section className="rounded-[18px] bg-white/70 p-4">
+        <p className="text-xs font-medium uppercase text-[#939393]">
           Output
-        </div>
-        <div className="mt-1 text-4xl text-black">{blogCount}</div>
-        <div className="mt-1 text-sm text-neutral-500">Blogs Generated</div>
-      </div>
+        </p>
+        <p className="mt-1 text-4xl text-black">{blogCount}</p>
+        <p className="mt-1 text-sm text-[#939393]">Blogs Generated</p>
+      </section>
 
       <div className="mt-4 flex gap-2">
-        <div className="flex-1 rounded-full bg-white/65 px-4 py-2 text-center text-xs text-neutral-500">
+        <div className="flex-1 rounded-full bg-white px-4 py-2 text-center text-xs text-[#404956]">
           {locationCount} Location added
         </div>
-        <div className="flex-1 rounded-full bg-white/65 px-4 py-2 text-center text-xs text-neutral-500 truncate" title={categoryLabel}>
+        <div className="flex-1 rounded-full bg-white px-4 py-2 text-center text-xs text-[#404956] truncate" title={categoryLabel}>
           {categoryLabel}
         </div>
       </div>

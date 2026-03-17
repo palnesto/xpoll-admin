@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Bot, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router";
-import xpollSVG from "@/assets/xpoll-svg.svg";
 import bg from "@/assets/inkdbg.mp4";
-import ink from "@/assets/ink.png";
+import ink from "@/assets/ink.svg";
 import { AgentCard } from "@/components/inkd/agent-card";
 import type { InkdInternalAgentEntry } from "@/components/inkd/agent-card";
 import { inkdSignals } from "@/utils/mock-inkd";
@@ -74,32 +73,25 @@ export default function Inkd() {
                             <div className="relative min-h-[760px] overflow-hidden rounded-[30px] bg-[#f0f4f9]">
                                 {/* nav */}
                                 <header className="relative z-20 flex items-start justify-between px-5 pt-4 md:px-6 md:pt-5">
-                                    <section className="flex flex-col gap-2">
-                                        <button
-                                            onClick={() => navigate(-1)}
-                                            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/70 text-black backdrop-blur-md"
-                                        >
-                                            <ArrowLeft size={18} />
-                                        </button>
 
-                                        {/* <img
-                                            src={xpollSVG}
-                                            alt="XPOLL"
-                                            className="h-[54px] w-[42px] object-contain"
-                                        /> */}
-                                    </section>
+                                    <button
+                                        onClick={() => navigate(-1)}
+                                        className="flex h-10 w-10 items-center justify-center rounded-full bg-white/70 text-black backdrop-blur-md"
+                                    >
+                                        <ArrowLeft size={18} />
+                                    </button>
 
                                     <button
                                         type="button"
                                         onClick={() => navigate("/inkd/create?tab=foundational-info")}
-                                        className="rounded-full bg-white px-[26px] py-[10px] text-[20px] font-normal text-black"
+                                        className="rounded-full bg-white px-[26px] py-[10px] text-[17px] text-black"
                                     >
                                         + Add new Signal AI
                                     </button>
                                 </header>
 
                                 {/* hero video plane */}
-                                <div className="pointer-events-none absolute left-1/2 top-[-118px] z-[1] h-[812px] w-[1493px] -translate-x-1/2 overflow-hidden">
+                                <div className="pointer-events-none absolute left-1/2 top-[-140px] z-[1] h-[812px] w-[1100px] -translate-x-1/2 overflow-hidden">
                                     <video
                                         ref={heroVideoRef}
                                         src={bg}
@@ -109,8 +101,6 @@ export default function Inkd() {
                                         loop
                                         className="absolute inset-0 h-full w-full object-cover"
                                     />
-
-                                    {/* side + top fade masks */}
                                     <div className="absolute inset-0 bg-[linear-gradient(90deg,#f0f4f9_8%,rgba(240,244,249,0)_22%),linear-gradient(-90deg,#f0f4f9_8%,rgba(240,244,249,0)_22%),linear-gradient(180deg,#f0f4f9_0%,rgba(240,244,249,0.32)_18%,rgba(240,244,249,0)_34%),linear-gradient(0deg,#f0f4f9_0%,rgba(240,244,249,0)_22%)]" />
                                 </div>
 
@@ -128,29 +118,23 @@ export default function Inkd() {
                                 <div className="pointer-events-none absolute inset-0 z-[3] bg-[linear-gradient(180deg,rgba(255,255,255,0.14)_0%,rgba(255,255,255,0.06)_28%,rgba(255,255,255,0.02)_52%,rgba(255,255,255,0)_100%)]" />
 
                                 {/* hero foreground */}
-                                <div className="relative z-[5] flex min-h-[760px] flex-col items-center px-4 pb-6 pt-[347px]">
-                                    <h1 className="mb-[18px] text-[43px] font-semibold leading-none tracking-[0.12em] text-black">
+                                <div className="relative z-[5] flex min-h-[760px] flex-col items-center px-4 pb-6 pt-[370px]">
+                                    <h1 className="mb-[15px] text-[30px] font-medium text-black">
                                         INKD
                                     </h1>
 
                                     {/* input higher so slate top line remains visible */}
-                                    <div className="w-full max-w-[766.978px] mt-10">
-                                        <div className="rounded-[85px] border border-white/55 bg-[rgba(255,255,255,0.18)] px-[22px] py-[14px] shadow-[0_0_0_1px_rgba(255,255,255,0.16),0_10px_34px_rgba(114,125,213,0.14)] backdrop-blur-[18px]">
-                                            <div className="flex items-center gap-[10px]">
-                                                <div className="flex h-[25px] w-[21px] items-center justify-center text-[14px] text-[#727dd5]">
-                                                    ✦
-                                                </div>
-
-                                                <input
-                                                    placeholder="Ask INKD anything or type @ to command your shoal..."
-                                                    className="min-w-0 flex-1 bg-transparent text-[15.464px] text-[rgba(0,0,0,0.45)] outline-none placeholder:text-[rgba(0,0,0,0.45)]"
-                                                />
-
-                                                <button className="flex h-[44px] w-[73px] items-center justify-center rounded-[999px] bg-[#727dd5] text-white shadow-[0_8px_20px_rgba(114,125,213,0.22)]">
-                                                    ↑
-                                                </button>
-                                            </div>
+                                    <div className="flex items-center gap-[10px] w-full max-w-[750px] rounded-[85px] border-[1.5px] border-white/55 drop-shadow-lg bg-[rgba(255,255,255,0.18)] px-[22px] py-[14px] shadow-[0_0_0_1px_rgba(255,255,255,0.16),0_10px_34px_rgba(114,125,213,0.14)] backdrop-blur-[18px]">
+                                        <div className="flex h-[25px] w-[21px] items-center justify-center text-[14px]">
+                                            <img src={ink} alt="search" className="text-[#6C63E5]" />
                                         </div>
+                                        <input
+                                            placeholder="Ask INKD anything or type @ to command your shoal..."
+                                            className="min-w-0 flex-1 bg-transparent text-[15.464px] text-[rgba(0,0,0,0.45)] outline-none placeholder:text-[rgba(0,0,0,0.45)]"
+                                        />
+                                        <button className="flex h-[44px] w-[73px] items-center justify-center rounded-[999px] bg-[#6C63E5] text-white shadow-[0_8px_20px_rgba(114,125,213,0.22)]">
+                                            ↑
+                                        </button>
                                     </div>
 
                                     {/* chips */}
@@ -167,11 +151,11 @@ export default function Inkd() {
 
                                     {/* footer text inside hero */}
                                     <div className="mt-auto flex w-full items-end justify-between">
-                                        <div className="text-[20.135px] font-bold uppercase text-black">
+                                        <div className="text-sm font-bold uppercase text-black">
                                             XPOLL’S AI STUDIO
                                         </div>
-                                        <div className="text-[20.135px] font-bold uppercase text-black">
-                                            SCRAPE + DRAFT + PUBLISH
+                                        <div className="text-sm font-bold uppercase text-black">
+                                            SCRAPE → DRAFT → PUBLISH
                                         </div>
                                     </div>
                                 </div>
@@ -234,7 +218,7 @@ export default function Inkd() {
                                         </p>
                                         <button
                                             type="button"
-                                            className="mt-6 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow-md transition hover:bg-primary/90 hover:shadow-lg"
+                                            className="mt-6 rounded-full bg-primary px-6 py-3 text-[1px] shadow-md transition hover:bg-primary/90 hover:shadow-lg"
                                         >
                                             + Add new Signal AI
                                         </button>

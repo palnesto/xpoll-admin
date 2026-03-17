@@ -1,5 +1,5 @@
 import { ReactNode, useMemo, useState } from "react";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { ArrowLeft, Cog, MessageSquareText } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ConfigureAgentFoundationModal } from "@/components/modals/configure-agent-foundation-modal";
  
@@ -56,7 +56,7 @@ export function InkdWorkspaceLayout({ children }: Props) {
               disabled={!inkdInternalAgentId}
               className="flex items-center gap-2 rounded-full bg-[#5b4df7] px-4 py-2 text-xs xl:text-sm text-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Sparkles size={14} />
+              <Cog size={14} />
               Configure AI Foundation
             </button>
           </div> 
@@ -66,21 +66,21 @@ export function InkdWorkspaceLayout({ children }: Props) {
 
         {/* bottom composer */}
         <div className="border-t border-[#e8e8ed] p-3">
-          <div className="rounded-[16px] bg-[#ececef] px-4 py-4 text-[18px] text-[#a0a0aa]">
+          <div className="rounded-[16px] bg-[#ececef] px-4 py-4 text-[#a0a0aa] placeholder:text-black/50 placeholder:text-sm">
             Create me a blog on housing policy.
           </div>
 
           <div className="mt-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <button className="rounded-full bg-[#ececff] px-3 py-1.5 text-sm text-[#5b4df7]">
-                ↺ History
+              <button className="rounded-full bg-[#ececff] px-3 py-1.5 text-sm text-[#5649FF] flex items-center gap-1">
+                <MessageSquareText size={17} className="pt-1" /> History
               </button>
-              <button className="rounded-full bg-[#ececff] px-3 py-1.5 text-sm text-[#5b4df7]">
+              <button className="rounded-full bg-[#ececff] px-3 py-1.5 text-sm text-[#5649FF]">
                 Start new chat
               </button>
             </div>
 
-            <button className="flex h-8 w-8 items-center justify-center rounded-full bg-[#5b4df7] text-white">
+            <button className="flex h-10 w-16 text-xl items-center justify-center rounded-full bg-[#5649FF] text-white">
               ↑
             </button>
           </div>
