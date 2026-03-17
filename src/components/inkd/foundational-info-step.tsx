@@ -6,9 +6,15 @@ import { inkdAgentCreateFormSchema } from "@/schema/inkd-agent-create.schema";
 const INPUT_CLASS =
   "border-[#DDE2E5] focus:border-[#E8EAED] focus:ring-1 focus:ring-[#E8EAED] focus-visible:outline-none text-[#111] placeholder:text-[#9a9aab]";
 
-export type NameStatus = "idle" | "checking" | "available" | "unavailable" | "error";
+export type NameStatus =
+  | "idle"
+  | "checking"
+  | "available"
+  | "unavailable"
+  | "error";
 
-type FormValues = import("@/schema/inkd-agent-create.schema").InkdAgentCreateFormValues;
+type FormValues =
+  import("@/schema/inkd-agent-create.schema").InkdAgentCreateFormValues;
 
 type Props = {
   form: UseFormReturn<FormValues>;
@@ -41,6 +47,7 @@ export function FoundationalInfoStep({ form, nameStatus, editMode }: Props) {
             showError
             className="text-black"
             inputClassName={INPUT_CLASS}
+            helperText={"show helper here"}
           />
           <div className="text-xs text-[#8c8c99]">
             {nameStatus === "checking" && "Checking name availability…"}
