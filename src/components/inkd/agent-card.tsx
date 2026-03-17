@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Switch } from "@/components/ui/switch";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { endpoints } from "@/api/endpoints";
+import { utcToAdminNextScheduleLabel } from "@/utils/time";
 
 export type InkdAgentStatus = "active" | "idle";
 
@@ -11,6 +12,7 @@ export type InkdInternalAgentEntry = {
   internalAgentId: string;
   name: string;
   status: string;
+  nextSchedule?: string | null;
   totalInkBlogsCreated?: {
     archivedIncluded: number;
     archivedExcluded: number;
@@ -46,6 +48,9 @@ export function AgentCard({ agent }: Props) {
     .map((i) => i.name)
     .filter(Boolean);
   const categoryLabel = industryNames.length > 0 ? industryNames.join(", ") : "—";
+  const nextScheduleLabel = agent.nextSchedule
+    ? utcToAdminNextScheduleLabel(agent.nextSchedule)
+    : "";
 
   const status = (agent.status?.toLowerCase() === "idle" ? "idle" : "active") as InkdAgentStatus;
   const nextStatus: InkdAgentStatus = status === "active" ? "idle" : "active";
@@ -73,7 +78,9 @@ export function AgentCard({ agent }: Props) {
           });
         }
       }}
-      className="rounded-[24px] bg-[#e8ebf2] p-4 space-y-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_10px_rgba(0,0,0,0.1)] cursor-pointer"
+      className={`rounded-[24px] bg-[#e8ebf2] p-4 space-y-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_10px_rgba(0,0,0,0.1)] cursor-pointer ${
+        status === "idle" ? "opacity-65 saturate-[0.72]" : ""
+      }`}
     >
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-[32px] leading-none text-black min-w-0 flex-1 truncate">{agent.name}</h3>
@@ -120,8 +127,27 @@ export function AgentCard({ agent }: Props) {
         </div>
       </div>
 
-      <div className="mt-4 text-center text-sm text-white py-2 px-4 rounded-full bg-[#5649FF]">
-        New post
+      <div
+        className={`mt-4 rounded-[18px] px-4 py-3 text-center ${
+          nextScheduleLabel
+            ? "bg-[#5649FF] text-white"
+            : "bg-[#d9dce5] text-[#72798a]"
+        }`}
+      >
+        <div
+          className={`text-[11px] font-semibold tracking-[0.04em] ${
+            nextScheduleLabel ? "text-white/72" : "text-[#8e95a5]"
+          }`}
+        >
+          Next scheduled at
+        </div>
+        <div
+          className={`mt-1 text-sm ${
+            nextScheduleLabel ? "text-white" : "text-[#72798a]"
+          }`}
+        >
+          {nextScheduleLabel || "No schedule set"}
+        </div>
       </div>
     </div>
   );

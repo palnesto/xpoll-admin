@@ -39,6 +39,24 @@ export function utcToAdminTimeWithZone(utcISO: string) {
   return `${localDateTime.format("h:mm A")} ${adminZone}`;
 }
 
+export function utcToAdminNextScheduleLabel(utcISO: string) {
+  const localDateTime = utcToAdmin(utcISO, adminZone);
+  if (!localDateTime.isValid()) return "";
+
+  const now = dayjs().tz(adminZone);
+  const startOfToday = now.startOf("day");
+  const startOfTomorrow = startOfToday.add(1, "day");
+
+  let prefix = localDateTime.format("ddd, MMM D");
+  if (localDateTime.isSame(startOfToday, "day")) {
+    prefix = "Today";
+  } else if (localDateTime.isSame(startOfTomorrow, "day")) {
+    prefix = "Tomorrow";
+  }
+
+  return `${prefix} • ${localDateTime.format("h:mm A")} ${adminZone}`;
+}
+
 /** Convert local HH:MM (admin zone) → UTC HH:MM */
 export function localTimeToUtcHHMM(localHHMM: string): string {
   const clean = String(localHHMM ?? "").trim();
