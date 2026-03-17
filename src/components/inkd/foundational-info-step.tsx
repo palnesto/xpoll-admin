@@ -39,6 +39,7 @@ export function FoundationalInfoStep({ form, nameStatus, editMode }: Props) {
             placeholder="Sample Name"
             showCounter
             showError
+            className="text-black"
             inputClassName={INPUT_CLASS}
           />
           <div className="text-xs text-[#8c8c99]">
@@ -60,6 +61,7 @@ export function FoundationalInfoStep({ form, nameStatus, editMode }: Props) {
         rows={10}
         showCounter
         showError
+        className="text-black"
         inputClassName={INPUT_CLASS}
       />
     </div>

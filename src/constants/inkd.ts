@@ -1,3 +1,6 @@
+/** Max industries that can be selected for targeted industries (create/edit agent, blog). */
+export const MAX_TARGETED_INDUSTRIES = 5;
+
 export const INKD_INTERNAL_AGENT_WEEKDAYS = [
   "monday",
   "tuesday",

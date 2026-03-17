@@ -60,18 +60,24 @@ type BlogEntry = {
 
 type ViewMode = "cards" | "rows";
 
-function convertReward(assetId: string, baseValue: string): string {
-  const spec = assetSpecs[assetId as AssetType];
-  if (!spec) return baseValue;
+/** Convert base amount to parent for display (same as allActions baseToParent). */
+function baseToParentDisplay(
+  assetId: AssetType,
+  baseVal: string | number,
+  fixed?: number,
+): string {
+  const useFixed = typeof fixed === "number";
   return unwrapString(
     amount({
       op: "toParent",
-      assetId: assetId as AssetType,
-      value: baseValue,
+      assetId,
+      value: String(baseVal),
       output: "string",
-      trim: true,
-      group: true,
+      trim: useFixed ? false : true,
+      fixed: useFixed ? Math.max(0, fixed) : undefined,
+      group: false,
     }),
+    "0",
   );
 }
 
@@ -81,7 +87,7 @@ function RewardChips({ legs }: { legs: RewardLeg[] }) {
     <div className="flex flex-wrap items-center gap-x-[14px] gap-y-[6px] text-[11px] text-[#6b6b74]">
       {legs.map((leg) => {
         const spec = assetSpecs[leg.assetId as AssetType];
-        const converted = convertReward(leg.assetId, leg.rewardAmountCap);
+        const converted = baseToParentDisplay(leg.assetId as AssetType, leg.rewardAmountCap);
         return (
           <span key={leg.assetId} className="inline-flex items-center gap-1.5">
             {spec?.img ? (
@@ -382,8 +388,8 @@ export default function InkdInternalAgentDetailsPage() {
                     <div className="flex flex-col gap-0.5">
                       {legs.slice(0, 2).map((leg) => {
                         const spec = assetSpecs[leg.assetId as AssetType];
-                        const converted = convertReward(
-                          leg.assetId,
+                        const converted = baseToParentDisplay(
+                          leg.assetId as AssetType,
                           leg.rewardAmountCap,
                         );
                         return (

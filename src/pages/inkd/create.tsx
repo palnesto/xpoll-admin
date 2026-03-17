@@ -270,8 +270,7 @@ export default function CreateInkdInternalAgent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] px-10 py-8">
-      <div className="mx-auto max-w-6xl">
+    <div className="min-h-screen bg-[#F8F9FA] px-10 py-8"> 
         <h1 className="mb-6 border-b border-[#E6E7EB] pb-4 text-sm font-medium tracking-[0.25em] text-[#999]"> 
             CREATING SIGNAL AI : 
         </h1>
@@ -282,7 +281,7 @@ export default function CreateInkdInternalAgent() {
           onStepClick={handleTabClick}
         />
 
-        <form className="space-y-10" noValidate>
+        <form className="space-y-10 mx-auto max-w-5xl" noValidate>
           {activeStepId === "foundational" && (
             <FoundationalInfoStep form={form} nameStatus={nameStatus} />
           )}
@@ -326,7 +325,6 @@ export default function CreateInkdInternalAgent() {
           onBack={goBack}
           onNext={goNext}
         />
-      </div>
-    </div>
+      </div> 
   );
 }

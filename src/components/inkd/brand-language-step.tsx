@@ -22,6 +22,7 @@ export function BrandLanguageStep({ form }: Props) {
         rows={14}
         showCounter
         showError
+        className="text-black"
         inputClassName={INPUT_CLASS}
       />
     </div>

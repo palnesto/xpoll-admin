@@ -122,8 +122,8 @@ export function AgentCard({ agent }: Props) {
         </div>
       </div>
 
-      <div className="mt-4 text-center text-sm text-neutral-500">
-        new post
+      <div className="mt-4 text-center text-sm text-white py-2 px-4 rounded-full bg-[#5649FF]">
+        New post
       </div>
     </div>
   );

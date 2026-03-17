@@ -155,10 +155,7 @@ export function PriorityScrapingStep({
                       </span>
                       <button
                         type="button"
-                        onClick={() => {
-                          if (priorityFields.length <= 1) return;
-                          remove(index);
-                        }}
+                        onClick={() => remove(index)}
                         className="shrink-0 rounded-lg p-2 text-[#5d5d66] hover:bg-black/5"
                         aria-label="Remove URL"
                       >

@@ -1,5 +1,5 @@
 import type { UseFormReturn } from "react-hook-form";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { NumberField } from "@/components/commons/form/NumberField";
 import { Label } from "@/components/ui/label";
@@ -11,7 +11,7 @@ import CitySelect from "@/components/commons/selects/city-select";
 import IndustryInfiniteSelect from "@/components/commons/selects/industry-infinite-select";
 import { inkdAgentCreateFormSchema } from "@/schema/inkd-agent-create.schema";
 import type { z } from "zod";
-import { INKD_INTERNAL_AGENT_WEEKDAYS } from "@/constants/inkd";
+import { INKD_INTERNAL_AGENT_WEEKDAYS, MAX_TARGETED_INDUSTRIES } from "@/constants/inkd";
 import { cn } from "@/lib/utils";
 import { adminZone } from "@/utils/time";
 
@@ -50,7 +50,23 @@ export function SettingsStep({
     formState: { errors },
   } = form;
 
+  const [industryPickerKey, setIndustryPickerKey] = useState(0);
   const scheduleRules = form.watch("scheduleRules") ?? [];
+
+  const addIndustry = (opt: IndustryOption | null) => {
+    if (!opt) return;
+    if (industryOpts.length >= MAX_TARGETED_INDUSTRIES) return;
+    if (industryOpts.some((i) => i.value === opt.value)) {
+      setIndustryPickerKey((k) => k + 1);
+      return;
+    }
+    setIndustryOpts([...industryOpts, { value: opt.value, label: opt.label }]);
+    setIndustryPickerKey((k) => k + 1);
+  };
+
+  const removeIndustry = (value: string) => {
+    setIndustryOpts(industryOpts.filter((i) => i.value !== value));
+  };
 
   const weekdayLabel = (day: string) =>
     day.charAt(0).toUpperCase() + day.slice(1);
@@ -177,16 +193,39 @@ export function SettingsStep({
 
         <div className="col-span-3 space-y-1">
           <Label className="text-xs font-semibold text-[#5E6366]">
-            Targeted Industries
+            Targeted Industries (max {MAX_TARGETED_INDUSTRIES})
           </Label>
           <IndustryInfiniteSelect
-            onChange={(opt) =>
-              setIndustryOpts(
-                opt ? [{ value: opt.value, label: opt.label }] : [],
-              )
-            }
+            key={industryPickerKey}
+            onChange={(opt) => addIndustry(opt ? { value: opt.value, label: opt.label } : null)}
             placeholder="Finance, Healthcare…"
+            selectProps={{ isDisabled: industryOpts.length >= MAX_TARGETED_INDUSTRIES }}
           />
+          {industryOpts.length > MAX_TARGETED_INDUSTRIES && (
+            <p className="text-xs text-red-600">
+              Max {MAX_TARGETED_INDUSTRIES} industries allowed.
+            </p>
+          )}
+          {industryOpts.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {industryOpts.map((i) => (
+                <span
+                  key={i.value}
+                  className="inline-flex items-center gap-1 rounded-full bg-[#E4F2DF] px-3 py-1 text-sm text-[#315326]"
+                >
+                  {i.label}
+                  <button
+                    type="button"
+                    onClick={() => removeIndustry(i.value)}
+                    className="hover:opacity-80"
+                    aria-label={`Remove ${i.label}`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="col-span-3 space-y-3">

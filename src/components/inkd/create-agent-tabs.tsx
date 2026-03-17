@@ -33,7 +33,7 @@ export function CreateAgentTabs({
   onStepClick,
 }: Props) {
   return (
-    <div className="mb-10 flex justify-center gap-7 rounded-full p-4">
+    <div className="mb-10 flex justify-center gap-7 rounded-full p-2 bg-[#ffffff] mx-auto max-w-2xl shadow-[0_1px_0_rgba(255,255,255,0.8)_inset]">
       {INKD_CREATE_STEPS.map((step, idx) => {
         const isActive = activeStepId === step.id;
         const isClickable = idx <= stepIndex;

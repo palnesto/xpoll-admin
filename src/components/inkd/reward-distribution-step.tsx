@@ -45,14 +45,19 @@ export function RewardDistributionStep({
         </div>
         <button
           type="button"
-          onClick={() =>
+          onClick={() => {
+            const used = new Set(
+              rewards?.map((r) => r.assetId).filter(Boolean) ?? [],
+            );
+            const nextAsset =
+              coinAssets.find((a) => !used.has(a)) ?? coinAssets[0];
             appendReward({
-              assetId: coinAssets[0],
+              assetId: nextAsset,
               amount: "",
               rewardAmountCap: "",
               rewardType: "max",
-            })
-          }
+            });
+          }}
           className="rounded-full bg-[#E4F2DF] px-3 py-1 text-sm font-medium text-[#315326] hover:bg-[#d4e8cf]"
         >
           + Add Reward

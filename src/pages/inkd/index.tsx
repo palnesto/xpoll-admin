@@ -82,11 +82,11 @@ export default function Inkd() {
                                             <ArrowLeft size={18} />
                                         </button>
 
-                                        <img
+                                        {/* <img
                                             src={xpollSVG}
                                             alt="XPOLL"
                                             className="h-[54px] w-[42px] object-contain"
-                                        />
+                                        /> */}
                                     </section>
 
                                     <button
@@ -134,7 +134,7 @@ export default function Inkd() {
                                     </h1>
 
                                     {/* input higher so slate top line remains visible */}
-                                    <div className="w-full max-w-[766.978px]">
+                                    <div className="w-full max-w-[766.978px] mt-10">
                                         <div className="rounded-[85px] border border-white/55 bg-[rgba(255,255,255,0.18)] px-[22px] py-[14px] shadow-[0_0_0_1px_rgba(255,255,255,0.16),0_10px_34px_rgba(114,125,213,0.14)] backdrop-blur-[18px]">
                                             <div className="flex items-center gap-[10px]">
                                                 <div className="flex h-[25px] w-[21px] items-center justify-center text-[14px] text-[#727dd5]">

@@ -149,7 +149,6 @@ export const inkdAgentCreateFormSchema = z
             "Enter a valid URL (e.g. https://x.com/xpollplatform or app.xpoll.io)",
           )
       )
-      .min(1, "Add at least one URL")
       .max(5),
     fallbackImageUrl: z
       .string()
