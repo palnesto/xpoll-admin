@@ -1,14 +1,22 @@
 import type { UseFormReturn } from "react-hook-form";
 import { TextField } from "@/components/commons/form/TextField";
 import { TextAreaField } from "@/components/commons/form/TextAreaField";
-import { inkdAgentCreateFormSchema } from "@/schema/inkd-agent-create.schema";
+import {
+  inkdAgentCreateFormSchema,
+  type InkdAgentCreateFormValues,
+} from "@/schema/inkd-agent-create.schema";
 
 const INPUT_CLASS =
-  "border-[#DDE2E5] focus:border-[#E8EAED] focus:ring-1 focus:ring-[#E8EAED] focus-visible:outline-none text-[#111] placeholder:text-[#9a9aab]";
+  "border-[#DDE2E5] bg-white focus:border-[#E8EAED] focus:ring-1 focus:ring-[#E8EAED] focus-visible:outline-none text-[#111] placeholder:text-[#9a9aab]";
 
-export type NameStatus = "idle" | "checking" | "available" | "unavailable" | "error";
+export type NameStatus =
+  | "idle"
+  | "checking"
+  | "available"
+  | "unavailable"
+  | "error";
 
-type FormValues = import("@/schema/inkd-agent-create.schema").InkdAgentCreateFormValues;
+type FormValues = InkdAgentCreateFormValues;
 
 type Props = {
   form: UseFormReturn<FormValues>;
@@ -18,6 +26,18 @@ type Props = {
 };
 
 export function FoundationalInfoStep({ form, nameStatus, editMode }: Props) {
+  const errors = form.formState.errors as Record<string, { message?: string }>;
+  const nameHelperText =
+    nameStatus === "checking"
+      ? "Checking name availability…"
+      : nameStatus === "available"
+        ? "Name is available."
+        : nameStatus === "unavailable"
+          ? "Name is already in use. Choose another."
+          : nameStatus === "error"
+            ? "Could not verify name. Please try again."
+            : undefined;
+
   return (
     <div className="space-y-8">
       {editMode ? (
@@ -30,39 +50,31 @@ export function FoundationalInfoStep({ form, nameStatus, editMode }: Props) {
           </div>
         </div>
       ) : (
-        <>
-          <TextField<FormValues>
-            form={form}
-            schema={inkdAgentCreateFormSchema}
-            name="name"
-            label="Name of AI Signal"
-            placeholder="Sample Name"
-            showCounter
-            showError
-            className="text-black"
-            inputClassName={INPUT_CLASS}
-          />
-          <div className="text-xs text-[#8c8c99]">
-            {nameStatus === "checking" && "Checking name availability…"}
-            {nameStatus === "available" && "Name is available."}
-            {nameStatus === "unavailable" &&
-              "Name is already in use. Choose another."}
-            {nameStatus === "error" &&
-              "Could not verify name. Please try again."}
-          </div>
-        </>
+        <TextField<FormValues>
+          form={form}
+          schema={inkdAgentCreateFormSchema as any}
+          name="name"
+          label="Name of AI Signal"
+          placeholder="Sample Name"
+          showCounter
+          showError={false}
+          className="text-black"
+          inputClassName={INPUT_CLASS}
+          helperText={errors.name?.message ?? nameHelperText}
+        />
       )}
 
       <TextAreaField<FormValues>
         form={form}
-        schema={inkdAgentCreateFormSchema}
+        schema={inkdAgentCreateFormSchema as any}
         name="foundationalInformation"
         label="Add Core values of the AI"
         rows={10}
         showCounter
-        showError
+        showError={false}
         className="text-black"
         inputClassName={INPUT_CLASS}
+        helperText={errors.foundationalInformation?.message}
       />
     </div>
   );

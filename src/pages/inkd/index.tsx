@@ -76,7 +76,7 @@ export default function Inkd() {
 
                                     <button
                                         onClick={() => navigate(-1)}
-                                        className="flex h-10 w-10 items-center justify-center rounded-full bg-white/70 text-black backdrop-blur-md"
+                                        className="flex h-7 w-10 items-center justify-center rounded-full bg-[#EEEFF130] border-b-2 border-l-2 border-white/80 text-black backdrop-blur-xl"
                                     >
                                         <ArrowLeft size={18} />
                                     </button>

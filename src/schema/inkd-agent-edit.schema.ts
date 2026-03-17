@@ -24,6 +24,12 @@ export type InkdAgentApiDetail = {
     states: string[];
     cities: string[];
   } | null;
+  /** Populated geo with names (for display). When present, use for country/state/city option labels. */
+  targetGeoPopulated?: {
+    countries?: Array<{ _id: string; name: string; iso3?: string }>;
+    states?: Array<{ _id: string; name: string; [k: string]: unknown }>;
+    cities?: Array<{ _id: string; name: string; [k: string]: unknown }>;
+  } | null;
   linkedIndustries: { _id: string; name: string; description: string | null }[];
   fallbackImageUrl: string | null;
   rewards: {

@@ -7,7 +7,10 @@ import { coinAssets, assetSpecs, type AssetType } from "@/utils/currency-assets/
 import type { InkdAgentCreateFormValues } from "@/schema/inkd-agent-create.schema";
 
 const INPUT_CLASS =
-  "border-[#DDE2E5] focus:border-[#E8EAED] focus:ring-1 focus:ring-[#E8EAED] focus-visible:outline-none text-[#111] placeholder:text-[#9a9aab]";
+  "border-[#DDE2E5] bg-white focus:border-[#E8EAED] focus:ring-1 focus:ring-[#E8EAED] focus-visible:outline-none text-[#111] placeholder:text-[#9a9aab]";
+
+const ADD_BUTTON_CLASS =
+  "rounded-full bg-[#E4F2DF] px-4 py-1.5 text-[11px] font-semibold text-[#315326] hover:bg-[#d4e8cf] disabled:opacity-60 shrink-0";
 
 type RewardItem = {
   assetId: string;
@@ -40,6 +43,7 @@ export function RewardDistributionStep({
   return (
     <section className="space-y-2">
       <div className="flex items-end justify-end">
+     
         <button
           type="button"
           onClick={() => {
@@ -55,7 +59,7 @@ export function RewardDistributionStep({
               rewardType: "max",
             });
           }}
-          className="rounded-full bg-[#E4F2DF] px-3 py-1 text-sm font-medium text-[#315326] hover:bg-[#d4e8cf]"
+          className={ADD_BUTTON_CLASS}
         >
           + Add Reward
         </button>

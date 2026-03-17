@@ -9,7 +9,10 @@ import { cn } from "@/lib/utils";
 import type { InkdAgentCreateFormValues } from "@/schema/inkd-agent-create.schema";
 
 const INPUT_CLASS =
-  "border-[#DDE2E5] focus:border-[#E8EAED] focus:ring-1 focus:ring-[#E8EAED] focus-visible:outline-none text-[#111] placeholder:text-[#9a9aab]";
+  "w-full h-11 rounded-2xl border px-3 text-base font-light tracking-wide border-[#DDE2E5] bg-white focus:border-[#E8EAED] focus:ring-1 focus:ring-[#E8EAED] focus-visible:outline-none text-[#111] placeholder:text-[#9a9aab]";
+
+const ADD_BUTTON_CLASS =
+  "rounded-full bg-[#E4F2DF] px-4 py-1.5 text-[11px] font-semibold text-[#315326] hover:bg-[#d4e8cf] disabled:opacity-60 shrink-0";
 
 function normalizeUrl(s: string): string {
   const t = s.trim();
@@ -105,14 +108,14 @@ export function PriorityScrapingStep({
           size="sm"
           onClick={handleAddLink}
           disabled={sources.length >= 5}
-          className="shrink-0 rounded-full bg-[#E4F2DF] px-4 text-[11px] font-semibold text-[#315326] hover:bg-[#d4e8cf] disabled:opacity-60"
+          className={ADD_BUTTON_CLASS}
         >
           + Add Link
         </Button>
       </div>
 
       {addError ? (
-        <p className="text-xs text-red-600">{addError}</p>
+        <p className="mt-1 text-xs text-destructive">{addError}</p>
       ) : null}
 
       <DragDropContext

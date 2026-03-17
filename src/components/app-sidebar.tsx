@@ -22,7 +22,14 @@ import {
 } from "@/components/ui/sidebar";
 import xpollSVG from "@/assets/xpoll-svg.svg";
 import { useLocation, useNavigate } from "react-router";
-import { ComponentProps, useMemo, useRef, useState } from "react";
+import {
+  ComponentProps,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   const { pathname } = useLocation();
@@ -130,13 +137,20 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
     };
   }, [pathname]);
 
+  const completeInkNavigation = useCallback(() => {
+    if (hasNavigatedRef.current) return;
+    hasNavigatedRef.current = true;
+    setShowInkVideo(false);
+    navigate("/inkd");
+  }, [navigate]);
+
   const handleInkClick = () => {
     hasNavigatedRef.current = false;
     setShowInkVideo(true);
   };
 
   const handleInkVideoTimeUpdate = (
-    e: React.SyntheticEvent<HTMLVideoElement, Event>
+    e: React.SyntheticEvent<HTMLVideoElement, Event>,
   ) => {
     const video = e.currentTarget;
 
@@ -145,17 +159,27 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
       video.duration &&
       video.currentTime >= video.duration - 0.15
     ) {
-      hasNavigatedRef.current = true;
-      navigate("/inkd");
+      completeInkNavigation();
     }
   };
 
   const handleInkVideoEnd = () => {
-    if (!hasNavigatedRef.current) {
-      hasNavigatedRef.current = true;
-      navigate("/inkd");
-    }
+    completeInkNavigation();
   };
+
+  useEffect(() => {
+    if (!showInkVideo) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === " " || event.key === "Spacebar" || event.key === "Enter") {
+        event.preventDefault();
+        completeInkNavigation();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [showInkVideo, completeInkNavigation]);
 
   const data = {
     user: {
@@ -367,7 +391,10 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   return (
     <>
       {showInkVideo && (
-        <div className="fixed inset-0 z-[9999] bg-black">
+        <div
+          className="fixed inset-0 z-[9999] bg-black"
+          onClick={completeInkNavigation}
+        >
           <video
             src="https://prod-storage.xpoll.io/xpoll-blob-dump-user/ink.mp4"
             autoPlay
@@ -376,6 +403,10 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
             onTimeUpdate={handleInkVideoTimeUpdate}
             onEnded={handleInkVideoEnd}
             className="h-full w-full object-cover"
+            onClick={(e) => {
+              e.stopPropagation();
+              completeInkNavigation();
+            }}
           />
         </div>
       )}
