@@ -32,7 +32,7 @@ export function InkdWorkspaceLayout({ children }: Props) {
             <div className="flex items-center gap-1">
               <button
                 onClick={() => navigate(-1)}
-                className="flex h-8 w-8 items-center justify-center rounded-full text-[#4a4a4a] transition hover:bg-white/70"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-[#4a4a4a] transition hover:bg-white/20"
               >
                 <ArrowLeft size={18} />
               </button>

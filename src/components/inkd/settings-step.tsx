@@ -16,7 +16,140 @@ import { cn } from "@/lib/utils";
 import { adminZone } from "@/utils/time";
 
 const INPUT_CLASS =
-  "border-[#DDE2E5] focus:border-[#E8EAED] focus:ring-1 focus:ring-[#E8EAED] focus-visible:outline-none text-[#111] placeholder:text-[#9a9aab]";
+  "border-[#DDE2E5] bg-white focus:border-[#E8EAED] focus:ring-1 focus:ring-[#E8EAED] focus-visible:outline-none text-[#111] placeholder:text-[#9a9aab]";
+
+/** Light-theme styles for Country/State/City (create + edit). Use menuPortalTarget so dropdown opens above modal. */
+const INKD_GEO_SELECT_PROPS = {
+  menuPortalTarget: typeof document !== "undefined" ? document.body : undefined,
+  styles: {
+    control: (provided: Record<string, unknown>) => ({
+      ...provided,
+      minHeight: 44,
+      borderRadius: "1rem",
+      borderColor: "#DDE2E5",
+      backgroundColor: "#fff",
+      color: "#111",
+      "&:hover": { borderColor: "#DDE2E5" },
+    }),
+    placeholder: (provided: Record<string, unknown>) => ({
+      ...provided,
+      color: "#9a9aab",
+      fontSize: "0.875rem",
+      fontWeight: 400,
+    }),
+    input: (provided: Record<string, unknown>) => ({
+      ...provided,
+      color: "#111",
+    }),
+    singleValue: (provided: Record<string, unknown>) => ({
+      ...provided,
+      color: "#111",
+    }),
+    valueContainer: (provided: Record<string, unknown>) => ({
+      ...provided,
+      backgroundColor: "transparent",
+    }),
+    multiValue: (provided: Record<string, unknown>) => ({
+      ...provided,
+      backgroundColor: "#E8E8EC",
+      borderRadius: "9999px",
+    }),
+    multiValueLabel: (provided: Record<string, unknown>) => ({
+      ...provided,
+      color: "#111",
+    }),
+    multiValueRemove: (provided: Record<string, unknown>) => ({
+      ...provided,
+      color: "#5E6366",
+    }),
+    dropdownIndicator: (provided: Record<string, unknown>) => ({
+      ...provided,
+      color: "#5E6366",
+    }),
+    clearIndicator: (provided: Record<string, unknown>) => ({
+      ...provided,
+      color: "#5E6366",
+    }),
+    menuPortal: (provided: Record<string, unknown>) => ({
+      ...provided,
+      zIndex: 99999,
+      pointerEvents: "auto" as const,
+    }),
+    menu: (provided: Record<string, unknown>) => ({
+      ...provided,
+      backgroundColor: "#fff",
+      border: "1px solid #DDE2E5",
+      borderRadius: "0.5rem",
+      boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+    }),
+    menuList: (provided: Record<string, unknown>) => ({
+      ...provided,
+      backgroundColor: "#fff",
+      padding: 4,
+    }),
+    option: (provided: Record<string, unknown>, state: { isFocused?: boolean; isSelected?: boolean }) => ({
+      ...provided,
+      color: "#111",
+      backgroundColor: state.isFocused || state.isSelected ? "#F3F4F6" : "#fff",
+      fontSize: "0.875rem",
+    }),
+  } as const,
+};
+
+/** Targeted industries: match other inputs (border, radius, placeholder). */
+const INKD_INDUSTRY_SELECT_PROPS = {
+  menuPortalTarget: typeof document !== "undefined" ? document.body : undefined,
+  styles: {
+    control: (provided: Record<string, unknown>) => ({
+      ...provided,
+      minHeight: 44,
+      borderRadius: "1rem",
+      borderColor: "#DDE2E5",
+      backgroundColor: "#fff",
+      color: "#111",
+      "&:hover": { borderColor: "#DDE2E5" },
+    }),
+    placeholder: (provided: Record<string, unknown>) => ({
+      ...provided,
+      color: "#9a9aab",
+      fontSize: "0.875rem",
+      fontWeight: 400,
+    }),
+    input: (provided: Record<string, unknown>) => ({
+      ...provided,
+      color: "#111",
+    }),
+    singleValue: (provided: Record<string, unknown>) => ({
+      ...provided,
+      color: "#111",
+    }),
+    menuPortal: (provided: Record<string, unknown>) => ({
+      ...provided,
+      zIndex: 99999,
+      pointerEvents: "auto" as const,
+    }),
+    menu: (provided: Record<string, unknown>) => ({
+      ...provided,
+      backgroundColor: "#fff",
+      border: "1px solid #DDE2E5",
+      borderRadius: "0.5rem",
+      boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+    }),
+    menuList: (provided: Record<string, unknown>) => ({
+      ...provided,
+      backgroundColor: "#fff",
+    }),
+    option: (provided: Record<string, unknown>, state: { isFocused?: boolean; isSelected?: boolean }) => ({
+      ...provided,
+      color: "#111",
+      backgroundColor: state.isFocused || state.isSelected ? "#F3F4F6" : "#fff",
+      fontSize: "0.875rem",
+    }),
+  } as const,
+};
+
+const ADD_BUTTON_CLASS =
+  "rounded-full bg-[#E4F2DF] px-4 py-1.5 text-[11px] font-semibold text-[#315326] hover:bg-[#d4e8cf] disabled:opacity-60 shrink-0";
 
 type FormValues = import("@/schema/inkd-agent-create.schema").InkdAgentCreateFormValues;
 
@@ -122,8 +255,10 @@ export function SettingsStep({
       | undefined;
   }, [errors]);
 
+  const errs = errors as Record<string, { message?: string }>;
+
   return (
-    <div className="grid grid-cols-3 gap-6">
+    <div className="grid grid-cols-2 gap-6">
       <NumberField<FormValues>
         form={form}
         schema={inkdAgentCreateFormSchema as unknown as z.ZodObject<any>}
@@ -131,8 +266,8 @@ export function SettingsStep({
         label="Blog length"
         placeholder="10000"
         decimalScale={0}
-        helperText="Characters per blog description"
-        showError
+        helperText={errs.maxBlogDescriptionLength?.message ?? "Characters per blog description"}
+        showError={false}
         inputClassName={INPUT_CLASS}
         className="text-[#5E6366]"
       />
@@ -143,7 +278,8 @@ export function SettingsStep({
         label="No of trails to be create per blog"
         placeholder="12"
         decimalScale={0}
-        showError
+        helperText={errs.maxLinkedTrial?.message ?? "Trails per blog"}
+        showError={false}
         inputClassName={INPUT_CLASS}
         className="text-[#5E6366]"
       />
@@ -154,12 +290,11 @@ export function SettingsStep({
         label="No of polls per trail"
         placeholder="12"
         decimalScale={0}
-        showError
+        helperText={errs.maxLinkedPoll?.message ?? "Polls per trail"}
+        showError={false}
         inputClassName={INPUT_CLASS}
         className="text-[#5E6366]"
       />
-
-      <div className="col-span-3 grid grid-cols-3 gap-6">
         <div className="space-y-1">
           <Label className="text-xs font-semibold text-[#5E6366]">
             Country
@@ -168,8 +303,11 @@ export function SettingsStep({
             value={countryOpts}
             onChange={(opts) => setCountryOpts(opts as GeoOption[])}
             placeholder="Rhode Island"
+            selectProps={INKD_GEO_SELECT_PROPS}
           />
         </div>
+      <div className="col-span-2 grid grid-cols-2 gap-6">
+ 
         <div className="space-y-1">
           <Label className="text-xs font-semibold text-[#5E6366]">
             State
@@ -178,6 +316,7 @@ export function SettingsStep({
             value={stateOpts}
             onChange={(opts) => setStateOpts(opts as GeoOption[])}
             placeholder="Rhode Island"
+            selectProps={INKD_GEO_SELECT_PROPS}
           />
         </div>
         <div className="space-y-1">
@@ -188,10 +327,11 @@ export function SettingsStep({
             value={cityOpts}
             onChange={(opts) => setCityOpts(opts as GeoOption[])}
             placeholder="Rhode Island"
+            selectProps={INKD_GEO_SELECT_PROPS}
           />
         </div>
 
-        <div className="col-span-3 space-y-1">
+        <div className="col-span-2 space-y-1">
           <Label className="text-xs font-semibold text-[#5E6366]">
             Targeted Industries (max {MAX_TARGETED_INDUSTRIES})
           </Label>
@@ -199,7 +339,10 @@ export function SettingsStep({
             key={industryPickerKey}
             onChange={(opt) => addIndustry(opt ? { value: opt.value, label: opt.label } : null)}
             placeholder="Finance, Healthcare…"
-            selectProps={{ isDisabled: industryOpts.length >= MAX_TARGETED_INDUSTRIES }}
+            selectProps={{
+              ...INKD_INDUSTRY_SELECT_PROPS,
+              isDisabled: industryOpts.length >= MAX_TARGETED_INDUSTRIES,
+            }}
           />
           {industryOpts.length > MAX_TARGETED_INDUSTRIES && (
             <p className="text-xs text-red-600">
@@ -228,7 +371,7 @@ export function SettingsStep({
           )}
         </div>
 
-        <div className="col-span-3 space-y-3">
+        <div className="col-span-2 space-y-3">
           <div className="flex items-center justify-between">
             <div>
               <Label className="text-xs font-semibold text-[#5E6366]">
@@ -244,7 +387,7 @@ export function SettingsStep({
               size="sm"
               onClick={addScheduleRule}
               disabled={Array.isArray(scheduleRules) && scheduleRules.length >= 3}
-              className="rounded-full border-[#DDE2E5] bg-white px-3 text-[11px] font-semibold text-[#315326] hover:bg-[#E4F2DF]"
+              className={ADD_BUTTON_CLASS}
             >
               + Add schedule
             </Button>

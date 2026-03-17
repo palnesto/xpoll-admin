@@ -5,10 +5,10 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   ListPlus,
-  CaseSensitive,
-  Wrench,
+  Languages, 
   ListRestart,
   Cog,
+  Award ,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -53,10 +53,10 @@ import { RewardDistributionStep } from "@/components/inkd/reward-distribution-st
 
 const STEP_ICONS: Record<InkdCreateStepId, LucideIcon> = {
   foundational: ListPlus,
-  brand: CaseSensitive,
-  settings: Wrench,
+  brand: Languages,
+  settings: Cog,
   priority: ListRestart,
-  rewards: Cog,
+  rewards: Award,
 };
 
 function mapApiToFormValues(
@@ -68,6 +68,17 @@ function mapApiToFormValues(
   industryOpts: IndustryOption[];
 } {
   const geo = d.targetGeo ?? { countries: [], states: [], cities: [] };
+  const populated = d.targetGeoPopulated;
+  const countryOpts = Array.isArray(populated?.countries) && populated.countries.length > 0
+    ? populated.countries.map((c) => ({ value: c._id, label: c.name }))
+    : (geo.countries ?? []).map((c) => ({ value: c, label: c }));
+  const stateOpts = Array.isArray(populated?.states) && populated.states.length > 0
+    ? populated.states.map((s) => ({ value: s._id, label: s.name }))
+    : (geo.states ?? []).map((s) => ({ value: s, label: s }));
+  const cityOpts = Array.isArray(populated?.cities) && populated.cities.length > 0
+    ? populated.cities.map((c) => ({ value: c._id, label: c.name }))
+    : (geo.cities ?? []).map((c) => ({ value: c, label: c }));
+
   return {
     name: d.name ?? "",
     foundationalInformation: d.foundationalInformation ?? "",
@@ -96,9 +107,9 @@ function mapApiToFormValues(
       rewardAmountCap: r.rewardAmountCap ?? "",
       rewardType: r.rewardType ?? "max",
     })),
-    countryOpts: (geo.countries ?? []).map((c) => ({ value: c, label: c })),
-    stateOpts: (geo.states ?? []).map((s) => ({ value: s, label: s })),
-    cityOpts: (geo.cities ?? []).map((c) => ({ value: c, label: c })),
+    countryOpts,
+    stateOpts,
+    cityOpts,
     industryOpts: (d.linkedIndustries ?? []).map((i) => ({
       value: i._id,
       label: i.name,

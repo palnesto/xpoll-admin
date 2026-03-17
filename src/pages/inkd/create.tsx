@@ -273,9 +273,9 @@ export default function CreateInkdInternalAgent() {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-[#F8F9FA]">
       <header className="shrink-0 flex items-center gap-2 border-b border-[#E6E7EB] py-5 pl-4 mb-4">
-        <ArrowLeft className="h-7 w-10 cursor-pointer rounded-full border-b-2 border-black/20 bg-black/10 p-1 text-black/50" onClick={() => navigate("/inkd")} />
-        <h1 className="text-xl font-medium text-black">
-          CREATING SIGNAL AI :
+        <ArrowLeft className="h-7 w-10 cursor-pointer rounded-full bg-[#EEEFF130] p-1 text-black/50 border-b-2 border-l-2 border-white/80" onClick={() => navigate("/inkd")} />
+        <h1 className="text-lg text-black">
+          Creating Signal AI :
         </h1>
       </header>
 

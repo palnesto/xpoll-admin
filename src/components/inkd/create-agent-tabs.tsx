@@ -1,9 +1,9 @@
 import {
   ListPlus,
-  CaseSensitive,
-  Wrench,
+  Languages, 
   ListRestart,
   Cog,
+  Award ,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -15,10 +15,10 @@ import {
 
 const STEP_ICONS: Record<InkdCreateStepId, LucideIcon> = {
   foundational: ListPlus,
-  brand: CaseSensitive,
-  settings: Wrench,
+  brand: Languages,
+  settings: Cog,
   priority: ListRestart,
-  rewards: Cog,
+  rewards: Award ,
 };
 
 type Props = {
@@ -51,13 +51,13 @@ export function CreateAgentTabs({
               onStepClick(step.id);
             }}
             className={cn(
-              "flex items-center gap-2 rounded-full py-2 font-semibold tracking-[0.18em] uppercase transition",
+              "flex items-center gap-2 rounded-full py-2 font-semibold uppercase transition",
               isActive ? "px-6 text-black" : "px-4 text-[#999]",
               isClickable ? "cursor-pointer" : "cursor-not-allowed",
             )}
           >
             <Icon className="h-6 w-6 shrink-0" />
-            {isActive ? <span>{step.label}</span> : null}
+            {isActive ? <span className="text-sm">{step.label}</span> : null}
           </a>
         );
       })}

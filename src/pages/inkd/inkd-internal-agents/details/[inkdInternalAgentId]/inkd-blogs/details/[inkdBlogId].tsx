@@ -212,7 +212,7 @@ export default function InkdBlogDetails() {
       {/* Sources */}
       {externalLinks.length > 0 && (
         <div className="mt-12">
-          <h3 className="text-[16px] font-medium text-[#202024]">Sources</h3>
+          <h3 className="text-2xl font-medium text-[#202024]">Sources</h3>
           <ul className="mt-3 flex list-inside list-decimal flex-wrap gap-x-4 gap-y-1 text-[14px] text-[#8a8a91]">
             {externalLinks.map((href, index) => {
               const url = href.startsWith("http") ? href : `https://${href}`;
