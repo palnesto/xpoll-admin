@@ -16,12 +16,7 @@ export type NameStatus =
   | "unavailable"
   | "error";
 
-<<<<<<< HEAD
-type FormValues =
-  import("@/schema/inkd-agent-create.schema").InkdAgentCreateFormValues;
-=======
 type FormValues = InkdAgentCreateFormValues;
->>>>>>> e915698890530b0ebe2a4640c70c99288697537f
 
 type Props = {
   form: UseFormReturn<FormValues>;
