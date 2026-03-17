@@ -1,5 +1,7 @@
-import type { InkdBlogData, MediaState, MediaType } from "./inkd-blog-edit.types";
-import { safeArr } from "./inkd-blog-edit.utils";
+import { safeArr } from "@/utils/inkd-blog-edit.utils";
+import { InkdBlogData, MediaState, MediaType } from "../types/inkd";
+
+ 
 
 export function detectMediaType(b: InkdBlogData): MediaType {
   if (safeArr(b.uploadedVideoLinks)[0]) return "video";

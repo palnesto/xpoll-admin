@@ -78,14 +78,14 @@ export function AgentCard({ agent }: Props) {
           });
         }
       }}
-      className={`rounded-[24px] bg-[#e8ebf2] p-4 space-y-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] transition-transform duration-200 cursor-pointer ${
+      className={`rounded-[24px] bg-[#e8ebf2] p-4 space-y-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] transition-transform duration-200 cursor-pointer transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_4px_10px_rgba(0,0,0,0.1)] ${
         status === "idle"
           ? "opacity-65 saturate-[0.72]"
-          : "hover:-translate-y-0.5 hover:shadow-[0_4px_10px_rgba(0,0,0,0.1)]"
+          : ""
       }`}
     >
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-[32px] leading-none text-black min-w-0 flex-1 truncate">{agent.name}</h3>
+        <h3 className="text-2xl text-black flex-1 truncate">{agent.name}</h3>
         <div className="flex items-center gap-2 shrink-0" onClick={handleToggle} role="group" aria-label="Agent status">
           <span
             className={`rounded-full px-3 py-1 text-xs capitalize shrink-0 border-b  ${
@@ -100,11 +100,8 @@ export function AgentCard({ agent }: Props) {
             checked={status === "active"}
             disabled={isChangingStatus}
             aria-label={`Toggle status to ${nextStatus}`}
-            className={
-              status === "active"
-                ? "data-[state=checked]:bg-[#6cc070]"
-                : "data-[state=unchecked]:bg-[#c8c8cf]"
-            }
+            className="data-[state=checked]:bg-[#e3f6e7] data-[state=unchecked]:bg-[#e5e5e8]"
+            thumbClassName="group-data-[state=checked]:bg-[#6cc070] group-data-[state=unchecked]:bg-[#c8c8cf]"
             onCheckedChange={() => {
               if (!isChangingStatus) changeStatus({ inkDInternalAgentId: agent._id, status: nextStatus });
             }}

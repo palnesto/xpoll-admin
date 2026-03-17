@@ -1,5 +1,5 @@
-import { z } from "zod";
-import { hasMeaningfulText, isValidExternalLink } from "./inkd-blog-edit.utils";
+import { hasMeaningfulText, isValidExternalLink } from "@/utils/inkd-blog-edit.utils";
+import { z } from "zod"; 
 
 export const blogFormSchema = z.object({
   title: z.string().trim().min(1, "Min 1 character").max(2000, "Max 2000 characters"),

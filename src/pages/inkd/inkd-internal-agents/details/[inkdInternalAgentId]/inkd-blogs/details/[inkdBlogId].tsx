@@ -104,7 +104,7 @@ export default function InkdBlogDetails() {
       <div className="mb-6 flex items-center justify-between">
         <button
           onClick={() => navigate(-1)}
-          className="flex h-[34px] w-[50px] items-center justify-center rounded-full bg-[#ececec] text-[#2a2a2a]"
+          className="flex h-[34px] w-[50px] items-center justify-center rounded-full bg-[#ececec] text-[#2a2a2a] border-b-2 border-b-white"
         >
           <ArrowLeft size={16} />
         </button>
@@ -140,7 +140,7 @@ export default function InkdBlogDetails() {
               `/inkd/inkd-internal-agents/details/${inkdInternalAgentId}/inkd-blogs/edit/${inkdBlogId}`
             )
           }
-          className="flex h-[34px] items-center gap-2 rounded-full bg-[#7078e6] px-4 text-[15px] text-white"
+          className="flex h-[34px] items-center gap-2 rounded-full bg-[#727DD5] px-4 text-[15px] text-white hover:bg-[#5765c2] transition-all duration-300"
         >
           <Pencil size={13} />
           Edit Blog
@@ -155,43 +155,28 @@ export default function InkdBlogDetails() {
         />
       </div>
 
-      <div className="mt-12 flex items-start gap-4">
-        <div className="pt-2 text-[64px] leading-none text-[#a7a7a7]"><Quote size={64} /></div>
-        <h1 className="text-[28px] font-normal uppercase tracking-[-0.03em] text-[#1a1a1d]">
+      <div className="flex items-start gap-4 mt-4">
+        <div className="text-[64px] leading-none text-[#a7a7a7]"><Quote size={40} className="pt-2"/></div>
+        <h1 className="text-[28px] font-normal uppercase text-[#1a1a1d]">
           {blog.title}
         </h1>
       </div>
 
       <MarkdownPreview content={blog.description} className="mt-6" />
-
-      {/* Rewards alignment if present */}
-      {blog.rewardsAlignment?.activeTrialsOnly?.length ? (
-        <div className="mt-8">
-          <div className="mb-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-[#4a4a4f]">
-            Rewards (active trials)
-          </div>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[10px] text-[#5f5f68]">
-            {blog.rewardsAlignment.activeTrialsOnly.map((r) => (
-              <span key={r.assetId}>
-                {r.assetId} cap {r.rewardAmountCap}
-              </span>
-            ))}
-          </div>
-        </div>
-      ) : null}
-  
+ 
       {/* Active trials as cards */}
       {activeTrials.length > 0 && (
         <div className="mt-12">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            {activeTrials.map((trial) => {
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {activeTrials?.map((trial) => {
               const imgUrl = pickTrialImage(trial.resourceAssets);
               const coverImg = imgUrl || "https://images.unsplash.com/photo-1444723121867-7a241cacace9?auto=format&fit=crop&w=1200&q=80";
               return (
                 <button
                   key={trial._id}
                   type="button"
-                  className="overflow-hidden rounded-[18px] border border-[#ececef] bg-white p-[10px] text-left shadow-[0_1px_0_rgba(255,255,255,0.9)_inset]"
+                  onClick={() => navigate(`/trials/${trial._id}`)}
+                  className="overflow-hidden rounded-[18px] border border-[#ececef] bg-white p-[10px] text-left shadow-[0_1px_0_rgba(255,255,255,0.9)_inset] cursor-pointer hover:-translate-y-0.5 transition-all duration-300 hover:shadow-[0_4px_10px_rgba(0,0,0,0.1)]"
                 >
                   <div className="relative h-[170px] w-full overflow-hidden rounded-[14px]">
                     <img
@@ -204,7 +189,7 @@ export default function InkdBlogDetails() {
                     <div className="font-semibold leading-[1.25] text-[#151518] line-clamp-2">
                       {trial.title}
                     </div>
-                    <p className="mt-2 line-clamp-3 text-[12px] leading-[1.35] text-[#7e7e86]">
+                    <p className="mt-2 line-clamp-2 text-[12px] leading-[1.35] text-[#7e7e86]">
                       {trial.description}
                     </p>
                     <div className="flex flex-col gap-x-3 gap-y-1 text-[10px] text-[#5f5f68] bg-[#F8F9FA] p-2 mt-2 rounded-lg">

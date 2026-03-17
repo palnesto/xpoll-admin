@@ -2,12 +2,11 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import {
   Search,
   LayoutGrid,
-  List,
-  NotebookPen,
+  List, 
   ArrowUp,
   ArrowDown,
 } from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { useApiMutation } from "@/hooks/useApiMutation";
@@ -59,6 +58,8 @@ type BlogEntry = {
 };
 
 type ViewMode = "cards" | "rows";
+
+const INKD_AGENT_DETAILS_VIEW_KEY = "inkd-agent-details-blog-view";
 
 /** Convert base amount to parent for display (same as allActions baseToParent). */
 function baseToParentDisplay(
@@ -114,10 +115,32 @@ function getBlogMedia(blog: BlogEntry): string {
   return inkPlaceholder;
 }
 
+function getStoredView(): ViewMode {
+  try {
+    const stored = localStorage.getItem(INKD_AGENT_DETAILS_VIEW_KEY);
+    if (stored === "cards" || stored === "rows") return stored;
+  } catch {
+    // ignore
+  }
+  return "cards";
+}
+
 export default function InkdInternalAgentDetailsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { inkdInternalAgentId } = useParams();
-  const [view, setView] = useState<ViewMode>("cards");
+  const agentName =
+    (location.state as { agentName?: string } | null)?.agentName?.trim() ||
+    "chart";
+  const [view, setViewState] = useState<ViewMode>(getStoredView);
+  const setView = useCallback((next: ViewMode) => {
+    setViewState(next);
+    try {
+      localStorage.setItem(INKD_AGENT_DETAILS_VIEW_KEY, next);
+    } catch {
+      // ignore
+    }
+  }, []);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [manualLaunchOpen, setManualLaunchOpen] = useState(false);
@@ -211,27 +234,25 @@ export default function InkdInternalAgentDetailsPage() {
   };
 
   return (
-    <div className="w-full 2xl:px-7 pb-8 pt-3"> 
+    <div className="w-full 2xl:px-7 pb-8 pt-3 hidden lg:block">
       <div className="mb-5 flex items-center justify-between gap-4">
-        <div className="relative w-full max-w-[545px]">
-          <div className="flex h-[54px] items-center rounded-[28px] bg-white px-4 shadow-[0_1px_0_rgba(255,255,255,0.75)_inset]">
-            <img src={inkd} alt="search" className="mr-3 h-5 text-[#6C63E5]" />
-            <input
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setPage(1);
-              }}
-              placeholder="Search the chart"
-              className="h-full flex-1 bg-transparent text-[14px] font-normal text-[#353535] outline-none placeholder:text-[#b8b8c2]"
-            />
-            <div className="flex h-[34px] w-[58px] items-center justify-center rounded-full bg-[#e1e1e1]">
-              <Search size={13} className="text-[#5649FF]" />
-            </div>
+        <div className="relative w-full flex h-[54px] items-center rounded-[28px] bg-white px-4 shadow-[0_1px_0_rgba(255,255,255,0.75)_inset]"> 
+          <img src={inkd} alt="search" className="mr-3 h-5 text-[#6C63E5]" />
+          <input
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setPage(1);
+            }}
+            placeholder={`Search the ${agentName}`}
+            className="h-full flex-1 bg-transparent text-[14px] font-normal text-[#353535] outline-none placeholder:text-[#b8b8c2]"
+          />
+          <div className="flex h-[34px] w-[58px] items-center justify-center rounded-full bg-[#e1e1e1]">
+            <Search size={13} className="text-[#5649FF]" />
           </div>
         </div>
 
-        <div className="ml-auto flex items-center gap-3">
+        <div className="flex items-center gap-3 mr-7">
           <button
             type="button"
             onClick={() => setManualLaunchOpen(true)}
@@ -245,11 +266,10 @@ export default function InkdInternalAgentDetailsPage() {
             <button
               type="button"
               onClick={() => setView("cards")}
-              className={`flex h-[40px] w-[52px] items-center justify-center rounded-full transition ${
-                view === "cards"
+              className={`flex h-[40px] w-[52px] items-center justify-center rounded-full transition ${view === "cards"
                   ? "bg-white text-[#6b63f6] shadow-[0_2px_10px_rgba(0,0,0,0.05)]"
                   : "text-[#8f8f98]"
-              }`}
+                }`}
             >
               <LayoutGrid size={17} strokeWidth={2} />
             </button>
@@ -257,11 +277,10 @@ export default function InkdInternalAgentDetailsPage() {
             <button
               type="button"
               onClick={() => setView("rows")}
-              className={`flex h-[40px] w-[52px] items-center justify-center rounded-full transition ${
-                view === "rows"
+              className={`flex h-[40px] w-[52px] items-center justify-center rounded-full transition ${view === "rows"
                   ? "bg-white text-[#6b63f6] shadow-[0_2px_10px_rgba(0,0,0,0.05)]"
                   : "text-[#8f8f98]"
-              }`}
+                }`}
             >
               <List size={17} strokeWidth={2} />
             </button>
@@ -281,7 +300,7 @@ export default function InkdInternalAgentDetailsPage() {
           No blogs found for this agent.
         </p>
       ) : view === "cards" ? (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid gap-4 grid-cols-2">
           {entries.map((blog) => {
             const media = getBlogMedia(blog);
             const legs = getRewardLegs(blog);
@@ -289,14 +308,14 @@ export default function InkdInternalAgentDetailsPage() {
               <div
                 key={blog._id}
                 onClick={() => goToBlog(blog._id)}
-                className="overflow-hidden rounded-[22px] bg-white p-[8px] text-left shadow-[0_1px_0_rgba(255,255,255,0.8)_inset] cursor-pointer"
-              > 
-                  <div className="relative h-[200px] w-full overflow-hidden rounded-[18px]">
-                    <img
-                      src={media}
-                      alt={blog.title}
-                      className="h-full w-full object-cover"
-                    />
+                className="overflow-hidden rounded-[22px] bg-white p-[8px] text-left shadow-[0_1px_0_rgba(255,255,255,0.9)_inset] cursor-pointer hover:-translate-y-0.5 transition-all duration-300 hover:shadow-[0_4px_10px_rgba(0,0,0,0.1)]"
+              >
+                <div className="relative h-[200px] w-full overflow-hidden rounded-[18px]">
+                  <img
+                    src={media}
+                    alt={blog.title}
+                    className="h-full w-full object-cover"
+                  />
                 </div>
 
                 <div className="px-[8px] pb-[4px] pt-[12px]">
@@ -307,7 +326,7 @@ export default function InkdInternalAgentDetailsPage() {
                   {legs.length > 0 && (
                     <div className="mt-[7px] rounded-[12px] bg-[#F8F9FA] px-[10px] py-[9px]">
                       <div className="mb-[6px] text-[10px] font-semibold uppercase text-black">
-                      🎁 Rewards
+                        🎁 Rewards
                       </div>
                       <RewardChips legs={legs} />
                     </div>
@@ -347,17 +366,17 @@ export default function InkdInternalAgentDetailsPage() {
             <div />
           </div>
 
-          {entries.map((blog, index) => {
+          {entries?.map((blog, index) => {
             const media = getBlogMedia(blog);
             const legs = getRewardLegs(blog);
             return (
               <div
                 key={blog._id}
-                className={`grid w-full grid-cols-[140px_minmax(0,1fr)_180px_120px_44px] items-center gap-0 px-6 py-4 text-left transition hover:bg-[#f2f2f3] ${
-                  index !== entries.length - 1
+                onClick={() => goToBlog(blog._id)}
+                className={`grid w-full grid-cols-[140px_minmax(0,1fr)_180px_120px_44px] items-center gap-0 px-6 py-4 text-left transition hover:bg-[#f2f2f3] cursor-pointer ${index !== entries.length - 1
                     ? "border-b border-[#ededed]"
                     : ""
-                }`}
+                  }`}
               >
                 <div>
                   <img
@@ -375,7 +394,7 @@ export default function InkdInternalAgentDetailsPage() {
 
                 <div className="pr-4">
                   {legs.length > 0 ? (
-                    <div className="flex flex-col gap-0.5">
+                    <div className="flex flex-col gap-0.5 overflow-y-scroll">
                       {legs.slice(0, 2).map((leg) => {
                         const spec = assetSpecs[leg.assetId as AssetType];
                         const converted = baseToParentDisplay(
@@ -416,14 +435,6 @@ export default function InkdInternalAgentDetailsPage() {
                     listQueryKey={listQueryKey}
                   />
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => goToBlog(blog._id)}
-                  className="flex justify-end text-[#4d4d55] hover:text-[#2a2a2f]"
-                >
-                  <NotebookPen size={15} />
-                </button>
               </div>
             );
           })}
@@ -516,11 +527,10 @@ function VotePills({
         type="button"
         disabled={isPending}
         onClick={(e) => handleVote(e, "upvote")}
-        className={`flex h-[28px] w-[58px] items-center justify-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-70 ${
-          reviewVote === "upvote"
+        className={`flex h-[28px] w-[58px] items-center justify-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-70 ${reviewVote === "upvote"
             ? "bg-[#7078e6] text-white"
             : "bg-[#dedede] text-[#555]"
-        }`}
+          }`}
       >
         <ArrowUp size={13} strokeWidth={2.5} />
       </button>
@@ -529,11 +539,10 @@ function VotePills({
         type="button"
         disabled={isPending}
         onClick={(e) => handleVote(e, "downvote")}
-        className={`flex h-[28px] w-[58px] items-center justify-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-70 ${
-          reviewVote === "downvote"
+        className={`flex h-[28px] w-[58px] items-center justify-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-70 ${reviewVote === "downvote"
             ? "bg-[#ff5a36] text-white"
             : "bg-[#dedede] text-[#555]"
-        }`}
+          }`}
       >
         <ArrowDown size={13} strokeWidth={2.5} />
       </button>

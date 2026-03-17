@@ -28,22 +28,11 @@ import { compressImage, COMPRESS_QUALITY } from "@/utils/media/compressImage";
 import { fileToDataUrl } from "@/utils/fileToDataUrl";
 import { appToast } from "@/utils/toast";
 import { cn } from "@/lib/utils";
-import {
-  BLOG_MAX_IMAGE_MB,
-  BLOG_MAX_VIDEO_MB,
-  CROP_VIEW_W,
-  CROP_VIEW_H,
-  ACCEPT_IMAGE,
-  MAX_TARGETED_INDUSTRIES,
-  MIN_TARGETED_INDUSTRIES,
-  INPUT_CLASS,
-  MAX_IMAGE_BYTES,
-  MAX_VIDEO_BYTES,
-} from "./inkd-blog-edit.constants";
-import { blogFormSchema, type BlogForm } from "./inkd-blog-edit.validation";
-import { safeArr, normalizeExternalLink, isValidExternalLink } from "./inkd-blog-edit.utils";
-import type { InkdBlogData, MediaType, MediaState } from "./inkd-blog-edit.types";
-import { detectMediaType, detectMediaState } from "./inkd-blog-edit.media";
+import { blogFormSchema, type BlogForm } from "../../../../../../../schema/inkd-blog-edit.validation"; 
+import { detectMediaType, detectMediaState } from "../../../../../../../components/inkd/inkd-blog-edit.media";
+import { ACCEPT_IMAGE, BLOG_MAX_IMAGE_MB, BLOG_MAX_VIDEO_MB, CROP_VIEW_H, CROP_VIEW_W, INPUT_CLASS, MAX_IMAGE_BYTES, MAX_TARGETED_INDUSTRIES, MAX_VIDEO_BYTES, MIN_TARGETED_INDUSTRIES } from "@/constants/inkd";
+import { InkdBlogData, MediaState, MediaType } from "@/components/types/inkd";
+import { isValidExternalLink, normalizeExternalLink, safeArr } from "@/utils/inkd-blog-edit.utils";
 
 async function buildMediaPayload(opts: {
   mediaType: MediaType;
@@ -459,21 +448,20 @@ export default function InkdBlogEditPage() {
   }
 
   return (
-    <div className="min-h-screen p-4">
-      <div className="rounded-2xl border border-black/5 bg-[#F5F5F5] p-5 shadow-sm">
+    <div className="min-h-screen p-4"> 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => navigate(-1)}
-              className="rounded-xl border border-black/10 bg-white px-2 py-2 hover:bg-black/5"
+              className="rrounded-full bg-[#ececec] text-[#2a2a2a] border-b-2 border-b-white px-2 py-2 hover:bg-black/70"
               aria-label="Back"
             >
-              <ArrowLeft className="h-4 w-4" />
+              <ArrowLeft className="h-4 w-7" />
             </button>
             <div>
-              <div className="text-lg font-semibold text-[#111]">Edit Blog</div>
-              <div className="text-xs text-black/50">InkD agent blog</div>
+              <h1 className="text-lg font-semibold text-[#111]">Edit Blog</h1>
+              <h2 className="text-xs text-black/50">InkD agent blog</h2>
             </div>
           </div>
           <button
@@ -482,7 +470,7 @@ export default function InkdBlogEditPage() {
             disabled={isDisabled}
             className={cn(
               "rounded-full px-5 py-2 text-sm font-semibold text-white transition",
-              isDisabled ? "cursor-not-allowed bg-[#BFBFBF] opacity-70" : "bg-[#0EA5A5] hover:bg-[#0b8f8f]"
+              isDisabled ? "cursor-not-allowed bg-[#727DD5] opacity-70" : "bg-[#727DD5] hover:bg-[#727DD590]"
             )}
           >
             {updatePending || form.formState.isSubmitting ? "Saving..." : "Save Blog"}
@@ -767,8 +755,7 @@ export default function InkdBlogEditPage() {
               <p className="text-xs text-red-600">{String(form.formState.errors.description.message)}</p>
             )}
           </div>
-        </div>
-      </div>
+        </div> 
     </div>
   );
 }
