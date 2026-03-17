@@ -11,6 +11,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { endpoints } from "@/api/endpoints";
 import { FullScreenLoader } from "@/components/full-screen-loader";
+import { InkDBlogContentPreview } from "@/components/inkd/inkd-blog-content-preview";
 
 type ResourceAsset = { type: string; value?: string };
 type InkDTrial = {
@@ -152,16 +153,14 @@ export default function InkdBlogDetails() {
         />
       </div>
 
-      <div className="mt-5 space-y-2 text-[15px] leading-[1.9] text-[#2d2d30]">
-        <p>{blog.description}</p>
-      </div>
-
       <div className="mt-12 flex items-start gap-4">
         <div className="pt-2 text-[64px] leading-none text-[#a7a7a7]">"</div>
         <h1 className="text-[28px] font-normal uppercase tracking-[-0.03em] text-[#1a1a1d]">
           {blog.title}
         </h1>
       </div>
+
+      <InkDBlogContentPreview content={blog.description} className="mt-6" />
 
       {/* Rewards alignment if present */}
       {blog.rewardsAlignment?.activeTrialsOnly?.length ? (
