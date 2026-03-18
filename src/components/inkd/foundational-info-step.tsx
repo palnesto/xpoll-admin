@@ -20,8 +20,7 @@ type FormValues = InkdAgentCreateFormValues;
 
 type Props = {
   form: UseFormReturn<FormValues>;
-  nameStatus: NameStatus;
-  /** When set, show name as read-only (edit mode; name not sent in PATCH) */
+  nameStatus: NameStatus; 
   editMode?: { name: string };
 };
 

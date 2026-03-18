@@ -266,7 +266,7 @@ export function SettingsStep({
         label="Blog length"
         placeholder="10000"
         decimalScale={0}
-        helperText={errs.maxBlogDescriptionLength?.message ?? "Characters per blog description"}
+        helperText={errs.maxBlogDescriptionLength?.message ?? "Min 2000, max 15000 characters per blog description"}
         showError={false}
         inputClassName={INPUT_CLASS}
         className="text-[#5E6366]"
@@ -278,7 +278,7 @@ export function SettingsStep({
         label="No of trails to be create per blog"
         placeholder="12"
         decimalScale={0}
-        helperText={errs.maxLinkedTrial?.message ?? "Trails per blog"}
+        helperText={errs.maxLinkedTrial?.message ?? "Max 10 trails per blog"}
         showError={false}
         inputClassName={INPUT_CLASS}
         className="text-[#5E6366]"
@@ -295,19 +295,19 @@ export function SettingsStep({
         inputClassName={INPUT_CLASS}
         className="text-[#5E6366]"
       />
-        <div className="space-y-1">
-          <Label className="text-xs font-semibold text-[#5E6366]">
-            Country
-          </Label>
-          <CountrySelect
-            value={countryOpts}
-            onChange={(opts) => setCountryOpts(opts as GeoOption[])}
-            placeholder="Rhode Island"
-            selectProps={INKD_GEO_SELECT_PROPS}
-          />
-        </div>
+      <div className="space-y-1">
+        <Label className="text-xs font-semibold text-[#5E6366]">
+          Country
+        </Label>
+        <CountrySelect
+          value={countryOpts}
+          onChange={(opts) => setCountryOpts(opts as GeoOption[])}
+          placeholder="Rhode Island"
+          selectProps={INKD_GEO_SELECT_PROPS}
+        />
+      </div>
       <div className="col-span-2 grid grid-cols-2 gap-6">
- 
+
         <div className="space-y-1">
           <Label className="text-xs font-semibold text-[#5E6366]">
             State
@@ -373,14 +373,9 @@ export function SettingsStep({
 
         <div className="col-span-2 space-y-3">
           <div className="flex items-center justify-between">
-            <div>
-              <Label className="text-xs font-semibold text-[#5E6366]">
-                Schedule blog posts
-              </Label>
-              <p className="mt-1 text-[11px] text-[#7a7a87]">
-                Choose days and a time in your local timezone ({adminZone}) for auto-generated blogs. Max 3 schedules.
-              </p>
-            </div>
+            <Label className="text-xs font-semibold text-[#5E6366]">
+              Schedule blog posts
+            </Label>
             <Button
               type="button"
               variant="outline"
@@ -407,8 +402,8 @@ export function SettingsStep({
                     const days =
                       rule.weekdays && rule.weekdays.length
                         ? rule.weekdays
-                            .map((d) => weekdayLabel(d))
-                            .join(", ")
+                          .map((d) => weekdayLabel(d))
+                          .join(", ")
                         : "No days";
                     const time = rule.timeUtc || "No time";
                     return (

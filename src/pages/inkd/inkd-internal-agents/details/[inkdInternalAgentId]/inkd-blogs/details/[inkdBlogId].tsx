@@ -1,13 +1,4 @@
-import {
-  ArrowLeft,
-  MapPin,
-  BriefcaseBusiness,
-  Pencil,
-  ExternalLink,
-  ChevronRight,
-  NotebookPen,
-  Quote,
-} from "lucide-react";
+import { ArrowLeft, Pencil, Quote } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { endpoints } from "@/api/endpoints";
@@ -48,8 +39,18 @@ type BlogData = {
   totalActiveTrials?: number;
   inkDInternalAgentFallbackImage?: string | null;
   rewardsAlignment?: {
-    activeTrialsOnly?: { assetId: string; rewardAmountCap: string; currentDistribution: string; rewardLeft: string }[];
-    nonActiveTrialsIncluded?: { assetId: string; rewardAmountCap: string; currentDistribution: string; rewardLeft: string }[];
+    activeTrialsOnly?: {
+      assetId: string;
+      rewardAmountCap: string;
+      currentDistribution: string;
+      rewardLeft: string;
+    }[];
+    nonActiveTrialsIncluded?: {
+      assetId: string;
+      rewardAmountCap: string;
+      currentDistribution: string;
+      rewardLeft: string;
+    }[];
   };
 };
 
@@ -61,7 +62,9 @@ export default function InkdBlogDetails() {
   }>();
 
   const route = endpoints.entities.inkd.blogs.getById(inkdBlogId ?? "");
-  const trialsRoute = endpoints.entities.inkd.blogs.getActiveTrails(inkdBlogId ?? "");
+  const trialsRoute = endpoints.entities.inkd.blogs.getActiveTrails(
+    inkdBlogId ?? "",
+  );
   const { data, isLoading, isError } = useApiQuery(route, {
     queryKey: ["inkd-blog-details", inkdBlogId],
     enabled: !!inkdBlogId,
@@ -71,7 +74,9 @@ export default function InkdBlogDetails() {
     queryKey: ["inkd-blog-trials", inkdBlogId],
     enabled: !!inkdBlogId,
   });
-  const activeTrials = (trialsResp?.data?.data?.activeTrials ?? trialsResp?.data?.activeTrials ?? []) as InkDTrial[];
+  const activeTrials = (trialsResp?.data?.data?.activeTrials ??
+    trialsResp?.data?.activeTrials ??
+    []) as InkDTrial[];
 
   if (isLoading || !blog) {
     return <FullScreenLoader />;
@@ -87,9 +92,12 @@ export default function InkdBlogDetails() {
 
   const locationLabels: string[] = [];
   if (blog.targetGeo) {
-    if (blog.targetGeo.countries?.length) locationLabels.push(blog.targetGeo.countries.join(", "));
-    if (blog.targetGeo.states?.length) locationLabels.push(blog.targetGeo.states.join(", "));
-    if (blog.targetGeo.cities?.length) locationLabels.push(blog.targetGeo.cities.join(", "));
+    if (blog.targetGeo.countries?.length)
+      locationLabels.push(blog.targetGeo.countries.join(", "));
+    if (blog.targetGeo.states?.length)
+      locationLabels.push(blog.targetGeo.states.join(", "));
+    if (blog.targetGeo.cities?.length)
+      locationLabels.push(blog.targetGeo.cities.join(", "));
   }
   const firstIndustry = blog.linkedIndustries?.[0]?.name;
   const heroImage =
@@ -137,7 +145,7 @@ export default function InkdBlogDetails() {
             inkdInternalAgentId &&
             inkdBlogId &&
             navigate(
-              `/inkd/inkd-internal-agents/details/${inkdInternalAgentId}/inkd-blogs/edit/${inkdBlogId}`
+              `/inkd/inkd-internal-agents/details/${inkdInternalAgentId}/inkd-blogs/edit/${inkdBlogId}`,
             )
           }
           className="flex h-[34px] items-center gap-2 rounded-full bg-[#727DD5] px-4 text-[15px] text-white hover:bg-[#5765c2] transition-all duration-300"
@@ -156,21 +164,25 @@ export default function InkdBlogDetails() {
       </div>
 
       <div className="flex items-start gap-4 mt-4">
-        <div className="text-[64px] leading-none text-[#a7a7a7]"><Quote size={40} className="pt-2"/></div>
+        <div className="text-[64px] leading-none text-[#a7a7a7]">
+          <Quote size={40} className="pt-2" />
+        </div>
         <h1 className="text-[28px] font-normal uppercase text-[#1a1a1d]">
           {blog.title}
         </h1>
       </div>
 
       <MarkdownPreview content={blog.description} className="mt-6" />
- 
+
       {/* Active trials as cards */}
       {activeTrials.length > 0 && (
         <div className="mt-12">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {activeTrials?.map((trial) => {
               const imgUrl = pickTrialImage(trial.resourceAssets);
-              const coverImg = imgUrl || "https://images.unsplash.com/photo-1444723121867-7a241cacace9?auto=format&fit=crop&w=1200&q=80";
+              const coverImg =
+                imgUrl ||
+                "https://images.unsplash.com/photo-1444723121867-7a241cacace9?auto=format&fit=crop&w=1200&q=80";
               return (
                 <button
                   key={trial._id}
@@ -193,11 +205,21 @@ export default function InkdBlogDetails() {
                       {trial.description}
                     </p>
                     <div className="flex flex-col gap-x-3 gap-y-1 text-[10px] text-[#5f5f68] bg-[#F8F9FA] p-2 mt-2 rounded-lg">
-                      <p className="text-[13px] font-semibold text-[#343434]">🎁 Rewards</p>
+                      <p className="text-[13px] font-semibold text-[#343434]">
+                        🎁 Rewards
+                      </p>
                       {(trial.rewards ?? []).slice(0, 3).map((r) => (
-                        <span key={r.assetId} className="bg-[#F2F3F5] w-fit rounded-sm px-2 py-1 flex items-center gap-2">
-                          <img src={assetSpecs[r.assetId]?.img} alt={r.assetId} className="w-4 h-4" /> <span className="text-black">
-                            {r.amount ?? "0"}</span> {r.assetId}
+                        <span
+                          key={r.assetId}
+                          className="bg-[#F2F3F5] w-fit rounded-sm px-2 py-1 flex items-center gap-2"
+                        >
+                          <img
+                            src={assetSpecs[r.assetId]?.img}
+                            alt={r.assetId}
+                            className="w-4 h-4"
+                          />{" "}
+                          <span className="text-black">{r.amount ?? "0"}</span>{" "}
+                          {r.assetId}
                         </span>
                       ))}
                     </div>
@@ -216,7 +238,8 @@ export default function InkdBlogDetails() {
           <ul className="mt-3 flex list-inside list-decimal flex-wrap gap-x-4 gap-y-1 text-[14px] text-[#8a8a91]">
             {externalLinks.map((href, index) => {
               const url = href.startsWith("http") ? href : `https://${href}`;
-              const label = href.replace(/^https?:\/\//i, "").replace(/\/$/, "") || url;
+              const label =
+                href.replace(/^https?:\/\//i, "").replace(/\/$/, "") || url;
               return (
                 <li key={`${href}-${index}`}>
                   <a

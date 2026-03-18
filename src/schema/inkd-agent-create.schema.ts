@@ -112,8 +112,8 @@ export const inkdAgentCreateFormSchema = z
     maxBlogDescriptionLength: z
       .number({ invalid_type_error: "Required" })
       .int()
-      .min(1)
-      .max(15000),
+      .min(2000, "Minimum 2000 characters")
+      .max(15000, "Maximum 15000 characters"),
     maxLinkedTrial: z
       .number({ invalid_type_error: "Required" })
       .int()
