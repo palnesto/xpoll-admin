@@ -34,6 +34,115 @@ import { ACCEPT_IMAGE, BLOG_MAX_IMAGE_MB, BLOG_MAX_VIDEO_MB, CROP_VIEW_H, CROP_V
 import { InkdBlogData, MediaState, MediaType } from "@/components/types/inkd";
 import { isValidExternalLink, normalizeExternalLink, safeArr } from "@/utils/inkd-blog-edit.utils";
 
+const GEO_SELECT_PROPS = {
+  menuPortalTarget: typeof document !== "undefined" ? document.body : undefined,
+  styles: {
+    control: (provided: Record<string, unknown>) => ({
+      ...provided,
+      minHeight: 44,
+      borderRadius: "1rem",
+      borderColor: "#DDE2E5",
+      backgroundColor: "#fff",
+      color: "#111",
+      "&:hover": { borderColor: "#DDE2E5" },
+    }),
+    placeholder: (provided: Record<string, unknown>) => ({
+      ...provided,
+      color: "#9a9aab",
+      fontSize: "0.875rem",
+      fontWeight: 400,
+    }),
+    input: (provided: Record<string, unknown>) => ({
+      ...provided,
+      color: "#111",
+    }),
+    singleValue: (provided: Record<string, unknown>) => ({
+      ...provided,
+      color: "#111",
+    }),
+    menuPortal: (provided: Record<string, unknown>) => ({
+      ...provided,
+      zIndex: 99999,
+      pointerEvents: "auto" as const,
+    }),
+    menu: (provided: Record<string, unknown>) => ({
+      ...provided,
+      backgroundColor: "#fff",
+      border: "1px solid #DDE2E5",
+      borderRadius: "0.5rem",
+      boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+    }),
+    menuList: (provided: Record<string, unknown>) => ({
+      ...provided,
+      backgroundColor: "#fff",
+      padding: 4,
+    }),
+    option: (
+      provided: Record<string, unknown>,
+      state: { isFocused?: boolean; isSelected?: boolean },
+    ) => ({
+      ...provided,
+      color: "#111",
+      backgroundColor: state.isFocused || state.isSelected ? "#F3F4F6" : "#fff",
+      fontSize: "0.875rem",
+    }),
+  } as const,
+};
+
+const INDUSTRY_SELECT_PROPS = {
+  menuPortalTarget: typeof document !== "undefined" ? document.body : undefined,
+  styles: {
+    control: (provided: Record<string, unknown>) => ({
+      ...provided,
+      minHeight: 44,
+      borderRadius: "1rem",
+      borderColor: "#DDE2E5",
+      backgroundColor: "#fff",
+      color: "#111",
+      "&:hover": { borderColor: "#DDE2E5" },
+    }),
+    placeholder: (provided: Record<string, unknown>) => ({
+      ...provided,
+      color: "#9a9aab",
+      fontSize: "0.875rem",
+      fontWeight: 400,
+    }),
+    input: (provided: Record<string, unknown>) => ({
+      ...provided,
+      color: "#111",
+    }),
+    singleValue: (provided: Record<string, unknown>) => ({
+      ...provided,
+      color: "#111",
+    }),
+    menuPortal: (provided: Record<string, unknown>) => ({
+      ...provided,
+      zIndex: 99999,
+      pointerEvents: "auto" as const,
+    }),
+    menu: (provided: Record<string, unknown>) => ({
+      ...provided,
+      backgroundColor: "#fff",
+      border: "1px solid #DDE2E5",
+      borderRadius: "0.5rem",
+      boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+    }),
+    menuList: (provided: Record<string, unknown>) => ({
+      ...provided,
+      backgroundColor: "#fff",
+    }),
+    option: (
+      provided: Record<string, unknown>,
+      state: { isFocused?: boolean; isSelected?: boolean },
+    ) => ({
+      ...provided,
+      color: "#111",
+      backgroundColor: state.isFocused || state.isSelected ? "#F3F4F6" : "#fff",
+      fontSize: "0.875rem",
+    }),
+  } as const,
+};
+
 async function buildMediaPayload(opts: {
   mediaType: MediaType;
   media: MediaState;
@@ -454,7 +563,7 @@ export default function InkdBlogEditPage() {
             <button
               type="button"
               onClick={() => navigate(-1)}
-              className="rrounded-full bg-[#ececec] text-[#2a2a2a] border-b-2 border-b-white px-2 py-2 hover:bg-black/70"
+              className="rounded-full bg-[#ececec] text-[#2a2a2a] border-b-2 border-b-white px-2 py-2 hover:bg-black/20 border-b-2 border-l-2 border-white/80"
               aria-label="Back"
             >
               <ArrowLeft className="h-4 w-7" />
@@ -694,15 +803,30 @@ export default function InkdBlogEditPage() {
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-1">
                 <Label className="text-xs font-semibold text-[#5E6366]">Country</Label>
-                <CountrySelect value={countryOpts} onChange={(opts) => setCountryOpts(opts as GeoOption[])} placeholder="Search countries..." />
+                <CountrySelect
+                  value={countryOpts}
+                  onChange={(opts) => setCountryOpts(opts as GeoOption[])}
+                  placeholder="Search countries..."
+                  selectProps={GEO_SELECT_PROPS}
+                />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs font-semibold text-[#5E6366]">State</Label>
-                <StateSelect value={stateOpts} onChange={(opts) => setStateOpts(opts as GeoOption[])} placeholder="Search states..." />
+                <StateSelect
+                  value={stateOpts}
+                  onChange={(opts) => setStateOpts(opts as GeoOption[])}
+                  placeholder="Search states..."
+                  selectProps={GEO_SELECT_PROPS}
+                />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs font-semibold text-[#5E6366]">City</Label>
-                <CitySelect value={cityOpts} onChange={(opts) => setCityOpts(opts as GeoOption[])} placeholder="Search cities..." />
+                <CitySelect
+                  value={cityOpts}
+                  onChange={(opts) => setCityOpts(opts as GeoOption[])}
+                  placeholder="Search cities..."
+                  selectProps={GEO_SELECT_PROPS}
+                />
               </div>
             </div>
 
@@ -714,7 +838,10 @@ export default function InkdBlogEditPage() {
                 key={industryPickerKey}
                 onChange={(opt) => addIndustry(opt ? { value: opt.value, label: opt.label } : null)}
                 placeholder="Add industry…"
-                selectProps={{ isDisabled: industryOpts.length >= MAX_TARGETED_INDUSTRIES }}
+                selectProps={{
+                  ...INDUSTRY_SELECT_PROPS,
+                  isDisabled: industryOpts.length >= MAX_TARGETED_INDUSTRIES,
+                }}
               />
               {industriesOverLimit && (
                 <p className="text-xs text-red-600">Max {MAX_TARGETED_INDUSTRIES} industries allowed.</p>
