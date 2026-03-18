@@ -23,6 +23,7 @@ import jack from "@/assets/jack.png";
 import three from "@/assets/three.png";
 import mrt from "@/assets/t.png";
 import tin from "@/assets/tin.png";
+import ledge from "@/assets/ledge.png";
 
 export const ASSETS = {
   X_POLL: "xPoll", // xPoll
@@ -398,7 +399,7 @@ export const assetSpecs: Record<
     symbol: "XLDGM",
     parent: "xLedge",
     parentSymbol: "XLDG",
-    img: "/img/xLedgeMini.png",
+    img: ledge,
     canSell: null,
     chain: CHAINS.STRAIN,
   },

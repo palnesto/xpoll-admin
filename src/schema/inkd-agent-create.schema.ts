@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { INKD_INTERNAL_AGENT_WEEKDAYS } from "@/constants/inkd";
+import { amount } from "@/utils/currency-assets/base";
+import type { AssetType } from "@/utils/currency-assets/asset";
 
 /** URL tab param values for /inkd/create?tab=... */
 export const INKD_CREATE_TAB_PARAMS = [
@@ -44,32 +46,41 @@ export const INKD_CREATE_STEPS: { id: InkdCreateStepId; label: string }[] = [
   { id: "rewards", label: "Reward Distribution" },
 ];
 
+/** Parent (decimal) string for amount fields; validated and compared in base. */
 const rewardItemSchema = z
   .object({
     assetId: z.string().min(1, "Select a coin"),
     amount: z
       .string()
       .min(1, "Required")
-      .regex(/^[0-9]+$/, "Use whole-number tokens"),
+      .regex(/^\d+(\.\d+)?$/, "Enter a valid amount (e.g. 1 or 1.5)"),
     rewardAmountCap: z
       .string()
       .min(1, "Required")
-      .regex(/^[0-9]+$/, "Use whole-number tokens"),
+      .regex(/^\d+(\.\d+)?$/, "Enter a valid amount (e.g. 100 or 100.25)"),
     rewardType: z.enum(["min", "max"]).default("max"),
   })
   .superRefine((val, ctx) => {
-    try {
-      const amt = BigInt(val.amount || "0");
-      const cap = BigInt(val.rewardAmountCap || "0");
-      if (cap < amt) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["rewardAmountCap"],
-          message: "Cap must be ≥ per-user amount",
-        });
-      }
-    } catch {
-      // ignore
+    const assetId = val.assetId as AssetType;
+    const amtR = amount({
+      op: "toBase",
+      assetId,
+      value: val.amount || "0",
+      output: "bigint",
+    });
+    const capR = amount({
+      op: "toBase",
+      assetId,
+      value: val.rewardAmountCap || "0",
+      output: "bigint",
+    });
+    if (!amtR.ok || !capR.ok) return;
+    if (capR.value < amtR.value) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["rewardAmountCap"],
+        message: "Cap must be ≥ per-user amount",
+      });
     }
   });
 

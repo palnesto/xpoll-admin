@@ -7,7 +7,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import apiInstance, { BASE_URL } from "@/api/queryClient";
 import { endpoints } from "@/api/endpoints";
-import { coinAssets } from "@/utils/currency-assets/asset";
+import { coinAssets, type AssetType } from "@/utils/currency-assets/asset";
+import { amount } from "@/utils/currency-assets/base";
 import {
   inkdAgentCreateFormSchema,
   INKD_CREATE_TAB_PARAMS,
@@ -42,6 +43,7 @@ import {
 import { PriorityScrapingStep } from "@/components/inkd/priority-scraping-step";
 import { RewardDistributionStep } from "@/components/inkd/reward-distribution-step";
 import { localScheduleRuleToUtc } from "@/utils/time";
+import { LEVELS } from "@/utils/levelConfig";
 import { ArrowLeft } from "lucide-react";
 
 export default function CreateInkdInternalAgent() {
@@ -145,8 +147,8 @@ export default function CreateInkdInternalAgent() {
     if (rewardFields.length === 0) {
       appendReward({
         assetId: coinAssets[0],
-        amount: "",
-        rewardAmountCap: "",
+        amount: "0",
+        rewardAmountCap: "0",
         rewardType: "max",
       });
     }
@@ -200,6 +202,18 @@ export default function CreateInkdInternalAgent() {
     !hasStepErrors(activeStepId, errors) &&
     (activeStepId !== "foundational" ? true : nameStatus === "available");
 
+  /** Convert parent (decimal) string to base (integer) for payload using currency-assets/base. */
+  const parentToBase = (assetId: AssetType, parentStr: string): number => {
+    const r = amount({
+      op: "toBase",
+      assetId,
+      value: parentStr || "0",
+      output: "number",
+      allowUnsafeNumber: true,
+    });
+    return r.ok ? r.value : 0;
+  };
+
   const onSubmit = async (values: InkdAgentCreateFormValues) => {
     const payload = {
       name: values.name.trim(),
@@ -221,8 +235,8 @@ export default function CreateInkdInternalAgent() {
       fallbackImageUrl: values.fallbackImageUrl?.trim() || undefined,
       rewards: values.rewards.map((r) => ({
         assetId: r.assetId,
-        amount: r.amount,
-        rewardAmountCap: r.rewardAmountCap,
+        amount: parentToBase(r.assetId as AssetType, r.amount),
+        rewardAmountCap: parentToBase(r.assetId as AssetType, r.rewardAmountCap),
         rewardType: r.rewardType,
       })),
       scheduleRules: (values.scheduleRules ?? [])
@@ -319,6 +333,7 @@ export default function CreateInkdInternalAgent() {
               rewardFields={rewardFields}
               appendReward={appendReward}
               removeReward={removeReward}
+              highestLevel={LEVELS.length}
             />
           )}
         </form>
