@@ -2,17 +2,18 @@ import { useState } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { GripVertical, Link as LinkIcon, X } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import type { InkdAgentCreateFormValues } from "@/schema/inkd-agent-create.schema";
 
+const MAX_PRIORITY_SOURCES = 5;
+
 const INPUT_CLASS =
-  "w-full h-11 rounded-2xl border px-3 text-base font-light tracking-wide border-[#DDE2E5] bg-white focus:border-[#E8EAED] focus:ring-1 focus:ring-[#E8EAED] focus-visible:outline-none text-[#111] placeholder:text-[#9a9aab]";
+  "w-full h-11 rounded-2xl border px-3 text-base font-light tracking-wide bg-white text-[#111] placeholder:text-[#9a9aab] focus:ring-2 focus-visible:outline-none border-[#DDE2E5] focus:border-[#E8EAED] focus:ring-[#E8EAED]";
 
 const ADD_BUTTON_CLASS =
-  "rounded-full bg-[#E4F2DF] px-4 py-1.5 text-[11px] font-semibold text-[#315326] hover:bg-[#d4e8cf] disabled:opacity-60 shrink-0";
+  "rounded-full bg-[#E4F2DF] px-4 py-1.5 text-[11px] font-semibold text-[#315326] hover:text-[#315326] hover:bg-[#d4e8cf] disabled:opacity-60 shrink-0";
 
 function normalizeUrl(s: string): string {
   const t = s.trim();
@@ -67,7 +68,7 @@ export function PriorityScrapingStep({
       );
       return;
     }
-    if (sources.length >= 5) {
+    if (sources.length >= MAX_PRIORITY_SOURCES) {
       setAddError("Maximum 5 URLs allowed");
       return;
     }
@@ -82,12 +83,17 @@ export function PriorityScrapingStep({
 
   return (
     <div className="space-y-4">
-      <Label className="text-xs font-semibold text-[#5E6366]">
-        Paste URL to parse…
-      </Label>
+      <div className="flex items-center justify-between gap-3">
+        <Label className="text-xs font-semibold text-[#5E6366]">
+          Paste URL to parse…
+        </Label>
+        <span className="text-xs text-[#5E6366]">
+          {sources.length}/{MAX_PRIORITY_SOURCES}
+        </span>
+      </div>
 
       <div className="flex gap-2">
-        <Input
+        <input
           placeholder="https://example.com or example.com"
           value={newUrl}
           onChange={(e) => {
@@ -100,14 +106,18 @@ export function PriorityScrapingStep({
               handleAddLink();
             }
           }}
-          className={cn("flex-1", INPUT_CLASS)}
+          className={cn(
+            "flex-1",
+            INPUT_CLASS,
+            addError ? "border-red-500 focus:ring-red-200" : undefined,
+          )}
         />
         <Button
           type="button"
           variant="outline"
           size="sm"
           onClick={handleAddLink}
-          disabled={sources.length >= 5}
+          disabled={sources.length >= MAX_PRIORITY_SOURCES}
           className={ADD_BUTTON_CLASS}
         >
           + Add Link
@@ -119,14 +129,14 @@ export function PriorityScrapingStep({
       ) : null}
 
       <DragDropContext
-        onDragEnd={(result) => {
+        onDragEnd={(result: any) => {
           if (!result.destination) return;
           if (result.destination.index === result.source.index) return;
           move(result.source.index, result.destination.index);
         }}
       >
         <Droppable droppableId="priority-list">
-          {(provided) => (
+          {(provided: any) => (
             <div
               ref={provided.innerRef}
               {...provided.droppableProps}
@@ -138,7 +148,7 @@ export function PriorityScrapingStep({
                   draggableId={field.id}
                   index={index}
                 >
-                  {(drag) => (
+                  {(drag: any) => (
                     <div
                       ref={drag.innerRef}
                       {...drag.draggableProps}
