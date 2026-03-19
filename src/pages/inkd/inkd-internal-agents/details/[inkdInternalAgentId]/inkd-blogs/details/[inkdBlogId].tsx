@@ -100,10 +100,20 @@ export default function InkdBlogDetails() {
       locationLabels.push(blog.targetGeo.cities.join(", "));
   }
   const firstIndustry = blog.linkedIndustries?.[0]?.name;
-  const heroImage =
-    blog.uploadedImageLinks?.[0] ??
+
+  // Hero media: 1) uploadedImageLinks, 2) uploadedVideoLinks, 3) ytVideoLinks, 4) static fallback
+  const imageUrl = blog.uploadedImageLinks?.[0]?.trim();
+  const videoUrl = blog.uploadedVideoLinks?.[0]?.trim();
+  const ytId = blog.ytVideoLinks?.[0]?.trim();
+  const fallbackImage =
     blog.inkDInternalAgentFallbackImage ??
     "https://images.unsplash.com/photo-1444723121867-7a241cacace9?auto=format&fit=crop&w=1600&q=80";
+
+  const heroMedia =
+    imageUrl ? { type: "image" as const, url: imageUrl } :
+    videoUrl ? { type: "video" as const, url: videoUrl } :
+    ytId ? { type: "youtube" as const, ytId } :
+    { type: "image" as const, url: fallbackImage };
 
   const externalLinks = blog.externalLinks ?? [];
 
@@ -156,11 +166,33 @@ export default function InkdBlogDetails() {
       </div>
 
       <div className="overflow-hidden rounded-[16px]">
-        <img
-          src={heroImage}
-          alt={blog.title}
-          className="h-[335px] w-full rounded-[16px] object-cover"
-        />
+        {heroMedia.type === "image" && (
+          <img
+            src={heroMedia.url}
+            alt={blog.title}
+            className="h-[335px] w-full rounded-[16px] object-cover"
+          />
+        )}
+        {heroMedia.type === "video" && (
+          <video
+            src={heroMedia.url}
+            controls
+            playsInline
+            className="h-[335px] w-full rounded-[16px] object-cover bg-black"
+            aria-label={blog.title}
+          />
+        )}
+        {heroMedia.type === "youtube" && (
+          <div className="relative h-[335px] w-full rounded-[16px] overflow-hidden">
+            <iframe
+              title={blog.title}
+              src={`https://www.youtube.com/embed/${heroMedia.ytId}?autoplay=0`}
+              className="absolute inset-0 h-full w-full rounded-[16px]"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        )}
       </div>
 
       <div className="flex items-start gap-4 mt-4">
