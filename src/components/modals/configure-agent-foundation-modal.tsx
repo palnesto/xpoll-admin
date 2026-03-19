@@ -50,6 +50,7 @@ import {
 } from "@/components/inkd/settings-step";
 import { PriorityScrapingStep } from "@/components/inkd/priority-scraping-step";
 import { RewardDistributionStep } from "@/components/inkd/reward-distribution-step";
+import { LEVELS } from "@/utils/levelConfig";
 
 const STEP_ICONS: Record<InkdCreateStepId, LucideIcon> = {
   foundational: ListPlus,
@@ -437,6 +438,7 @@ export function ConfigureAgentFoundationModal({
                         rewardFields={rewardFields}
                         appendReward={appendReward}
                         removeReward={removeReward}
+                        highestLevel={LEVELS.length}
                       />
                     )}
                   </div>

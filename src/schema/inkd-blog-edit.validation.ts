@@ -5,7 +5,7 @@ export const blogFormSchema = z.object({
   title: z.string().trim().min(1, "Min 1 character").max(2000, "Max 2000 characters"),
   description: z
     .string()
-    .min(100, "Min 100 characters")
+    .min(2000, "Min 2000 characters")
     .max(15000, "Max 15000 characters")
     .superRefine((val, ctx) => {
       if (!hasMeaningfulText(val)) {

@@ -869,7 +869,7 @@ export default function InkdBlogEditPage() {
               <h2 className="font-semibold text-[#111]">
                 Description <span className="text-red-500">*</span>
               </h2>
-              <p className="text-xs text-gray-500">Min 100, max 15000 characters</p>
+              <p className="text-xs text-gray-500">Min 2000, Max 15000 characters</p>
             </span>
             <Controller
               control={form.control}
