@@ -2,7 +2,7 @@ import { useEffect, useCallback, useMemo, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowLeft, FileText, Link as LinkIcon, X } from "lucide-react";
+import { ArrowLeft, FileText, Link as LinkIcon, Trash2, X } from "lucide-react";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
@@ -28,6 +28,16 @@ import { compressImage, COMPRESS_QUALITY } from "@/utils/media/compressImage";
 import { fileToDataUrl } from "@/utils/fileToDataUrl";
 import { appToast } from "@/utils/toast";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { blogFormSchema, type BlogForm } from "../../../../../../../schema/inkd-blog-edit.validation"; 
 import { detectMediaType, detectMediaState } from "../../../../../../../components/inkd/inkd-blog-edit.media";
 import { ACCEPT_IMAGE, BLOG_MAX_IMAGE_MB, BLOG_MAX_VIDEO_MB, CROP_VIEW_H, CROP_VIEW_W, INPUT_CLASS, MAX_IMAGE_BYTES, MAX_TARGETED_INDUSTRIES, MAX_VIDEO_BYTES, MIN_TARGETED_INDUSTRIES } from "@/constants/inkd";
@@ -388,6 +398,29 @@ export default function InkdBlogEditPage() {
     },
   });
 
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const { mutateAsync: deleteBlog, isPending: deletePending } = useApiMutation<undefined, unknown>({
+    route: inkdBlogId ? endpoints.entities.inkd.blogs.delete(inkdBlogId) : "",
+    method: "DELETE",
+    onSuccess: () => {
+      if (userId) clearEditStore(userId);
+      queryClient.invalidateQueries({ queryKey: ["inkd-blog-details", inkdBlogId] });
+      queryClient.invalidateQueries({ queryKey: ["inkd-blog-edit", inkdBlogId] });
+      queryClient.invalidateQueries({ queryKey: ["inkd-internal-agents"] });
+      appToast.success("Blog deleted");
+      setDeleteConfirmOpen(false);
+      if (inkdInternalAgentId) {
+        navigate(`/inkd/inkd-internal-agents/details/${inkdInternalAgentId}`);
+      } else {
+        navigate(-1);
+      }
+    },
+  });
+
+  const handleConfirmDelete = useCallback(async () => {
+    await deleteBlog(undefined);
+  }, [deleteBlog]);
+
   useEffect(() => {
     if (!blog || !inkdBlogId || !userId) return;
     loadFromLocalStorage(userId);
@@ -577,18 +610,53 @@ export default function InkdBlogEditPage() {
               <h2 className="text-xs text-black/50">InkD agent blog</h2>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onSave}
-            disabled={isDisabled}
-            className={cn(
-              "rounded-full px-5 py-2 text-sm font-semibold text-white transition",
-              isDisabled ? "cursor-not-allowed bg-[#727DD5] opacity-70" : "bg-[#727DD5] hover:bg-[#727DD590]"
-            )}
-          >
-            {updatePending || form.formState.isSubmitting ? "Saving..." : "Save Blog"}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setDeleteConfirmOpen(true)}
+              disabled={updatePending || form.formState.isSubmitting}
+              className="flex h-[34px] w-[34px] text-red-500 items-center justify-center rounded-full border border-[#E6E7EB] bg-white text-[#5E6366] hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-colors disabled:opacity-50"
+              aria-label="Delete blog"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={isDisabled}
+              className={cn(
+                "rounded-full px-5 py-2 text-sm font-semibold text-white transition",
+                isDisabled ? "cursor-not-allowed bg-[#727DD5] opacity-70" : "bg-[#727DD5] hover:bg-[#727DD590]"
+              )}
+            >
+              {updatePending || form.formState.isSubmitting ? "Saving..." : "Save Blog"}
+            </button>
+          </div>
         </div>
+
+        <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+          <AlertDialogContent className="bg-[#f5f5f5] text-[#111]">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete blog?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete this blog. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="text-white" disabled={deletePending}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleConfirmDelete();
+                }}
+                disabled={deletePending}
+                className="bg-red-600 hover:bg-red-700 text-white focus:ring-red-600"
+              >
+                {deletePending ? "Deleting..." : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {!form.formState.isValid && Object.keys(form.formState.errors).length > 0 && (
           <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3">

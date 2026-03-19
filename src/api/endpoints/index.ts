@@ -195,6 +195,7 @@ export const endpoints = {
         reviewVote: (blogId: string) => `/internal/inkd-internal-agents/blogs/${blogId}/review-vote`,
         getById: (blogId: string) => `/internal/inkd-internal-agents/blogs/${blogId}`,  
         update: (blogId: string) => `/internal/inkd-internal-agents/blogs/${blogId}`,
+        delete: (blogId: string) => `/internal/inkd-internal-agents/blogs/${blogId}`,
         updateSequence: (blogId: string) => `/internal/inkd-internal-agents/blogs/${blogId}/trials/sequence`,
         getActiveTrails: (blogId: string) => `/internal/inkd-internal-agents/blogs/${blogId}/trials`,
       },
