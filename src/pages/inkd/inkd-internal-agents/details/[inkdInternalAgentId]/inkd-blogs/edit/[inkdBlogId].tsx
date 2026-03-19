@@ -441,6 +441,10 @@ export default function InkdBlogEditPage() {
     setMedia(detectMediaState(blog));
     const ytId = safeArr(blog.ytVideoLinks)[0] || "";
     setYoutubeDraft((prev) => prev || (ytId ? `https://youtu.be/${ytId}` : ""));
+
+    // Invalidate all fields and show inline errors so user sees what needs fixing
+    void form.trigger();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- form is stable; trigger only when blog/data loads
   }, [blog, inkdBlogId, inkdInternalAgentId, userId]);
 
   useEffect(() => {
@@ -586,6 +590,19 @@ export default function InkdBlogEditPage() {
           </button>
         </div>
 
+        {!form.formState.isValid && Object.keys(form.formState.errors).length > 0 && (
+          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+            <p className="text-sm font-medium text-red-800">Please fix the errors below to save.</p>
+            <ul className="mt-1 list-inside list-disc text-xs text-red-700">
+              {form.formState.errors.title?.message && <li>Blog name: {String(form.formState.errors.title.message)}</li>}
+              {form.formState.errors.description?.message && <li>Description: {String(form.formState.errors.description.message)}</li>}
+              {Array.isArray(form.formState.errors.externalLinks) && form.formState.errors.externalLinks.some((e: unknown) => (e as { message?: string })?.message) && (
+                <li>Links: check invalid URLs</li>
+              )}
+            </ul>
+          </div>
+        )}
+
         <div className="mt-6 grid grid-cols-2 gap-6">
           <div className="space-y-5">
             <div className="space-y-2">
@@ -597,7 +614,7 @@ export default function InkdBlogEditPage() {
               </span>
               <Input
                 {...form.register("title")}
-                className={INPUT_CLASS}
+                className={cn(INPUT_CLASS, form.formState.errors.title && "border-red-500")}
                 placeholder="Blog title"
               />
               {form.formState.errors.title?.message && (
@@ -641,6 +658,13 @@ export default function InkdBlogEditPage() {
                   </div>
                 ))}
               </div>
+              {Array.isArray(form.formState.errors.externalLinks) &&
+                form.formState.errors.externalLinks.some((e: unknown) => e && typeof (e as { message?: string }).message === "string") && (
+                <p className="mt-2 text-xs text-red-600">
+                  {(form.formState.errors.externalLinks as { message?: string }[]).find((e) => e?.message)?.message ??
+                    "One or more links have invalid URLs."}
+                </p>
+              )}
             </div>
 
             <div className="rounded-xl border border-black/10 bg-white p-4">
@@ -864,7 +888,7 @@ export default function InkdBlogEditPage() {
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className={cn("space-y-2", form.formState.errors.description && "rounded-xl ring-1 ring-red-500 ring-offset-1 p-2")}>
             <span className="flex items-center justify-between">
               <h2 className="font-semibold text-[#111]">
                 Description <span className="text-red-500">*</span>
